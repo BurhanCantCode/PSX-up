@@ -39,7 +39,7 @@ Open **http://localhost:8000/analyzer**
 ## 📁 Project Structure
 
 ```
-psx-fortune-teller/
+PSX-up/
 ├── backend/
 │   ├── main.py                 # FastAPI server
 │   ├── sota_model.py           # 🔮 Fortune Teller ML engine
