@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investo - PSX Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #111827;
+            --lime: #C1F236;
+            /* Investo Lime Green */
+            --lime-dark: #a3d912;
+            --bg-body: #f5f7fa;
+            --bg-sidebar: #ffffff;
+            --bg-card: #ffffff;
+            --text-main: #191919;
+            --text-muted: #9ca3af;
+            --border: #e5e7eb;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            --sidebar-width: 260px;
+            --red: #ef4444;
+            --green: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-sidebar);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .logo {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Portfolio Card (Lime Green) */
+        .portfolio-card {
+            background: linear-gradient(135deg, var(--lime) 0%, #d4ff4d 100%);
+            color: #1a2e05;
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 40px;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(193, 242, 54, 0.3);
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .portfolio-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .ai-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .nav-menu {
+            list-style: none;
+        }
+
+        .nav-item {
+            margin-bottom: 10px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            color: var(--text-main);
+            background: #f3f4f6;
+        }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            padding: 30px 50px;
+        }
+
+        /* View Sections */
+        .view-section {
+            display: none;
+        }
+
+        .view-section.active {
+            display: block;
+        }
+
+        /* Helpers */
+        .text-green {
+            color: var(--green);
+        }
+
+        .text-red {
+            color: var(--red);
+        }
+
+        .bg-green-soft {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--green);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .bg-red-soft {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        /* Search Header */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .search-bar {
+            background: var(--bg-card);
+            padding: 15px 25px;
+            border-radius: 15px;
+            width: 500px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: var(--shadow);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .search-bar:focus-within {
+            border-color: var(--lime);
+            box-shadow: 0 0 0 3px rgba(193, 242, 54, 0.2);
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            font-size: 0.95rem;
+            width: 100%;
+            background: transparent;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #ddd;
+            overflow: hidden;
+        }
+
+        /* Analysis Dashboard */
+        .section-header {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .input-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            position: relative;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+
+        .input-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .input-field {
+            border: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            width: 100%;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        /* Stock Summary Card */
+        .stock-summary-card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 25px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .stock-main-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .stock-logo-box {
+            width: 60px;
+            height: 60px;
+            background: var(--text-main);
+            color: white;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .metric-group {
+            text-align: right;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .metric-val {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* Chart & Sentiment Split */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 1200px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: var(--shadow);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .time-filters {
+            display: flex;
+            gap: 10px;
+            background: #f8fafc;
+            padding: 5px;
+            border-radius: 50px;
+        }
+
+        .time-btn {
+            border: none;
+            background: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .time-btn.active {
+            background: var(--text-main);
+            color: white;
+        }
+
+        .chart-wrapper {
+            height: 350px;
+        }
+
+        /* Sentiment Card */
+        .sentiment-card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: var(--shadow);
+            height: 100%;
+        }
+
+        .sentiment-badge {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .news-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+        }
+
+        .news-source {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .news-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            line-height: 1.4;
+            color: var(--text-main);
+        }
+
+        .news-ago {
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            margin-top: 5px;
+        }
+
+        /* Scanner Table */
+        .scanner-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .scanner-table th {
+            text-align: left;
+            padding: 15px;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .scanner-table td {
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
+            font-weight: 500;
+        }
+
+        .scanner-row:hover {
+            background: #f8fafc;
+            cursor: pointer;
+        }
+
+        /* Loader */
+        .loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 200;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loader-active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #eee;
+            border-top-color: var(--lime);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="logo">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M16 8l-8 8"></path>
+                <path d="M8 8l8 8"></path>
+            </svg>
+            Investo
+        </div>
+
+        <div class="portfolio-card">
+            <div class="ai-badge">AI BETA</div>
+            <div class="portfolio-title">PSX Stock<br>Predictor</div>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a class="nav-link active" onclick="switchView('dashboard')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Stock Summary
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="switchView('scanner')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    Scanners
+                </a>
+            </li>
+        </ul>
+
+        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+            <div class="input-label" style="margin-bottom: 15px;">RECENT ANALYSES</div>
+            <div id="historyList">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- CONTENT -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <div class="top-header">
+            <div class="search-bar">
+                <svg width="20" height="20" fill="none" stroke="#9ca3af" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="topSearch" placeholder="Search any stock (e.g. TRG, OGDC)..."
+                    onkeypress="if(event.key === 'Enter') quickAnalyze()">
+            </div>
+            <div class="user-profile">
+                <div class="avatar"><img
+                        src="https://ui-avatars.com/api/?name=Trader+Joe&background=C1F236&color=1a2e05" alt="User">
+                </div>
+                <div style="font-weight: 600;">Trader Joe</div>
+            </div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div id="dashboardView" class="view-section active">
+            <h2 class="section-header">Start Analysis</h2>
+
+            <div class="input-card">
+                <div class="input-label">STOCK SYMBOL</div>
+                <input type="text" id="symbolInput" class="input-field" placeholder="Enter Symbol (e.g. LUCK)"
+                    value="LUCK">
+                <div class="search-icon" onclick="analyzeStock()">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsArea" style="display:none;">
+                <h2 class="section-header">Overview</h2>
+                <div class="stock-summary-card">
+                    <div class="stock-main-info">
+                        <div class="stock-logo-box" id="resSymbolShort">LC</div>
+                        <div>
+                            <h3 style="font-size: 1.5rem; font-weight: 700;" id="resSymbol">LUCK</h3>
+                            <div style="color: var(--text-muted);" id="resCompany">Lucky Cement Ltd</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div class="metric-group">
+                            <div class="metric-label">Current Price</div>
+                            <div class="metric-val" id="resPrice">PKR 0.00</div>
+                        </div>
+                        <div class="metric-group">
+                            <div class="metric-label">2026 Forecast</div>
+                            <div class="metric-val" id="resForecast">PKR 0.00</div>
+                        </div>
+                        <div class="metric-group">
+                            <div class="metric-label">Potential Upside</div>
+                            <div class="metric-val" id="resUpside">0.00%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <!-- Chart -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 style="font-size: 1.2rem; font-weight: 700;">Price History & Forecast</h3>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Historical + Fortune Teller AI
+                                </div>
+                            </div>
+                            <div class="time-filters">
+                                <button class="time-btn" onclick="filterChart(90)">3M</button>
+                                <button class="time-btn" onclick="filterChart(180)">6M</button>
+                                <button class="time-btn active" onclick="filterChart(365)">1Y</button>
+                                <button class="time-btn" onclick="filterChart(9999)">ALL</button>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Sentiment -->
+                    <div class="sentiment-card">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 20px;">AI Sentiment Analysis</h3>
+                        <div id="sentimentBadge" class="sentiment-badge" style="background: #eee;">Checking...</div>
+                        <p id="sentimentSummary"
+                            style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;">
+                            Running news analysis...
+                        </p>
+                        <div
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-main); margin-bottom: 15px;">
+                            TOP NEWS HEADLINES</div>
+                        <div id="newsList">
+                            <!-- News items -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCANNER VIEW -->
+        <div id="scannerView" class="view-section">
+            <h2 class="section-header">Market Scanners</h2>
+            <div class="stock-summary-card" style="display: block;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700;">Top Picks & Opportunities</h3>
+                    <button class="time-btn active" onclick="loadScanner()">Refresh</button>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="scanner-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Price</th>
+                                <th>Trend</th>
+                                <th>Signal</th>
+                                <th>Upside</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scannerBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:30px;">Loading opportunities...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Overlay -->
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <h2 id="loaderTitle">Analyzing Stock...</h2>
+        <p id="loaderSub" style="color: #666; margin-top: 10px;">Please wait...</p>
+        <p id="loaderNote" style="font-size: 0.8rem; color: #999; margin-top: 5px;"></p>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let chartInstance = null;
+        let globalHistory = [];
+        let globalPredictions = [];
+
+        function switchView(view) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+
+            if (view === 'dashboard') {
+                document.getElementById('dashboardView').classList.add('active');
+                document.querySelectorAll('.nav-link')[0].classList.add('active');
+            } else {
+                document.getElementById('scannerView').classList.add('active');
+                document.querySelectorAll('.nav-link')[1].classList.add('active');
+                loadScanner();
+            }
+        }
+
+        async function quickAnalyze() {
+            const val = document.getElementById('topSearch').value;
+            if (val) {
+                switchView('dashboard');
+                document.getElementById('symbolInput').value = val;
+                analyzeStock();
+            }
+        }
+
+        async function analyzeStock(overrideSymbol = null) {
+            const symbol = overrideSymbol || document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (!symbol) return;
+
+            // Switch to dashboard if not there
+            switchView('dashboard');
+            document.getElementById('symbolInput').value = symbol;
+
+            showLoader(true, `Analyzing ${symbol}...`, '(Running 500+ daily simulations...)');
+
+            try {
+                const res = await fetch(`${API_BASE}/api/analyze-stock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol })
+                });
+                const { job_id } = await res.json();
+
+                const ws = new WebSocket(`ws://localhost:8000/ws/progress/${job_id}`);
+
+                ws.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    document.getElementById('loaderSub').innerText = `${data.progress}% - ${data.message}`;
+
+                    if (data.stage === 'complete') {
+                        renderResults(data.results);
+                        loadHistoryList(); // Refresh sidebar history
+                        ws.close();
+                        showLoader(false);
+                    } else if (data.stage === 'error') {
+                        alert(data.message);
+                        ws.close();
+                        showLoader(false);
+                    }
+                };
+            } catch (e) {
+                alert(e.message);
+                showLoader(false);
+            }
+        }
+
+        function renderResults(res) {
+            document.getElementById('resultsArea').style.display = 'block';
+
+            // Populate Header Stats
+            document.getElementById('resSymbol').innerText = res.symbol;
+            document.getElementById('resSymbolShort').innerText = res.symbol.substring(0, 2);
+            document.getElementById('resCompany').innerText = `${res.symbol} Corp`;
+            document.getElementById('resPrice').innerText = `PKR ${res.current_price.toFixed(2)}`;
+
+            const lastPred = res.daily_predictions[res.daily_predictions.length - 1];
+            const predictedPrice = lastPred.predicted_price;
+            const upside = lastPred.upside_potential;
+
+            document.getElementById('resForecast').innerText = `PKR ${predictedPrice.toFixed(2)}`;
+
+            // Upside Rendering (Fix for +/- issue)
+            const upEl = document.getElementById('resUpside');
+            const sign = upside >= 0 ? '+' : ''; // Only add + if positive, negative usually has - built in
+            const colorClass = upside >= 0 ? 'text-green' : 'text-red';
+            upEl.innerText = `${sign}${upside.toFixed(2)}%`;
+            upEl.className = `metric-val ${colorClass}`; // Reset class
+
+            // Update Sentiment Card
+            if (res.sentiment) {
+                const s = res.sentiment;
+                const badge = document.getElementById('sentimentBadge');
+                badge.innerText = `${s.signal_emoji} ${s.signal}`;
+
+                // Colorize badge
+                if (s.signal.includes('BULL')) {
+                    badge.style.background = 'rgba(16, 185, 129, 0.1)'; badge.style.color = '#10b981';
+                } else if (s.signal.includes('BEAR')) {
+                    badge.style.background = 'rgba(239, 68, 68, 0.1)'; badge.style.color = '#ef4444';
+                } else {
+                    badge.style.background = '#f3f4f6'; badge.style.color = '#9ca3af';
+                }
+
+                document.getElementById('sentimentSummary').innerText = s.summary || "No sentiment summary available.";
+
+                // News
+                const newsList = document.getElementById('newsList');
+                if (s.recent_news && s.recent_news.length > 0) {
+                    newsList.innerHTML = s.recent_news.slice(0, 3).map(n => `
+                        <div class="news-item">
+                            <div class="news-source">${n.source || 'News'}</div>
+                            <div class="news-title">${n.title}</div>
+                            <div class="news-ago">${n.published_at || 'Recently'}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    newsList.innerHTML = '<div style="color:#ccc; font-size:0.8rem;">No recent news found.</div>';
+                }
+            }
+
+            // Prepare Chart Data
+            globalHistory = res.historical_data || [];
+            globalPredictions = res.daily_predictions || [];
+
+            filterChart(365); // Default 1 year
+        }
+
+        async function loadScanner() {
+            const tbody = document.getElementById('scannerBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">Scanning market...</td></tr>';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/screener?limit=10`);
+                const data = await res.json();
+
+                if (data.success && data.top_picks) {
+                    tbody.innerHTML = data.top_picks.map(s => {
+                        const upside = s.return_1m; // Using 1m return as proxy/placeholder or if API provides upside
+                        const trend = upside >= 0 ? 'Up' : 'Down';
+                        const colorClass = upside >= 0 ? 'bg-green-soft' : 'bg-red-soft';
+
+                        return `
+                            <tr class="scanner-row" onclick="analyzeStock('${s.symbol}')">
+                                <td><div style="font-weight:700;">${s.symbol}</div></td>
+                                <td>PKR ${s.current_price.toFixed(2)}</td>
+                                <td><span class="${colorClass}">${trend}</span></td>
+                                <td>${s.signal || 'HOLD'}</td>
+                                <td class="${upside >= 0 ? 'text-green' : 'text-red'}">${upside >= 0 ? '+' : ''}${upside.toFixed(1)}%</td>
+                                <td><button style="border:none; background:var(--primary); color:white; padding:5px 10px; border-radius:6px; cursor:pointer;">Analyze</button></td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No stocks found.</td></tr>';
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Error: ${e.message}</td></tr>`;
+            }
+        }
+
+        function filterChart(days) {
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - days);
+
+            const filteredHistory = globalHistory.filter(h => new Date(h.Date) > cutoffDate);
+
+            const historyLabels = filteredHistory.map(h => h.Date);
+            const historyPrices = filteredHistory.map(h => h.Close);
+            const predLabels = globalPredictions.map(p => p.date);
+            const predPrices = globalPredictions.map(p => p.predicted_price);
+
+            // Combine labels and align data
+            // We need to insert nulls for predictions during history period
+            // And nulls for history during prediction period
+
+            const allLabels = [...historyLabels, ...predLabels];
+            const datasetHistory = [...historyPrices, ...new Array(predLabels.length).fill(null)];
+
+            // Connect lines: Prediction should start from last history point
+            const lastHistPrice = historyPrices.length > 0 ? historyPrices[historyPrices.length - 1] : null;
+            const datasetPred = [...new Array(historyPrices.length - 1).fill(null), lastHistPrice, ...predPrices];
+
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            // Gradients
+            const gradHist = ctx.createLinearGradient(0, 0, 0, 400);
+            gradHist.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+            gradHist.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+
+            const gradPred = ctx.createLinearGradient(0, 0, 0, 400);
+            gradPred.addColorStop(0, 'rgba(193, 242, 54, 0.4)');
+            gradPred.addColorStop(1, 'rgba(193, 242, 54, 0.0)');
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allLabels,
+                    datasets: [
+                        {
+                            label: 'History',
+                            data: datasetHistory,
+                            borderColor: '#10b981',
+                            backgroundColor: gradHist,
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Forecast',
+                            data: datasetPred,
+                            borderColor: '#C1F236',
+                            backgroundColor: gradPred,
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { position: 'right', grid: { borderDash: [5, 5], color: '#f3f4f6' } }
+                    }
+                }
+            });
+
+            // Update buttons
+            document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+            // (Simulated active state logic would go here)
+        }
+
+        async function loadHistoryList() {
+            const list = document.getElementById('historyList');
+            try {
+                const res = await fetch(`${API_BASE}/api/history`);
+                const data = await res.json();
+                console.log('History API response:', data);
+
+                if (data.success && data.history && data.history.length > 0) {
+                    list.innerHTML = data.history.slice(0, 5).map(h => `
+                        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; cursor:pointer;" onclick="loadFromFile('${h.filename}')">
+                            <div style="font-weight:600; font-size:0.9rem;">${h.symbol}</div>
+                            <div style="font-size:0.8rem; color:${h.predicted_return >= 0 ? '#10b981' : '#ef4444'};">${h.predicted_return >= 0 ? '+' : ''}${h.predicted_return.toFixed(1)}%</div>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div style="color:#9ca3af; font-size:0.85rem;">No saved analyses yet</div>';
+                }
+            } catch (e) {
+                console.error('History load error:', e);
+                list.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading history</div>';
+            }
+        }
+
+        async function loadFromFile(filename) {
+            switchView('dashboard');
+            // No spinner for instant loads - just fetch and render
+            try {
+                const res = await fetch(`${API_BASE}/api/history/${filename}`);
+                const data = await res.json();
+                renderResults(data);
+            } catch (e) {
+                console.error('Error loading saved analysis:', e);
+                alert('Error loading saved analysis');
+            }
+        }
+
+        function showLoader(show, msg, note = '') {
+            document.getElementById('loader').className = show ? 'loader-overlay loader-active' : 'loader-overlay';
+            if (msg) document.getElementById('loaderTitle').innerText = msg;
+            document.getElementById('loaderNote').innerText = note;
+        }
+
+        loadHistoryList();
+    </script>
+</body>
+
+</html>

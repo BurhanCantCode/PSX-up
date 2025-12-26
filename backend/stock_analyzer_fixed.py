@@ -1,0 +1,965 @@
+#!/usr/bin/env python3
+"""
+Backend API for Stock Analysis - Complete & Fixed
+Handles data fetching, model training, and progress updates via WebSocket
+"""
+
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+import json
+import subprocess
+import re
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import joblib
+import asyncio
+from fastapi import FastAPI, WebSocket
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+# Note: This module exports functions, not a FastAPI app instance
+# The routes are defined here but will be added to the main app in main.py
+
+try:
+    from sklearn.model_selection import TimeSeriesSplit
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+    from sklearn.feature_selection import SelectKBest, f_regression
+    from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+
+class StockRequest(BaseModel):
+    symbol: str
+
+progress_data = {}
+
+def fetch_month_data(symbol: str, month: int, year: int):
+    """Fetch historical data for a specific month"""
+    url = "https://dps.psx.com.pk/historical"
+    post_data = f"month={month}&year={year}&symbol={symbol}"
+    
+    try:
+        result = subprocess.run(
+            ['curl', '-s', '-X', 'POST', url, '-d', post_data],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode == 0:
+            return result.stdout
+        return None
+    except:
+        return None
+
+def parse_html_table(html):
+    """Parse HTML table to extract OHLCV data"""
+    rows = re.findall(r'<tr>.*?</tr>', html, re.DOTALL)
+    data = []
+    
+    for row in rows:
+        cells = re.findall(r'<td[^>]*>([^<]+)</td>', row)
+        
+        if len(cells) >= 6:
+            try:
+                date_str = cells[0].strip()
+                date_obj = datetime.strptime(date_str, "%b %d, %Y")
+                
+                open_price = float(cells[1].strip().replace(',', ''))
+                high_price = float(cells[2].strip().replace(',', ''))
+                low_price = float(cells[3].strip().replace(',', ''))
+                close_price = float(cells[4].strip().replace(',', ''))
+                volume = float(cells[5].strip().replace(',', ''))
+                
+                data.append({
+                    'Date': date_obj.strftime('%Y-%m-%d'),
+                    'Open': open_price,
+                    'High': high_price,
+                    'Low': low_price,
+                    'Close': close_price,
+                    'Volume': volume
+                })
+            except:
+                continue
+    
+    return data
+
+def calculate_basic_indicators(data):
+    """Calculate basic technical indicators"""
+    if not data or len(data) == 0:
+        return []  # Return empty list for empty data
+    
+    df = pd.DataFrame(data)
+    
+    # Check if required columns exist
+    if 'Date' not in df.columns:
+        return []
+    
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date').reset_index(drop=True)
+    
+    for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    df['Price_Change'] = df['Close'].diff()
+    df['Price_Change_Pct'] = df['Close'].pct_change() * 100
+    df['Volume_Change'] = df['Volume'].diff()
+    
+    for window in [20, 50, 200]:
+        df[f'SMA_{window}'] = df['Close'].rolling(window=window).mean()
+    
+    records = df.to_dict('records')
+    for record in records:
+        if 'Date' in record and pd.notna(record['Date']):
+            record['Date'] = record['Date'].strftime('%Y-%m-%d')
+    return records
+
+async def fetch_historical_data_async(symbol: str, progress_callback=None):
+    """Fetch all historical data with progress updates"""
+    symbol = symbol.upper()
+    all_data = []
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    start_year = 2020
+    
+    total_months = (current_year - start_year) * 12 + current_month
+    fetched = 0
+    
+    for year in range(start_year, current_year + 1):
+        start_month = 1 if year > start_year else 1
+        end_month = current_month if year == current_year else 12
+        
+        for month in range(start_month, end_month + 1):
+            fetched += 1
+            progress = int((fetched / total_months) * 40) + 10  # 10-50%
+            
+            if progress_callback:
+                await progress_callback({
+                    'stage': 'fetching',
+                    'progress': progress,
+                    'message': f'Fetching {year}-{month:02d}... ({fetched}/{total_months})'
+                })
+            
+            html = fetch_month_data(symbol, month, year)
+            
+            if html:
+                month_data = parse_html_table(html)
+                if month_data:
+                    all_data.extend(month_data)
+            
+            await asyncio.sleep(0.05)
+    
+    # Check if we got any data
+    if not all_data or len(all_data) == 0:
+        if progress_callback:
+            await progress_callback({
+                'stage': 'error',
+                'progress': 0,
+                'message': f'❌ No historical data found for {symbol}. This symbol may not exist on PSX or has no trading history.'
+            })
+        raise ValueError(f"No historical data found for symbol {symbol}")
+    
+    if progress_callback:
+        await progress_callback({
+            'stage': 'calculating',
+            'progress': 50,
+            'message': 'Calculating technical indicators...'
+        })
+    
+    all_data = calculate_basic_indicators(all_data)
+    
+    if not all_data:
+        if progress_callback:
+            await progress_callback({
+                'stage': 'error',
+                'progress': 0,
+                'message': f'❌ Failed to process data for {symbol}. Data format may be invalid.'
+            })
+        raise ValueError(f"Failed to process data for symbol {symbol}")
+    
+    all_data.sort(key=lambda x: x['Date'])
+    
+    data_dir = Path(__file__).parent.parent / "data"
+    data_dir.mkdir(exist_ok=True)
+    
+    filename = data_dir / f"{symbol}_historical_with_indicators.json"
+    with open(filename, 'w') as f:
+        json.dump(all_data, f, indent=2)
+    
+    if progress_callback:
+        await progress_callback({
+            'stage': 'complete',
+            'progress': 55,
+            'message': f'✅ Fetched {len(all_data)} records'
+        })
+    
+    return all_data
+
+def load_data(symbol):
+    """Load historical data with indicators"""
+    data_file = Path(__file__).parent.parent / "data" / f"{symbol}_historical_with_indicators.json"
+    
+    if not data_file.exists():
+        return None
+    
+    with open(data_file, 'r') as f:
+        data = json.load(f)
+    
+    df = pd.DataFrame(data)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date').reset_index(drop=True)
+    
+    return df
+
+def calculate_advanced_features(df):
+    """Calculate advanced features"""
+    for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    df['Returns'] = df['Close'].pct_change()
+    df['Log_Returns'] = np.log(df['Close'] / df['Close'].shift(1))
+    df['High_Low_Range'] = (df['High'] - df['Low']) / df['Close']
+    df['Open_Close_Range'] = abs(df['Open'] - df['Close']) / df['Close']
+    
+    for window in [5, 10, 20, 50, 100, 200]:
+        df[f'SMA_{window}'] = df['Close'].rolling(window=window).mean()
+        df[f'EMA_{window}'] = df['Close'].ewm(span=window, adjust=False).mean()
+    
+    df['Price_vs_SMA20'] = (df['Close'] - df['SMA_20']) / df['SMA_20']
+    df['Price_vs_SMA50'] = (df['Close'] - df['SMA_50']) / df['SMA_50']
+    df['SMA20_vs_SMA50'] = (df['SMA_20'] - df['SMA_50']) / df['SMA_50']
+    
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI_14'] = 100 - (100 / (1 + rs))
+    
+    ema12 = df['Close'].ewm(span=12, adjust=False).mean()
+    ema26 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = ema12 - ema26
+    df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+    df['MACD_Histogram'] = df['MACD'] - df['MACD_Signal']
+    
+    sma20 = df['Close'].rolling(window=20).mean()
+    std20 = df['Close'].rolling(window=20).std()
+    df['BB_Upper'] = sma20 + (std20 * 2)
+    df['BB_Lower'] = sma20 - (std20 * 2)
+    df['BB_Width'] = (df['BB_Upper'] - df['BB_Lower']) / sma20
+    df['BB_Position'] = (df['Close'] - df['BB_Lower']) / (df['BB_Upper'] - df['BB_Lower'])
+    
+    df['Volume_SMA_20'] = df['Volume'].rolling(window=20).mean()
+    df['Volume_Ratio'] = df['Volume'] / df['Volume_SMA_20']
+    
+    df['Volatility_20'] = df['Returns'].rolling(window=20).std() * np.sqrt(252)
+    df['ATR_14'] = df['High_Low_Range'].rolling(window=14).mean()
+    
+    df['Momentum_10'] = df['Close'] / df['Close'].shift(10) - 1
+    df['Momentum_20'] = df['Close'] / df['Close'].shift(20) - 1
+    
+    for lag in [1, 2, 3, 5, 10]:
+        df[f'Close_Lag_{lag}'] = df['Close'].shift(lag)
+    
+    df['Year'] = df['Date'].dt.year
+    df['Month'] = df['Date'].dt.month
+    df['DayOfWeek'] = df['Date'].dt.dayofweek
+    
+    return df
+
+def prepare_training_data(df):
+    """Prepare features and targets"""
+    df['Target_Next_Day'] = df['Close'].shift(-1)
+    
+    feature_cols = [c for c in df.columns if c not in ['Date', 'Target_Next_Day', 'Target_Next_Week', 'Target_Next_Month']]
+    
+    feature_null_counts = df[feature_cols].isnull().sum(axis=1)
+    max_allowed_nulls = len(feature_cols) * 0.2
+    
+    df_clean = df[(feature_null_counts <= max_allowed_nulls) & df['Target_Next_Day'].notna()].copy()
+    df_clean[feature_cols] = df_clean[feature_cols].ffill().bfill()
+    
+    for col in feature_cols:
+        if df_clean[col].isnull().any():
+            df_clean[col].fillna(df_clean[col].median(), inplace=True)
+    
+    X = df_clean[feature_cols]
+    y = df_clean['Target_Next_Day']
+    
+    return X, y, feature_cols, df_clean
+
+def feature_selection(X, y, k=30):
+    """Select best features"""
+    X_clean = X.replace([np.inf, -np.inf], np.nan)
+    X_clean = X_clean.fillna(X_clean.median())
+    
+    selector = SelectKBest(f_regression, k=min(k, X_clean.shape[1]))
+    X_selected = selector.fit_transform(X_clean, y)
+    
+    selected_features = [X.columns[i] for i in selector.get_support(indices=True)]
+    
+    return X_selected, selected_features, selector
+
+def roll_forward_features(df, predicted_price, date_offset=1):
+    """Roll forward features after a prediction"""
+    new_row = df.iloc[-1:].copy()
+    new_row['Close'] = predicted_price
+    new_row['Date'] = new_row['Date'] + pd.Timedelta(days=date_offset)
+    new_row['Open'] = predicted_price
+    new_row['High'] = predicted_price
+    new_row['Low'] = predicted_price
+    new_row['Volume'] = df['Volume'].iloc[-20:].mean()
+    
+    df_extended = pd.concat([df, new_row], ignore_index=True)
+    df_extended['High_Low_Range'] = (df_extended['High'] - df_extended['Low']) / df_extended['Close']
+    df_extended['Open_Close_Range'] = abs(df_extended['Open'] - df_extended['Close']) / df_extended['Close']
+    
+    for window in [5, 10, 20, 50, 100, 200]:
+        df_extended[f'SMA_{window}'] = df_extended['Close'].rolling(window=window).mean()
+        df_extended[f'EMA_{window}'] = df_extended['Close'].ewm(span=window, adjust=False).mean()
+    
+    df_extended['Price_vs_SMA20'] = (df_extended['Close'] - df_extended['SMA_20']) / df_extended['SMA_20']
+    df_extended['Price_vs_SMA50'] = (df_extended['Close'] - df_extended['SMA_50']) / df_extended['SMA_50']
+    df_extended['SMA20_vs_SMA50'] = (df_extended['SMA_20'] - df_extended['SMA_50']) / df_extended['SMA_50']
+    
+    df_extended['Returns'] = df_extended['Close'].pct_change()
+    df_extended['Log_Returns'] = np.log(df_extended['Close'] / df_extended['Close'].shift(1))
+    
+    delta = df_extended['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df_extended['RSI_14'] = 100 - (100 / (1 + rs))
+    
+    ema12 = df_extended['Close'].ewm(span=12, adjust=False).mean()
+    ema26 = df_extended['Close'].ewm(span=26, adjust=False).mean()
+    df_extended['MACD'] = ema12 - ema26
+    df_extended['MACD_Signal'] = df_extended['MACD'].ewm(span=9, adjust=False).mean()
+    df_extended['MACD_Histogram'] = df_extended['MACD'] - df_extended['MACD_Signal']
+    
+    sma20 = df_extended['Close'].rolling(window=20).mean()
+    std20 = df_extended['Close'].rolling(window=20).std()
+    df_extended['BB_Upper'] = sma20 + (std20 * 2)
+    df_extended['BB_Lower'] = sma20 - (std20 * 2)
+    df_extended['BB_Width'] = (df_extended['BB_Upper'] - df_extended['BB_Lower']) / sma20
+    df_extended['BB_Position'] = (df_extended['Close'] - df_extended['BB_Lower']) / (df_extended['BB_Upper'] - df_extended['BB_Lower'])
+    
+    df_extended['Volume_SMA_20'] = df_extended['Volume'].rolling(window=20).mean()
+    df_extended['Volume_Ratio'] = df_extended['Volume'] / df_extended['Volume_SMA_20']
+    
+    df_extended['Volatility_20'] = df_extended['Returns'].rolling(window=20).std() * np.sqrt(252)
+    df_extended['ATR_14'] = df_extended['High_Low_Range'].rolling(window=14).mean()
+    
+    df_extended['Momentum_10'] = df_extended['Close'] / df_extended['Close'].shift(10) - 1
+    df_extended['Momentum_20'] = df_extended['Close'] / df_extended['Close'].shift(20) - 1
+    
+    for lag in [1, 2, 3, 5, 10]:
+        df_extended[f'Close_Lag_{lag}'] = df_extended['Close'].shift(lag)
+    
+    df_extended['Year'] = df_extended['Date'].dt.year
+    df_extended['Month'] = df_extended['Date'].dt.month
+    df_extended['DayOfWeek'] = df_extended['Date'].dt.dayofweek
+    
+    return df_extended
+
+def generate_monthly_predictions_proper(models, scaler, df, feature_cols, selected_features, symbol, end_date='2026-12-31'):
+    """Generate monthly predictions with proper feature roll-forward"""
+    if selected_features:
+        feature_cols = selected_features
+    
+    df_working = df.copy()
+    current_date = df_working['Date'].iloc[-1]
+    current_price = df_working['Close'].iloc[-1]
+    
+    monthly_predictions = []
+    prediction_date = current_date
+    end_date_obj = pd.to_datetime(end_date)
+    trading_days_per_month = 21
+    month_count = 0
+    
+    # Generate predictions through end_date (no arbitrary month limit for 2026 coverage)
+    while prediction_date < end_date_obj:
+        latest_features = df_working[feature_cols].iloc[-1:].copy()
+        latest_features = latest_features.ffill().bfill()
+        for col in latest_features.columns:
+            if latest_features[col].isnull().any():
+                latest_features[col].fillna(latest_features[col].median(), inplace=True)
+        
+        latest_features_scaled = scaler.transform(latest_features)
+        
+        predictions = {}
+        for name, model in models.items():
+            pred = model.predict(latest_features_scaled)[0]
+            predictions[name] = float(pred)
+        
+        ensemble_preds = [pred for pred in predictions.values()]
+        ensemble_pred = np.mean(ensemble_preds)
+        upside = (ensemble_pred - current_price) / current_price * 100
+        
+        monthly_predictions.append({
+            'month': prediction_date.strftime('%Y-%m'),
+            'date': prediction_date.strftime('%Y-%m-%d'),
+            'current_price': float(current_price),
+            'predicted_price': float(ensemble_pred),
+            'upside_potential': float(upside),
+            'rf_prediction': predictions.get('rf', 0),
+            'gb_prediction': predictions.get('gb', 0),
+            'xgb_prediction': predictions.get('xgb', 0)
+        })
+        
+        df_working = roll_forward_features(df_working, ensemble_pred, date_offset=trading_days_per_month)
+        prediction_date = prediction_date + pd.DateOffset(months=1)
+        month_count += 1
+    
+    predictions_file = Path(__file__).parent.parent / "data" / f"{symbol}_monthly_predictions_2026_fixed.json"
+    with open(predictions_file, 'w') as f:
+        json.dump({
+            'symbol': symbol,
+            'generated_at': datetime.now().isoformat(),
+            'current_price': float(df['Close'].iloc[-1]),
+            'current_date': current_date.strftime('%Y-%m-%d'),
+            'monthly_predictions': monthly_predictions
+        }, f, indent=2)
+    
+    return monthly_predictions
+
+def backtest_trading_strategy(models, scaler, df, feature_cols, selected_features, symbol, initial_capital=100000, transaction_cost=0.001):
+    """Backtest trading strategy"""
+    if selected_features:
+        feature_cols = selected_features
+    
+    split_idx = int(len(df) * 0.8)
+    test_df = df.iloc[split_idx:].copy()
+    history_df = df.iloc[:split_idx].copy()
+    
+    capital = initial_capital
+    shares = 0
+    trades = []
+    portfolio_values = []
+    
+    for i in range(len(test_df) - 1):
+        current_row = test_df.iloc[i:i+1]
+        current_price = current_row['Close'].iloc[0]
+        
+        hist_plus_current = pd.concat([history_df, current_row], ignore_index=True)
+        hist_plus_current[feature_cols] = hist_plus_current[feature_cols].ffill().bfill()
+        for col in feature_cols:
+            if hist_plus_current[col].isnull().any():
+                hist_plus_current[col].fillna(hist_plus_current[col].median(), inplace=True)
+        
+        scaler_local = StandardScaler()
+        scaler_local.fit(hist_plus_current[feature_cols].iloc[:-1])
+        features_scaled = scaler_local.transform(current_row[feature_cols])
+        
+        preds = []
+        for name, model in models.items():
+            pred = model.predict(features_scaled)[0]
+            preds.append(pred)
+        
+        predicted_price = np.mean(preds)
+        expected_return = (predicted_price - current_price) / current_price
+        
+        if expected_return > 0.01 and shares == 0:
+            shares_to_buy = capital / (current_price * (1 + transaction_cost))
+            cost = shares_to_buy * current_price * (1 + transaction_cost)
+            if cost <= capital:
+                capital -= cost
+                shares += shares_to_buy
+                trades.append({'date': str(current_row['Date'].iloc[0]), 'action': 'BUY', 'price': float(current_price), 'shares': float(shares_to_buy)})
+        elif expected_return < -0.01 and shares > 0:
+            proceeds = shares * current_price * (1 - transaction_cost)
+            capital += proceeds
+            shares_sold = shares
+            shares = 0
+            trades.append({'date': str(current_row['Date'].iloc[0]), 'action': 'SELL', 'price': float(current_price), 'shares': float(shares_sold)})
+        
+        portfolio_value = capital + (shares * current_price)
+        portfolio_values.append({'date': str(current_row['Date'].iloc[0]), 'portfolio_value': float(portfolio_value)})
+        history_df = pd.concat([history_df, current_row], ignore_index=True)
+    
+    final_price = test_df.iloc[-1]['Close']
+    final_portfolio_value = capital + (shares * final_price)
+    
+    total_return = (final_portfolio_value - initial_capital) / initial_capital * 100
+    buy_hold_return = (final_price - test_df.iloc[0]['Close']) / test_df.iloc[0]['Close'] * 100
+    
+    portfolio_series = pd.Series([p['portfolio_value'] for p in portfolio_values])
+    sharpe_ratio = (portfolio_series.pct_change().mean() / portfolio_series.pct_change().std()) * np.sqrt(252) if portfolio_series.pct_change().std() > 0 else 0
+    max_drawdown = ((portfolio_series - portfolio_series.expanding().max()) / portfolio_series.expanding().max()).min() * 100
+    
+    backtest_file = Path(__file__).parent.parent / "data" / f"{symbol}_backtest_results.json"
+    with open(backtest_file, 'w') as f:
+        json.dump({
+            'initial_capital': initial_capital,
+            'final_portfolio_value': float(final_portfolio_value),
+            'total_return': float(total_return),
+            'buy_hold_return': float(buy_hold_return),
+            'excess_return': float(total_return - buy_hold_return),
+            'num_trades': len(trades),
+            'sharpe_ratio': float(sharpe_ratio),
+            'max_drawdown': float(max_drawdown),
+            'trades': trades
+        }, f, indent=2)
+    
+    return {
+        'total_return': total_return,
+        'buy_hold_return': buy_hold_return,
+        'excess_return': total_return - buy_hold_return,
+        'sharpe_ratio': sharpe_ratio,
+        'max_drawdown': max_drawdown,
+        'num_trades': len(trades)
+    }
+
+async def train_with_progress(X, y, selected_features, symbol, websocket):
+    """Train models with progress updates"""
+    if selected_features:
+        X = X[selected_features]
+    
+    tscv = TimeSeriesSplit(n_splits=5)
+    splits = list(tscv.split(X))
+    
+    scaler = StandardScaler()
+    all_results = []
+    
+    for fold_idx, (train_idx, test_idx) in enumerate(splits):
+        await websocket.send_json({
+            'stage': 'training',
+            'progress': 60 + (fold_idx * 3),
+            'message': f'Training fold {fold_idx + 1}/5 (walk-forward validation)...'
+        })
+        
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
+        fold_models = {}
+        fold_results = {}
+        
+        rf = RandomForestRegressor(n_estimators=200, max_depth=20, random_state=42, n_jobs=-1)
+        rf.fit(X_train_scaled, y_train)
+        rf_pred = rf.predict(X_test_scaled)
+        fold_models['rf'] = rf
+        fold_results['rf'] = {
+            'mae': mean_absolute_error(y_test, rf_pred),
+            'rmse': np.sqrt(mean_squared_error(y_test, rf_pred)),
+            'r2': r2_score(y_test, rf_pred)
+        }
+        
+        gb = GradientBoostingRegressor(n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42)
+        gb.fit(X_train_scaled, y_train)
+        gb_pred = gb.predict(X_test_scaled)
+        fold_models['gb'] = gb
+        fold_results['gb'] = {
+            'mae': mean_absolute_error(y_test, gb_pred),
+            'rmse': np.sqrt(mean_squared_error(y_test, gb_pred)),
+            'r2': r2_score(y_test, gb_pred)
+        }
+        
+        if XGBOOST_AVAILABLE:
+            xgb = XGBRegressor(n_estimators=200, max_depth=6, learning_rate=0.1, random_state=42, n_jobs=-1)
+            xgb.fit(X_train_scaled, y_train)
+            xgb_pred = xgb.predict(X_test_scaled)
+            fold_models['xgb'] = xgb
+            fold_results['xgb'] = {
+                'mae': mean_absolute_error(y_test, xgb_pred),
+                'rmse': np.sqrt(mean_squared_error(y_test, xgb_pred)),
+                'r2': r2_score(y_test, xgb_pred)
+            }
+        
+        ensemble_preds = [fold_models[m].predict(X_test_scaled) for m in fold_models.keys()]
+        ensemble_pred = np.mean(ensemble_preds, axis=0)
+        fold_results['ensemble'] = {
+            'mae': mean_absolute_error(y_test, ensemble_pred),
+            'rmse': np.sqrt(mean_squared_error(y_test, ensemble_pred)),
+            'r2': r2_score(y_test, ensemble_pred)
+        }
+        
+        all_results.append(fold_results)
+    
+    await websocket.send_json({
+        'stage': 'training',
+        'progress': 78,
+        'message': 'Training final models on full dataset...'
+    })
+    
+    X_scaled = scaler.fit_transform(X)
+    final_models = {}
+    
+    rf_final = RandomForestRegressor(n_estimators=200, max_depth=20, random_state=42, n_jobs=-1)
+    rf_final.fit(X_scaled, y)
+    final_models['rf'] = rf_final
+    
+    gb_final = GradientBoostingRegressor(n_estimators=200, max_depth=5, learning_rate=0.1, random_state=42)
+    gb_final.fit(X_scaled, y)
+    final_models['gb'] = gb_final
+    
+    if XGBOOST_AVAILABLE:
+        xgb_final = XGBRegressor(n_estimators=200, max_depth=6, learning_rate=0.1, random_state=42, n_jobs=-1)
+        xgb_final.fit(X_scaled, y)
+        final_models['xgb'] = xgb_final
+    
+    avg_results = {}
+    for metric in ['mae', 'rmse', 'r2']:
+        avg_results[metric] = {}
+        for model_name in ['rf', 'gb', 'xgb', 'ensemble']:
+            values = [r[model_name][metric] for r in all_results if model_name in r]
+            if values:
+                avg_results[metric][model_name] = np.mean(values)
+    
+    models_dir = Path(__file__).parent.parent / "data" / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    
+    for name, model in final_models.items():
+        joblib.dump(model, models_dir / f"{symbol}_{name}_fixed.pkl")
+    joblib.dump(scaler, models_dir / f"{symbol}_scaler_fixed.pkl")
+    
+    if selected_features:
+        with open(models_dir / f"{symbol}_selected_features_fixed.json", 'w') as f:
+            json.dump(selected_features, f, indent=2)
+    
+    return final_models, avg_results, scaler, selected_features
+
+# Route will be added in main.py
+async def check_data(symbol: str):
+    """Check if historical data exists for a symbol"""
+    symbol = symbol.upper()
+    data_file = Path(__file__).parent.parent / "data" / f"{symbol}_historical_with_indicators.json"
+    
+    exists = data_file.exists()
+    result = {
+        'symbol': symbol,
+        'exists': exists,
+        'file_path': str(data_file) if exists else None
+    }
+    
+    if exists:
+        with open(data_file, 'r') as f:
+            data = json.load(f)
+            result['record_count'] = len(data)
+            if data:
+                result['date_range'] = {
+                    'start': data[0]['Date'],
+                    'end': data[-1]['Date']
+                }
+    
+    return result
+
+# Route will be added in main.py
+async def analyze_stock(request: StockRequest):
+    """Start stock analysis - returns job ID"""
+    symbol = request.symbol.upper()
+    job_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    progress_data[job_id] = {
+        'status': 'starting',
+        'progress': 0,
+        'message': 'Initializing...',
+        'symbol': symbol
+    }
+    return {'job_id': job_id, 'symbol': symbol}
+
+# Route will be added in main.py
+async def websocket_progress(websocket: WebSocket, job_id: str):
+    """WebSocket endpoint for progress updates - Now with SOTA Model!"""
+    await websocket.accept()
+    
+    try:
+        # Check if job_id exists in progress_data
+        if job_id not in progress_data:
+            await websocket.send_json({
+                'stage': 'error',
+                'progress': 0,
+                'message': f'Job ID {job_id} not found. Please start analysis first.'
+            })
+            await websocket.close()
+            return
+        
+        symbol = progress_data[job_id]['symbol']
+        
+        await websocket.send_json({
+            'stage': 'checking',
+            'progress': 5,
+            'message': f'🔍 Checking existing data for {symbol}...'
+        })
+        
+        data_file = Path(__file__).parent.parent / "data" / f"{symbol}_historical_with_indicators.json"
+        data_exists = data_file.exists()
+        
+        if not data_exists:
+            await websocket.send_json({
+                'stage': 'fetching',
+                'progress': 10,
+                'message': f'📡 No existing data found. Fetching historical data for {symbol}...'
+            })
+            
+            async def progress_callback(update):
+                await websocket.send_json(update)
+            
+            await fetch_historical_data_async(symbol, progress_callback)
+        
+        await websocket.send_json({
+            'stage': 'loading',
+            'progress': 50,
+            'message': '📊 Loading and preparing data...'
+        })
+        
+        df = load_data(symbol)
+        if df is None:
+            await websocket.send_json({
+                'stage': 'error',
+                'progress': 0,
+                'message': f'Failed to load data for {symbol}'
+            })
+            return
+        
+        # Try to use SOTA model
+        try:
+            from backend.sota_model import SOTAEnsemblePredictor, PYWT_AVAILABLE, train_sota_model_with_progress
+            
+            await websocket.send_json({
+                'stage': 'preprocessing',
+                'progress': 55,
+                'message': '🔬 Applying wavelet denoising (db4 DWT)...'
+            })
+            
+            # Initialize SOTA model
+            sota_model = SOTAEnsemblePredictor(lookback=150, horizon=21, use_wavelet=PYWT_AVAILABLE)
+            
+            await websocket.send_json({
+                'stage': 'training',
+                'progress': 60,
+                'message': '🤖 Training 6-model SOTA ensemble (RF, ET, GB, XGBoost, LightGBM, Ridge)...'
+            })
+            
+            # Train model
+            metrics = sota_model.fit(df, verbose=False)
+            
+            await websocket.send_json({
+                'stage': 'training',
+                'progress': 80,
+                'message': f'📊 Training complete! Trend Accuracy: {metrics["trend_accuracy"]:.1%}, R²: {metrics["r2"]:.4f}'
+            })
+            
+            # Save model
+            models_dir = Path(__file__).parent.parent / "data" / "models"
+            models_dir.mkdir(parents=True, exist_ok=True)
+            sota_model.save(models_dir, symbol)
+            
+            await websocket.send_json({
+                'stage': 'predicting',
+                'progress': 85,
+                'message': '🔮 FORTUNE TELLER: Generating daily predictions through Dec 2026...'
+            })
+            
+            # Generate DAILY predictions through 2026 (Fortune Teller feature!)
+            daily_predictions = sota_model.predict_daily(df, end_date='2026-12-31')
+            
+            # Also generate monthly summaries for backward compatibility
+            monthly_predictions = sota_model.predict_future(df, months_ahead=24)
+            
+            # Save predictions
+            pred_file = Path(__file__).parent.parent / "data" / f"{symbol}_sota_predictions_2026.json"
+            with open(pred_file, 'w') as f:
+                import json as json_module
+                json_module.dump({
+                    'symbol': symbol,
+                    'generated_at': datetime.now().isoformat(),
+                    'model': '🔮 Fortune Teller (N-BEATS + Wavelet + Multi-Horizon Ensemble)',
+                    'metrics': {k: float(v) for k, v in metrics.items()},
+                    'daily_predictions': daily_predictions,  # NEW: Daily predictions
+                    'predictions': monthly_predictions  # Monthly for backward compatibility
+                }, f, indent=2)
+            
+            # Use daily predictions for the UI
+            predictions = daily_predictions
+            
+            await websocket.send_json({
+                'stage': 'backtesting',
+                'progress': 88,
+                'message': '🔮 Analyzing news sentiment with AI...'
+            })
+            
+            # Get sentiment analysis and apply rigorous mathematical adjustments
+            sentiment_result = None
+            adjusted_predictions = predictions
+            sentiment_summary = {}
+            
+            try:
+                from backend.sentiment_analyzer import get_stock_sentiment
+                from backend.sentiment_math import get_rigorous_adjustment, apply_adjustments_to_predictions
+                
+                # Fetch and analyze news with Groq (anti-hallucination prompt)
+                sentiment_result = get_stock_sentiment(symbol, use_cache=False)
+                
+                # Calculate mathematically rigorous adjustments
+                adjustment_data = get_rigorous_adjustment(sentiment_result)
+                
+                # Apply adjustments to predictions
+                adjusted_predictions = apply_adjustments_to_predictions(
+                    predictions, 
+                    adjustment_data['adjustments']
+                )
+                
+                sentiment_summary = {
+                    'signal': sentiment_result.get('signal', 'NEUTRAL'),
+                    'signal_emoji': sentiment_result.get('signal_emoji', '🟡'),
+                    'sentiment_score': sentiment_result.get('sentiment_score', 0),
+                    'confidence': sentiment_result.get('confidence', 0),
+                    'news_count': sentiment_result.get('news_count', 0),
+                    'events_detected': adjustment_data['summary']['events_detected'],
+                    'max_adjustment': adjustment_data['summary']['max_positive_adjustment'],
+                    'methodology': 'Research-backed event study with exponential decay',
+                    # Claude's analysis text
+                    'summary': sentiment_result.get('summary', ''),
+                    'key_events': sentiment_result.get('key_events', []),
+                    'risks': sentiment_result.get('risks', []),
+                    'catalysts': sentiment_result.get('catalysts', []),
+                    'price_impact': sentiment_result.get('price_impact', {}),
+                    # Recent news headlines
+                    'recent_news': sentiment_result.get('news_items', [])[:5]
+                }
+                
+                await websocket.send_json({
+                    'stage': 'backtesting',
+                    'progress': 92,
+                    'message': f'📰 Found {sentiment_result.get("news_count", 0)} news items | {sentiment_summary["signal_emoji"]} {sentiment_summary["signal"]}'
+                })
+                
+            except Exception as e:
+                print(f"Sentiment analysis error (non-fatal): {e}")
+                adjusted_predictions = predictions
+                sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
+            
+            await websocket.send_json({
+                'stage': 'finalizing',
+                'progress': 95,
+                'message': '💰 Calculating final metrics...'
+            })
+            
+            # Calculate backtest metrics from adjusted predictions
+            if len(adjusted_predictions) > 0:
+                initial_price = df['Close'].iloc[-1]
+                final_price = adjusted_predictions[-1]['predicted_price']
+                total_return = (final_price - initial_price) / initial_price * 100
+            else:
+                total_return = 0
+            
+            # Prepare historical data for charting (last 180 days)
+            history_df = df.tail(180)[['Date', 'Close']].copy()
+            if not pd.api.types.is_string_dtype(history_df['Date']):
+                history_df['Date'] = history_df['Date'].dt.strftime('%Y-%m-%d')
+            historical_data = history_df.to_dict('records')
+
+            await websocket.send_json({
+                'stage': 'complete',
+                'progress': 100,
+                'message': '✅ SOTA Analysis Complete with AI Sentiment!',
+                'results': {
+                    'symbol': symbol,
+                    'model': 'SOTA Ensemble + AI Sentiment (Research-backed)',
+                    'model_performance': {
+                        'r2': float(metrics['r2']),
+                        'trend_accuracy': float(metrics['trend_accuracy']),
+                        'mase': float(metrics['mase']),
+                        'mape': float(metrics.get('mape', 0))
+                    },
+                    'sentiment': sentiment_summary,
+                    'monthly_predictions': adjusted_predictions[:12],  # First 12 months
+                    'daily_predictions': adjusted_predictions, # Full daily predictions
+                    'historical_data': historical_data, # NEW: History for charting
+                    'all_predictions_count': len(adjusted_predictions),
+                    'backtest': {
+                        'total_return': total_return,
+                        'prediction_horizon': '24 months to end of 2026'
+                    },
+                    'current_price': float(df['Close'].iloc[-1]),
+                    'data_points': len(df),
+                    'features_used': 74,
+                    'wavelet_denoising': PYWT_AVAILABLE
+                }
+            })
+            
+        except ImportError as e:
+            # Fallback to original model if SOTA not available
+            print(f"SOTA model import failed: {e}, using fallback")
+            await websocket.send_json({
+                'stage': 'preparing',
+                'progress': 58,
+                'message': f'Loaded {len(df)} records. Calculating features (fallback mode)...'
+            })
+            
+            df = calculate_advanced_features(df)
+            X, y, feature_cols, df_clean = prepare_training_data(df)
+            
+            await websocket.send_json({
+                'stage': 'selecting',
+                'progress': 60,
+                'message': 'Selecting best features...'
+            })
+            
+            X_selected, selected_features, selector = feature_selection(X, y, k=30)
+            
+            models, results, scaler, _ = await train_with_progress(
+                X, y, selected_features, symbol, websocket
+            )
+            
+            await websocket.send_json({
+                'stage': 'predicting',
+                'progress': 85,
+                'message': 'Generating monthly predictions...'
+            })
+            
+            monthly_preds = generate_monthly_predictions_proper(
+                models, scaler, df_clean, feature_cols, selected_features, symbol
+            )
+            
+            await websocket.send_json({
+                'stage': 'backtesting',
+                'progress': 90,
+                'message': 'Running backtest...'
+            })
+            
+            backtest_results = backtest_trading_strategy(
+                models, scaler, df_clean, feature_cols, selected_features, symbol
+            )
+            
+            await websocket.send_json({
+                'stage': 'complete',
+                'progress': 100,
+                'message': '✅ Analysis complete!',
+                'results': {
+                    'symbol': symbol,
+                    'model_performance': {
+                        'ensemble_r2': results['r2'].get('ensemble', 0),
+                        'ensemble_mae': results['mae'].get('ensemble', 0),
+                        'ensemble_rmse': results['rmse'].get('ensemble', 0)
+                    },
+                    'monthly_predictions': monthly_preds[:3],
+                    'backtest': backtest_results,
+                    'current_price': float(df_clean['Close'].iloc[-1]),
+                    'data_points': len(df_clean)
+                }
+            })
+        
+    except Exception as e:
+        await websocket.send_json({
+            'stage': 'error',
+            'progress': 0,
+            'message': f'Error: {str(e)}'
+        })
+        import traceback
+        traceback.print_exc()
+
+# This module is imported by main.py, not run standalone
+
