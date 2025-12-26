@@ -657,7 +657,15 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8000';
+        // Dynamic API Configuration
+        const urlParams = new URLSearchParams(window.location.search);
+        const customBackend = urlParams.get('backend');
+        // Default to current host if on cloud, otherwise localhost
+        const API_BASE = customBackend || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:8000'
+            : window.location.origin);
+
+        console.log('🔮 Project: PSX-up | Backend:', API_BASE);
         let chartInstance = null;
         let globalHistory = [];
         let globalPredictions = [];

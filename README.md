@@ -36,7 +36,26 @@ python backend/main.py
 
 Open **http://localhost:8000/analyzer**
 
-## 📁 Project Structure
+## � Docker & E2B Deployment
+
+The project is **Docker-ready** and optimized for **E2B sandboxes**.
+
+### Run with Docker
+```bash
+docker build -t psx-up .
+docker run -p 8000:8000 psx-up
+```
+
+### Deploy to E2B (for AI Apps)
+E2B allows you to run this heavy backend in a secure sandbox. Use the provided `Dockerfile` to create a custom E2B sandbox.
+
+### Vercel (Frontend only)
+Since the ML backend is heavy, we recommend:
+1. Deploy **backend** to E2B, Railway, or Render.
+2. Deploy **frontend** (`web/`) to Vercel. 
+3. Point Vercel to your backend via: `https://your-vercel-app.com/analyzer?backend=https://your-backend-api.com`
+
+## �📁 Project Structure
 
 ```
 PSX-up/
