@@ -8,6 +8,9 @@
 
 **AI-Powered Stock Prediction System for Pakistan Stock Exchange**
 
+<img width="1276" height="625" alt="image" src="https://github.com/user-attachments/assets/0d4b7c88-a15a-4804-9543-835a602f0900" />
+
+
 *Daily predictions through December 2026 using state-of-the-art machine learning*
 
 </div>
