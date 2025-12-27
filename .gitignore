@@ -38,3 +38,10 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Vercel
+.vercel/
+.output/
+
+# Node (if using vercel CLI)
+node_modules/
