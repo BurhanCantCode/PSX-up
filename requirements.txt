@@ -1,46 +1,18 @@
-# PSX Stock Prediction App - Python Dependencies
-# Data manipulation & analysis
-pandas==2.1.4
-numpy==1.26.2
+# Vercel API Dependencies
+# These run on Vercel serverless functions
 
-# Machine Learning
-scikit-learn==1.3.2
-xgboost==2.0.3
-lightgbm==4.3.0
-PyWavelets==1.5.0
+# E2B SDK for sandbox execution
+e2b-code-interpreter>=0.0.11
 
-# Technical Indicators
-pandas-ta==0.3.14b
+# Web framework
+fastapi>=0.109.0
+python-dotenv>=1.0.0
 
-# Portfolio Optimization
-PyPortfolioOpt==1.5.5
+# HTTP client
+httpx>=0.26.0
 
-# Web Framework (Phase 2)
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-pydantic==2.5.3
+# Groq for sentiment analysis (runs on Vercel, not in E2B)
+groq>=0.4.0
 
-# HTTP & Web Scraping
-httpx==0.26.0
-requests==2.31.0
-beautifulsoup4==4.12.3
-selenium==4.16.0
-lxml==5.1.0
-
-# Database
-sqlalchemy==2.0.25
-
-# Model Serialization & Utilities
-joblib==1.3.2
-python-dotenv==1.0.0
-
-# Visualization & Reporting
-plotly==5.18.0
-matplotlib==3.8.2
-
-# Scheduling
-apscheduler==3.10.4
-
-# Jupyter (optional - for experimentation)
-jupyter==1.0.0
-ipykernel==6.28.0
+# JSON handling
+pydantic>=2.5.0
