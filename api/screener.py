@@ -8,7 +8,7 @@ from pathlib import Path
 from http.server import BaseHTTPRequestHandler
 
 try:
-    from e2b_code_interpreter import Sandbox
+    from e2b_code_interpreter import CodeInterpreter as Sandbox
     E2B_AVAILABLE = True
 except ImportError:
     E2B_AVAILABLE = False
