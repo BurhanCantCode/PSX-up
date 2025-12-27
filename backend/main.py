@@ -174,7 +174,10 @@ async def get_prediction_history():
 
 @app.get("/api/history/{filename}")
 async def get_prediction_file(filename: str):
-    """Get saved prediction with historical data for charting"""
+    """Get saved prediction with historical data for charting.
+    
+    Returns complete data structure matching WebSocket response format.
+    """
     if not filename.endswith("_sota_predictions_2026.json") or "/" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
         
@@ -198,14 +201,47 @@ async def get_prediction_file(filename: str):
     daily_preds = data.get('daily_predictions', [])
     first_pred = daily_preds[0] if daily_preds else {}
     
+    # Get current price from historical data or first prediction
+    current_price = 0
+    if historical_data:
+        current_price = historical_data[-1].get('Close', 0)
+    if not current_price and first_pred:
+        current_price = first_pred.get('predicted_price', 0)
+    
+    # Load cached sentiment if available
+    sentiment = {}
+    news_cache_file = BASE_DIR / "data" / "news_cache" / f"{symbol}_news.json"
+    if news_cache_file.exists():
+        try:
+            with open(news_cache_file, 'r') as sf:
+                sentiment_data = json.load(sf)
+                sentiment = {
+                    'signal': sentiment_data.get('signal', 'NEUTRAL'),
+                    'signal_emoji': sentiment_data.get('signal_emoji', '🟡'),
+                    'summary': sentiment_data.get('summary', 'No sentiment analysis available.'),
+                    'sentiment_score': sentiment_data.get('sentiment_score', 0),
+                    'confidence': sentiment_data.get('confidence', 0),
+                    'recent_news': [
+                        {
+                            'title': n.get('title', ''),
+                            'source': n.get('source_name', n.get('source', 'News')),
+                            'published_at': n.get('date', 'Recently')
+                        }
+                        for n in sentiment_data.get('news_items', [])[:5]
+                    ]
+                }
+        except Exception as e:
+            print(f"Error loading sentiment cache: {e}")
+    
+    # Return complete structure matching WebSocket response
     return {
-        "symbol": data.get('symbol'),
-        "model": data.get('model'),
+        "symbol": symbol,
+        "current_price": current_price,
+        "model": data.get('model', 'SOTA Ensemble'),
         "model_performance": data.get('metrics', {}),
-        "current_price": first_pred.get('predicted_price', 0),
         "daily_predictions": daily_preds,
         "historical_data": historical_data,
-        "sentiment": {}
+        "sentiment": sentiment
     }
 
 # ============================================================================

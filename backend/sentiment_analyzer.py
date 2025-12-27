@@ -29,6 +29,18 @@ except ImportError:
         PREMIUM_FETCHER_AVAILABLE = False
         print("⚠️  Premium news fetcher not available, using fallback")
 
+# Import article scraper for enriched data
+try:
+    from backend.article_scraper import get_enriched_stock_data, fetch_live_fundamentals
+    ARTICLE_SCRAPER_AVAILABLE = True
+except ImportError:
+    try:
+        from article_scraper import get_enriched_stock_data, fetch_live_fundamentals
+        ARTICLE_SCRAPER_AVAILABLE = True
+    except ImportError:
+        ARTICLE_SCRAPER_AVAILABLE = False
+        print("⚠️  Article scraper not available")
+
 # Load environment variables
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -422,8 +434,14 @@ def get_groq_client():
     return Groq(api_key=api_key)
 
 
-def analyze_with_ai(symbol: str, company_name: str, news_items: List[Dict]) -> Dict:
-    """Use Groq (Llama 3.3 70B) for intelligent sentiment analysis with anti-hallucination guardrails"""
+def analyze_with_ai(symbol: str, company_name: str, news_items: List[Dict], enriched_data: Dict = None) -> Dict:
+    """Use Groq (Llama 3.3 70B) for intelligent sentiment analysis with anti-hallucination guardrails.
+    
+    Now enhanced with:
+    - Full article content from BR Research
+    - Live fundamental data (P/E, dividend yield)
+    - Quality score for trend dampening guidance
+    """
     
     if not GROQ_AVAILABLE:
         return fallback_analysis(news_items)
@@ -440,22 +458,80 @@ def analyze_with_ai(symbol: str, company_name: str, news_items: List[Dict]) -> D
     else:
         news_text = "No recent news found."
     
-    prompt = f"""You are a CONSERVATIVE Pakistani stock market analyst. Today's date is {current_date}.
+    # Build enriched context from article scraper
+    enriched_context = ""
+    fundamental_summary = ""
+    quality_guidance = ""
+    
+    if enriched_data:
+        # Add fundamental data
+        fundamentals = enriched_data.get('fundamentals', {})
+        if fundamentals:
+            fundamental_parts = []
+            if fundamentals.get('pe_ratio'):
+                pe = fundamentals['pe_ratio']
+                pe_assessment = "undervalued" if pe < 10 else "fairly valued" if pe < 18 else "premium valued"
+                fundamental_parts.append(f"P/E Ratio: {pe:.1f} ({pe_assessment})")
+            if fundamentals.get('dividend_yield'):
+                dy = fundamentals['dividend_yield']
+                dy_assessment = "high yield" if dy > 6 else "good yield" if dy > 3 else "low yield"
+                fundamental_parts.append(f"Dividend Yield: {dy:.1f}% ({dy_assessment})")
+            if fundamentals.get('price'):
+                fundamental_parts.append(f"Current Price: PKR {fundamentals['price']:.2f}")
+            
+            if fundamental_parts:
+                fundamental_summary = "LIVE FUNDAMENTAL DATA: " + " | ".join(fundamental_parts)
+        
+        # Add quality guidance for trend dampening
+        quality_score = enriched_data.get('quality_score', 0.5)
+        if quality_score > 0.65:
+            quality_guidance = "\n⚠️ QUALITY STOCK ALERT: This stock has strong fundamentals. Be cautious about overly bearish predictions based on short-term price movements. Consider mean reversion toward fair value."
+        elif quality_score > 0.55:
+            quality_guidance = "\n📊 This stock has above-average fundamentals. Balance short-term trends with fundamental value."
+        
+        # Add full article content (this is the key enhancement!)
+        articles = enriched_data.get('articles', [])
+        if articles:
+            enriched_context = "\n\n📰 FULL ARTICLE CONTENT (from Business Recorder Research):\n"
+            for i, article in enumerate(articles[:2], 1):
+                content = article.get('content', '')[:2000]  # Limit content length
+                metrics = article.get('financial_metrics', {})
+                enriched_context += f"\n--- Article {i}: {article.get('title', 'Unknown')} ---\n"
+                enriched_context += f"Date: {article.get('date', 'Unknown')}\n"
+                enriched_context += f"Content: {content}\n"
+                
+                if metrics:
+                    enriched_context += f"\nExtracted Metrics:\n"
+                    if metrics.get('revenue_mentioned'):
+                        enriched_context += f"  • {metrics['revenue_mentioned']}\n"
+                    if metrics.get('profit_mentioned'):
+                        enriched_context += f"  • {metrics['profit_mentioned']}\n"
+                    if metrics.get('margin_mentioned'):
+                        enriched_context += f"  • {metrics['margin_mentioned']}\n"
+                    if metrics.get('sentiment_bias'):
+                        enriched_context += f"  • Content Sentiment: {metrics['sentiment_bias']}\n"
+    
+    prompt = f"""You are a BALANCED Pakistani stock market analyst. Today's date is {current_date}.
 
-CRITICAL RULES - READ CAREFULLY:
-1. ONLY cite facts that appear DIRECTLY in the news headlines below
-2. NEVER fabricate acquisitions, mergers, or deals that aren't explicitly mentioned
-3. NEVER give specific percentage predictions like "will rise 5%" - say "unclear" instead
-4. If a deal/acquisition is mentioned, check the date - OLD news (>3 months) may be STALE or WITHDRAWN
-5. Catalysts must be ONLY from the actual news - do NOT invent potential catalysts
-6. When uncertain, say "unclear" or "insufficient data"
-7. Be SKEPTICAL - a headline about an old AGM is not a buy signal
+🔮 FORTUNE TELLER ANALYSIS MODE - Enhanced with Fundamentals
+
+CRITICAL RULES:
+1. WEIGH FUNDAMENTALS HEAVILY - P/E ratios, dividend yields, and growth metrics are key indicators
+2. If fundamentals are STRONG (low P/E, good dividend, revenue/profit growth), DO NOT be overly bearish
+3. Short-term price dips in quality stocks often present buying opportunities
+4. Only cite facts from the provided news AND article content
+5. When fundamentals conflict with short-term price trend, FAVOR FUNDAMENTALS
+6. A stock with P/E < 12 and dividend yield > 4% is typically undervalued
+{quality_guidance}
+
+{fundamental_summary}
 
 Analyze the following news about {symbol} ({company_name}):
 
 {news_text}
+{enriched_context}
 
-Based STRICTLY on the news above, provide analysis. 
+Based on the news AND fundamental data above, provide a BALANCED analysis. 
 
 RESPOND IN JSON FORMAT ONLY:
 {{
@@ -554,7 +630,11 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
     """
     🔮 Main function: Get comprehensive AI-powered sentiment for a stock.
     This is the "fortune teller" function.
-    Now uses PREMIUM NEWS FETCHER with 10+ sources!
+    
+    ENHANCED with:
+    - Full article content from BR Research
+    - Live fundamental data (P/E, dividend yield)
+    - Quality score for balanced analysis
     """
     symbol = symbol.upper()
     
@@ -571,6 +651,19 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
         if cached:
             print("📦 Using cached analysis (less than 4 hours old)")
             return cached
+    
+    # 🆕 FETCH ENRICHED DATA (articles + fundamentals)
+    enriched_data = None
+    if ARTICLE_SCRAPER_AVAILABLE:
+        print("📚 Fetching enriched data (articles + fundamentals)...")
+        try:
+            enriched_data = get_enriched_stock_data(symbol)
+            if enriched_data.get('has_rich_data'):
+                print(f"   ✅ Found {enriched_data.get('article_count', 0)} articles, quality score: {enriched_data.get('quality_score', 0):.2f}")
+            else:
+                print("   ⚠️ Limited enriched data available")
+        except Exception as e:
+            print(f"   ⚠️ Error fetching enriched data: {e}")
     
     # Fetch news using PREMIUM fetcher (10+ sources!)
     if PREMIUM_FETCHER_AVAILABLE:
@@ -593,9 +686,9 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
             source = item.get('source_name', item.get('source', 'Unknown'))
             print(f"   • [{source}] {item['title'][:70]}...")
     
-    # Analyze with AI (Groq)
-    print("\n🤖 Analyzing with Groq (Llama 3.3)...")
-    analysis = analyze_with_ai(symbol, company_name, news_items)
+    # Analyze with AI (Groq) - NOW WITH ENRICHED DATA!
+    print("\n🤖 Analyzing with Groq (Llama 3.3) + Enriched Context...")
+    analysis = analyze_with_ai(symbol, company_name, news_items, enriched_data=enriched_data)
     
     # Build complete result
     result = {
@@ -604,6 +697,9 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
         'news_count': len(news_items),
         'news_items': news_items[:15],  # More news items now!
         'sources_searched': sources_searched,
+        'enriched_data_available': enriched_data is not None and enriched_data.get('has_rich_data', False),
+        'quality_score': enriched_data.get('quality_score', 0.5) if enriched_data else 0.5,
+        'fundamentals': enriched_data.get('fundamentals', {}) if enriched_data else {},
         **analysis
     }
     

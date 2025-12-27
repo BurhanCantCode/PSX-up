@@ -741,6 +741,187 @@ class TiDEEncoder:
 
 
 # ============================================================================
+# 🔮 TREND DAMPENER - Prevents Excessive Bearish Predictions for Quality Stocks
+# ============================================================================
+
+class TrendDampener:
+    """
+    Intelligent trend dampening for quality stocks.
+    
+    Problem: Pure ML models tend to extrapolate recent trends, leading to:
+    - Overly bearish predictions for stocks in temporary dips
+    - Missing mean-reversion opportunities in quality stocks
+    
+    Solution: Apply dampening based on:
+    1. Quality score (from fundamentals: P/E, dividend yield)
+    2. How far the prediction deviates from long-term mean
+    3. Exponential smoothing toward fair value
+    
+    Research basis:
+    - Mean reversion is well-documented in equity markets (Poterba & Summers, 1988)
+    - Quality stocks revert faster than low-quality stocks
+    - Excessive short-term bearishness often presents buying opportunities
+    """
+    
+    def __init__(self, 
+                 max_dampening: float = 0.5,
+                 quality_threshold: float = 0.55,
+                 reversion_rate: float = 0.03):
+        """
+        Args:
+            max_dampening: Maximum dampening factor (0.5 = 50% reduction in bearish movement)
+            quality_threshold: Minimum quality score to apply dampening
+            reversion_rate: Rate of mean reversion per day (0.03 = 3% per day toward mean)
+        """
+        self.max_dampening = max_dampening
+        self.quality_threshold = quality_threshold
+        self.reversion_rate = reversion_rate
+    
+    def calculate_fair_value(self, df: pd.DataFrame, lookback: int = 200) -> float:
+        """
+        Estimate fair value using multiple methods:
+        1. Long-term SMA
+        2. EMA
+        3. VWAP-like weighted average
+        
+        Returns the average of these estimates.
+        """
+        closes = df['Close'].tail(lookback).values
+        
+        # Method 1: Simple Moving Average (long-term)
+        sma = np.mean(closes)
+        
+        # Method 2: Exponential Moving Average (recent-weighted)
+        weights = np.exp(np.linspace(-1, 0, len(closes)))
+        weights /= weights.sum()
+        ema = np.sum(closes * weights)
+        
+        # Method 3: Volume-weighted if available
+        if 'Volume' in df.columns:
+            volumes = df['Volume'].tail(lookback).values
+            vol_sum = volumes.sum()
+            if vol_sum > 0:
+                vwap = np.sum(closes * volumes) / vol_sum
+            else:
+                vwap = sma
+        else:
+            vwap = sma
+        
+        # Return weighted average (favor EMA slightly)
+        fair_value = 0.3 * sma + 0.5 * ema + 0.2 * vwap
+        return fair_value
+    
+    def apply_dampening(self, 
+                        raw_prediction: float, 
+                        current_price: float,
+                        fair_value: float,
+                        quality_score: float,
+                        day_offset: int = 1) -> float:
+        """
+        Apply trend dampening to a raw prediction.
+        
+        Logic:
+        1. If quality_score < threshold, return raw prediction (no dampening)
+        2. If prediction is bearish AND below fair value, apply dampening
+        3. Dampening pulls prediction toward fair value
+        
+        Args:
+            raw_prediction: The ML model's raw price prediction
+            current_price: Current stock price
+            fair_value: Estimated fair value from historical data
+            quality_score: 0-1 score based on fundamentals
+            day_offset: How far into the future (more dampening for longer horizons)
+        
+        Returns:
+            Dampened prediction
+        """
+        if quality_score < self.quality_threshold:
+            return raw_prediction
+        
+        # Calculate direction and magnitude
+        is_bearish = raw_prediction < current_price
+        is_below_fair = raw_prediction < fair_value
+        
+        # Only dampen if bearish AND predicting below fair value
+        if not (is_bearish and is_below_fair):
+            return raw_prediction
+        
+        # Calculate dampening factor
+        # Higher quality = more dampening
+        # Further from fair value = more dampening
+        quality_factor = (quality_score - self.quality_threshold) / (1 - self.quality_threshold)
+        
+        deviation_from_fair = abs(raw_prediction - fair_value) / fair_value
+        deviation_factor = min(1.0, deviation_from_fair / 0.2)  # Cap at 20% deviation
+        
+        # Time factor: more dampening for longer horizons (mean reversion takes time)
+        time_factor = min(1.0, day_offset / 60)  # Full effect by 60 days
+        
+        # Combined dampening strength
+        dampening_strength = quality_factor * deviation_factor * time_factor * self.max_dampening
+        
+        # Apply dampening: pull prediction toward fair value
+        dampened_prediction = raw_prediction + dampening_strength * (fair_value - raw_prediction)
+        
+        return dampened_prediction
+    
+    def get_dampening_info(self, 
+                           raw_prediction: float,
+                           dampened_prediction: float,
+                           quality_score: float) -> dict:
+        """Get diagnostic info about dampening applied."""
+        adjustment = dampened_prediction - raw_prediction
+        adjustment_pct = (adjustment / raw_prediction * 100) if raw_prediction > 0 else 0
+        
+        return {
+            'dampening_applied': abs(adjustment) > 0.01,
+            'adjustment_amount': adjustment,
+            'adjustment_pct': adjustment_pct,
+            'quality_score': quality_score,
+            'reason': 'Mean reversion adjustment for quality stock' if adjustment > 0 else 'No dampening'
+        }
+
+
+def get_quality_score_from_sentiment(sentiment_result: dict) -> float:
+    """
+    Extract quality score from sentiment analysis result.
+    Used when sentiment analyzer has already computed fundamentals.
+    """
+    if not sentiment_result:
+        return 0.5
+    
+    # Check if quality score is already computed
+    if 'quality_score' in sentiment_result:
+        return sentiment_result['quality_score']
+    
+    # Calculate from fundamentals if available
+    fundamentals = sentiment_result.get('fundamentals', {})
+    score = 0.5  # Neutral baseline
+    
+    pe = fundamentals.get('pe_ratio')
+    if pe:
+        if pe < 8:
+            score += 0.15
+        elif pe < 12:
+            score += 0.10
+        elif pe < 18:
+            score += 0.05
+        elif pe > 30:
+            score -= 0.10
+    
+    div_yield = fundamentals.get('dividend_yield')
+    if div_yield:
+        if div_yield > 8:
+            score += 0.15
+        elif div_yield > 5:
+            score += 0.10
+        elif div_yield > 2:
+            score += 0.05
+    
+    return max(0.0, min(1.0, score))
+
+
+# ============================================================================
 # SOTA ENSEMBLE MODEL
 # ============================================================================
 
@@ -758,10 +939,12 @@ class SOTAEnsemblePredictor:
     - Daily predictions through Dec 2026
     """
     
-    def __init__(self, lookback: int = 150, horizon: int = 21, use_wavelet: bool = True):
+    def __init__(self, lookback: int = 150, horizon: int = 21, use_wavelet: bool = True,
+                 quality_score: float = 0.5):
         self.lookback = lookback
         self.horizon = horizon
         self.use_wavelet = use_wavelet and PYWT_AVAILABLE
+        self.quality_score = quality_score  # For trend dampening
         
         self.models = {}
         self.model_weights = {}
@@ -775,6 +958,14 @@ class SOTAEnsemblePredictor:
         
         self.exp_gating = ExponentialGatingFeatures()
         self.tide_encoder = TiDEEncoder(lookback=lookback, horizon=horizon)
+        
+        # 🆕 Trend Dampener for quality stocks
+        self.trend_dampener = TrendDampener(
+            max_dampening=0.5,
+            quality_threshold=0.55,
+            reversion_rate=0.03
+        )
+        self.fair_value = None  # Will be calculated during fit()
         
         self.feature_names = []
         self.is_fitted = False
@@ -943,6 +1134,12 @@ class SOTAEnsemblePredictor:
         # Prepare features
         X, y, feature_cols = self.prepare_features(df)
         self.feature_names = feature_cols
+        
+        # 🆕 Calculate fair value for trend dampening
+        self.fair_value = self.trend_dampener.calculate_fair_value(df)
+        if verbose:
+            print(f"  • Fair Value (for trend dampening): PKR {self.fair_value:.2f}")
+            print(f"  • Quality Score: {self.quality_score:.2f}")
         
         if verbose:
             print(f"  • Features: {len(feature_cols)}")
@@ -1208,6 +1405,20 @@ class SOTAEnsemblePredictor:
                 prev_close * (1 - max_move),
                 prev_close * (1 + max_move)
             )
+            
+            # 🆕 TREND DAMPENING: Pull bearish predictions toward fair value for quality stocks
+            if self.fair_value and self.quality_score > 0.55:
+                raw_pred = ensemble_pred
+                ensemble_pred = self.trend_dampener.apply_dampening(
+                    raw_prediction=ensemble_pred,
+                    current_price=current_price,
+                    fair_value=self.fair_value,
+                    quality_score=self.quality_score,
+                    day_offset=day_offset
+                )
+                # Log significant dampening
+                if abs(ensemble_pred - raw_pred) > 0.5 and day_offset == 1:
+                    print(f"    🔄 Trend dampening: {raw_pred:.2f} → {ensemble_pred:.2f} (quality={self.quality_score:.2f})")
             
             # 🔧 FIX: Exponential uncertainty (errors compound multiplicatively)
             pred_std = np.std(all_preds)

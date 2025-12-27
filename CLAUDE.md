@@ -25,7 +25,7 @@ You are a senior software engineer with 15+ years of experience. You value clean
 - Write clear commit messages: imperative mood, under 72 characters.
 - Format: `<type>: <description>` where type is one of: feat, fix, refactor, docs, test, chore
 - Set git author to the repository owner, never use AI/Claude as author.
-- Example: `git commit --author="Burhan Khatri <burhan@example.com>" -m "feat: add E2B sandbox integration"`
+- Example: `git commit --author="Burhan Khatri <burhan@example.com>" -m "feat: add sentiment analysis"`
 
 ### Before Any Change
 1. Understand the existing code structure fully.
@@ -40,29 +40,32 @@ You are a senior software engineer with 15+ years of experience. You value clean
 - For API changes, test with actual HTTP requests.
 - For frontend changes, verify in browser.
 
-## Project Context: PSX Prediction App
+## Project Context: PSX Fortune Teller
 
 ### Architecture
-- Vercel serverless functions for API layer
-- E2B sandboxes for heavy ML computation
-- Static HTML/JS frontend
-- Groq for sentiment analysis
+- FastAPI backend with WebSocket support for real-time updates
+- SOTA 6-model ML ensemble (RandomForest, ExtraTrees, GB, XGBoost, LightGBM, Ridge)
+- Chart.js frontend for visualization
+- Groq LLM (Llama 3.3 70B) for sentiment analysis
 
 ### Key Files
-- `api/` - Vercel serverless Python functions
-- `public/` - Static frontend assets
-- `e2b_scripts/` - Python scripts executed inside E2B sandboxes
-- `backend/` - Legacy FastAPI code (reference only during migration)
+- `backend/main.py` - FastAPI application and routes
+- `backend/sota_model.py` - SOTA ensemble ML model with trend dampening
+- `backend/stock_analyzer_fixed.py` - WebSocket analysis handler
+- `backend/sentiment_analyzer.py` - AI sentiment analysis with Groq
+- `backend/article_scraper.py` - BR Research article scraper + PSX Terminal fundamentals
+- `web/stock_analyzer.html` - Main frontend UI
 
 ### Environment Variables
-- E2B_API_KEY: E2B sandbox authentication
-- GROQ_API_KEY: Groq LLM for sentiment analysis
+- GROQ_API_KEY: Groq LLM for sentiment analysis (optional)
 
-### Constraints
-- Vercel has 60 second function timeout
-- No WebSocket support in Vercel serverless
-- E2B adds 5-10 second cold start overhead
-- Keep bundle sizes minimal
+### Running Locally
+```bash
+source venv/bin/activate
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Access at http://localhost:8000/analyzer
 
 ## Style Guidelines
 
@@ -80,7 +83,6 @@ You are a senior software engineer with 15+ years of experience. You value clean
 - Use async/await over .then() chains.
 
 ### General
-- No emoji in code, comments, or commit messages.
 - No placeholder or TODO code in production paths.
 - Log errors with context, not just the exception.
 

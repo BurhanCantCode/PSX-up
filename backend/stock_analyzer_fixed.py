@@ -725,7 +725,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         
         # Try to use SOTA model
         try:
-            from backend.sota_model import SOTAEnsemblePredictor, PYWT_AVAILABLE, train_sota_model_with_progress
+            from backend.sota_model import SOTAEnsemblePredictor, PYWT_AVAILABLE, train_sota_model_with_progress, get_quality_score_from_sentiment
             
             await websocket.send_json({
                 'stage': 'preprocessing',
@@ -733,8 +733,29 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'message': '🔬 Applying wavelet denoising (db4 DWT)...'
             })
             
-            # Initialize SOTA model
-            sota_model = SOTAEnsemblePredictor(lookback=150, horizon=21, use_wavelet=PYWT_AVAILABLE)
+            # 🆕 Get quality score from sentiment analyzer (for trend dampening)
+            quality_score = 0.5  # Default neutral
+            try:
+                from backend.sentiment_analyzer import get_stock_sentiment
+                # Quick sentiment check for quality score
+                sentiment_result = get_stock_sentiment(symbol, use_cache=True)
+                quality_score = sentiment_result.get('quality_score', 0.5)
+                if quality_score > 0.55:
+                    await websocket.send_json({
+                        'stage': 'preprocessing',
+                        'progress': 57,
+                        'message': f'📊 Quality stock detected (score: {quality_score:.2f}) - applying trend dampening'
+                    })
+            except Exception as e:
+                print(f"Quality score fetch error (non-fatal): {e}")
+            
+            # Initialize SOTA model with quality score for trend dampening
+            sota_model = SOTAEnsemblePredictor(
+                lookback=150, 
+                horizon=21, 
+                use_wavelet=PYWT_AVAILABLE,
+                quality_score=quality_score
+            )
             
             await websocket.send_json({
                 'stage': 'training',
