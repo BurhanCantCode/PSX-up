@@ -4,16 +4,6 @@
   "framework": null,
   "installCommand": "pip install -r requirements.txt",
   "buildCommand": "",
-  "builds": [
-    {
-      "src": "api/*.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "public/**",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
     {
       "src": "/api/health",
