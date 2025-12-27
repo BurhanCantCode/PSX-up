@@ -757,8 +757,9 @@
 
                 const data = await res.json();
 
-                if (data.status === 'error') {
-                    alert(data.error || 'Analysis failed');
+                if (!data || data.status === 'error' || !data.symbol) {
+                    const msg = (data && data.error) ? data.error : 'Analysis failed';
+                    alert(msg);
                     showLoader(false);
                     return;
                 }
@@ -778,14 +779,19 @@
         }
 
         function renderResults(res) {
+            if (!res || !res.symbol) {
+                alert('Invalid response from analyzer');
+                return;
+            }
             document.getElementById('resultsArea').style.display = 'block';
 
             document.getElementById('resSymbol').innerText = res.symbol;
             document.getElementById('resSymbolShort').innerText = res.symbol.substring(0, 2);
             document.getElementById('resCompany').innerText = `${res.symbol} - PSX Listed`;
-            document.getElementById('resPrice').innerText = `PKR ${res.current_price.toFixed(2)}`;
+            const price = typeof res.current_price === 'number' ? res.current_price : 0;
+            document.getElementById('resPrice').innerText = `PKR ${price.toFixed(2)}`;
 
-            const predictions = res.daily_predictions || [];
+            const predictions = Array.isArray(res.daily_predictions) ? res.daily_predictions : [];
             const lastPred = predictions.length > 0 ? predictions[predictions.length - 1] : null;
 
             if (lastPred) {
@@ -812,7 +818,7 @@
                 `;
             }
 
-            globalHistory = res.historical_data || [];
+            globalHistory = Array.isArray(res.historical_data) ? res.historical_data : [];
             globalPredictions = predictions;
 
             filterChart(365);
@@ -895,7 +901,9 @@
             const datasetHistory = [...historyPrices, ...new Array(predLabels.length).fill(null)];
 
             const lastHistPrice = historyPrices.length > 0 ? historyPrices[historyPrices.length - 1] : null;
-            const datasetPred = [...new Array(historyPrices.length - 1).fill(null), lastHistPrice, ...predPrices];
+            const datasetPred = historyPrices.length > 0
+                ? [...new Array(historyPrices.length - 1).fill(null), lastHistPrice, ...predPrices]
+                : [...predPrices];
 
             const ctx = document.getElementById('mainChart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
