@@ -612,6 +612,35 @@
                             <!-- News items -->
                         </div>
                     </div>
+
+                    <!-- Prediction Signals Card (NEW) -->
+                    <div class="sentiment-card" id="predictionSignalsCard" style="margin-top: 20px; display: none;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;">📊 Why This Prediction?
+                        </h3>
+                        <div id="predictionDirection" class="sentiment-badge"
+                            style="background: #eee; margin-bottom: 15px;">Analyzing...</div>
+                        <p id="predictionExplanation"
+                            style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 15px;">
+                        </p>
+
+                        <div id="bullishSignals" style="margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #10b981; margin-bottom: 8px;">✅
+                                BULLISH SIGNALS</div>
+                            <div id="bullishList" style="font-size: 0.8rem;"></div>
+                        </div>
+
+                        <div id="bearishSignals" style="margin-bottom: 12px;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #ef4444; margin-bottom: 8px;">⚠️
+                                BEARISH SIGNALS</div>
+                            <div id="bearishList" style="font-size: 0.8rem;"></div>
+                        </div>
+
+                        <div id="neutralSignals">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #9ca3af; margin-bottom: 8px;">ℹ️
+                                OTHER FACTORS</div>
+                            <div id="neutralList" style="font-size: 0.8rem;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -786,6 +815,72 @@
                 } else {
                     newsList.innerHTML = '<div style="color:#ccc; font-size:0.8rem;">No recent news found.</div>';
                 }
+            }
+
+            // Display Prediction Reasoning (Why bullish/bearish)
+            if (res.prediction_reasoning && !res.prediction_reasoning.error) {
+                const r = res.prediction_reasoning;
+                const card = document.getElementById('predictionSignalsCard');
+                card.style.display = 'block';
+
+                // Direction badge
+                const dirBadge = document.getElementById('predictionDirection');
+                dirBadge.innerText = `${r.emoji} ${r.direction}`;
+                if (r.direction === 'BULLISH') {
+                    dirBadge.style.background = 'rgba(16, 185, 129, 0.15)';
+                    dirBadge.style.color = '#10b981';
+                } else if (r.direction === 'BEARISH') {
+                    dirBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    dirBadge.style.color = '#ef4444';
+                } else {
+                    dirBadge.style.background = 'rgba(156, 163, 175, 0.15)';
+                    dirBadge.style.color = '#9ca3af';
+                }
+
+                document.getElementById('predictionExplanation').innerText = r.explanation || '';
+
+                // Bullish signals
+                const bullishList = document.getElementById('bullishList');
+                if (r.bullish_signals && r.bullish_signals.length > 0) {
+                    bullishList.innerHTML = r.bullish_signals.map(s =>
+                        `<div style="padding: 4px 0; border-bottom: 1px solid #eee;">
+                            <span style="color: #10b981; font-weight: 600;">[${s.category}]</span> 
+                            <span style="color: #555;">${s.signal}</span>
+                        </div>`
+                    ).join('');
+                    document.getElementById('bullishSignals').style.display = 'block';
+                } else {
+                    document.getElementById('bullishSignals').style.display = 'none';
+                }
+
+                // Bearish signals
+                const bearishList = document.getElementById('bearishList');
+                if (r.bearish_signals && r.bearish_signals.length > 0) {
+                    bearishList.innerHTML = r.bearish_signals.map(s =>
+                        `<div style="padding: 4px 0; border-bottom: 1px solid #eee;">
+                            <span style="color: #ef4444; font-weight: 600;">[${s.category}]</span> 
+                            <span style="color: #555;">${s.signal}</span>
+                        </div>`
+                    ).join('');
+                    document.getElementById('bearishSignals').style.display = 'block';
+                } else {
+                    document.getElementById('bearishSignals').style.display = 'none';
+                }
+
+                // Neutral signals
+                const neutralList = document.getElementById('neutralList');
+                if (r.neutral_signals && r.neutral_signals.length > 0) {
+                    neutralList.innerHTML = r.neutral_signals.map(s =>
+                        `<div style="padding: 4px 0; color: #888;">
+                            <span style="font-weight: 600;">[${s.category}]</span> ${s.signal}
+                        </div>`
+                    ).join('');
+                    document.getElementById('neutralSignals').style.display = 'block';
+                } else {
+                    document.getElementById('neutralSignals').style.display = 'none';
+                }
+            } else {
+                document.getElementById('predictionSignalsCard').style.display = 'none';
             }
 
             // Prepare Chart Data

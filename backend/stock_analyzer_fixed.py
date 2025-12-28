@@ -724,6 +724,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             return
         
         # Try to use RESEARCH MODEL (NEW: Based on peer-reviewed PSX studies)
+        reasoning = None  # Will be populated if research model is used
         try:
             from backend.research_model import PSXResearchModel, get_realistic_benchmarks
             USE_RESEARCH_MODEL = True
@@ -791,7 +792,17 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             # Generate daily predictions with iterated forecasting
             daily_predictions = research_model.predict_daily(df, end_date='2026-12-31')
             
-            # Save predictions
+            # Generate prediction reasoning (explains WHY bullish/bearish)
+            try:
+                from backend.prediction_reasoning import generate_prediction_reasoning
+                # Use preprocessed data for reasoning
+                df_processed = research_model.preprocess(df)
+                reasoning = generate_prediction_reasoning(df_processed, symbol=symbol)
+            except Exception as e:
+                print(f"⚠️ Reasoning generation failed: {e}")
+                reasoning = {'error': str(e)}
+            
+            # Save predictions with reasoning
             pred_file = Path(__file__).parent.parent / "data" / f"{symbol}_research_predictions_2026.json"
             with open(pred_file, 'w') as f:
                 import json as json_module
@@ -802,6 +813,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                     'model_weights': metrics.get('weights', {}),
                     'metrics': {k: float(v) if isinstance(v, (int, float)) else v for k, v in metrics.items() if k != 'weights'},
                     'external_features_used': True,
+                    'prediction_reasoning': reasoning,  # NEW: Shows why bullish/bearish
                     'daily_predictions': daily_predictions
                 }, f, indent=2)
             
@@ -996,7 +1008,8 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'current_price': float(df['Close'].iloc[-1]),
                 'data_points': len(df),
                 'features_used': len(metrics.get('weights', {})) if USE_RESEARCH_MODEL else 74,
-                'external_features_used': USE_RESEARCH_MODEL
+                'external_features_used': USE_RESEARCH_MODEL,
+                'prediction_reasoning': reasoning
             }
         })
         

@@ -1,0 +1,281 @@
+"""
+🔍 PREDICTION REASONING MODULE
+
+Generates human-readable explanations for why predictions are bullish/bearish.
+Uses the same features as the model but explains them in plain English.
+"""
+
+import numpy as np
+import pandas as pd
+from typing import Dict, List, Tuple
+
+
+def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None) -> Dict:
+    """
+    Analyze current indicators and generate reasons for prediction direction.
+    
+    Returns:
+        Dict with bullish_signals, bearish_signals, neutral_signals, and summary
+    """
+    if len(df) < 20:
+        return {'error': 'Not enough data for analysis'}
+    
+    bullish = []
+    bearish = []
+    neutral = []
+    
+    # Get latest values
+    latest = df.iloc[-1]
+    close = float(latest.get('Close', 0))
+    
+    # =====================================================
+    # 1. PRICE MOMENTUM SIGNALS
+    # =====================================================
+    
+    # Recent price trend (20-day)
+    if len(df) > 20:
+        returns_20d = (df['Close'].iloc[-1] / df['Close'].iloc[-20] - 1) * 100
+        if returns_20d > 10:
+            bullish.append({
+                'category': 'Momentum',
+                'signal': f'Strong uptrend: +{returns_20d:.1f}% in 20 days',
+                'strength': min(returns_20d / 20, 1.0)
+            })
+        elif returns_20d > 3:
+            bullish.append({
+                'category': 'Momentum',
+                'signal': f'Positive momentum: +{returns_20d:.1f}% in 20 days',
+                'strength': 0.5
+            })
+        elif returns_20d < -10:
+            bearish.append({
+                'category': 'Momentum',
+                'signal': f'Strong downtrend: {returns_20d:.1f}% in 20 days',
+                'strength': min(abs(returns_20d) / 20, 1.0)
+            })
+        elif returns_20d < -3:
+            bearish.append({
+                'category': 'Momentum',
+                'signal': f'Negative momentum: {returns_20d:.1f}% in 20 days',
+                'strength': 0.5
+            })
+        else:
+            neutral.append({
+                'category': 'Momentum',
+                'signal': f'Sideways movement: {returns_20d:+.1f}% in 20 days'
+            })
+    
+    # =====================================================
+    # 2. TECHNICAL INDICATORS
+    # =====================================================
+    
+    # RSI
+    rsi = latest.get('rsi_14', 50)
+    if pd.notna(rsi):
+        if rsi > 70:
+            bearish.append({
+                'category': 'RSI',
+                'signal': f'Overbought (RSI: {rsi:.0f}) - may pullback',
+                'strength': (rsi - 70) / 30
+            })
+        elif rsi < 30:
+            bullish.append({
+                'category': 'RSI',
+                'signal': f'Oversold (RSI: {rsi:.0f}) - may bounce',
+                'strength': (30 - rsi) / 30
+            })
+        else:
+            neutral.append({
+                'category': 'RSI',
+                'signal': f'Neutral RSI: {rsi:.0f}'
+            })
+    
+    # Williams %R
+    williams = latest.get('williams_r', -50)
+    if pd.notna(williams):
+        if williams > -20:
+            bearish.append({
+                'category': 'Williams %R',
+                'signal': f'Overbought territory ({williams:.0f})',
+                'strength': (williams + 20) / 20
+            })
+        elif williams < -80:
+            bullish.append({
+                'category': 'Williams %R',
+                'signal': f'Oversold territory ({williams:.0f})',
+                'strength': (-80 - williams) / 20
+            })
+    
+    # Price vs EMAs
+    ema50 = latest.get('ema_50', close)
+    ema100 = latest.get('ema_100', close)
+    
+    if pd.notna(ema50) and ema50 > 0:
+        pct_above_50 = (close / ema50 - 1) * 100
+        if pct_above_50 > 5:
+            bullish.append({
+                'category': 'EMA',
+                'signal': f'Trading {pct_above_50:.1f}% above 50-day EMA',
+                'strength': min(pct_above_50 / 15, 1.0)
+            })
+        elif pct_above_50 < -5:
+            bearish.append({
+                'category': 'EMA',
+                'signal': f'Trading {abs(pct_above_50):.1f}% below 50-day EMA',
+                'strength': min(abs(pct_above_50) / 15, 1.0)
+            })
+    
+    # =====================================================
+    # 3. EXTERNAL INDICATORS (MACRO)
+    # =====================================================
+    
+    # KSE-100 correlation
+    kse_return = latest.get('kse100_return', 0)
+    if pd.notna(kse_return) and kse_return != 0:
+        if kse_return > 0.01:
+            bullish.append({
+                'category': 'Market',
+                'signal': f'KSE-100 rising (+{kse_return*100:.1f}%)',
+                'strength': min(kse_return * 20, 1.0)
+            })
+        elif kse_return < -0.01:
+            bearish.append({
+                'category': 'Market',
+                'signal': f'KSE-100 falling ({kse_return*100:.1f}%)',
+                'strength': min(abs(kse_return) * 20, 1.0)
+            })
+    
+    # USD/PKR for export companies
+    usdpkr_change = latest.get('usdpkr_change', 0)
+    if pd.notna(usdpkr_change) and abs(usdpkr_change) > 0.001:
+        # PKR weakening is good for exporters, bad for importers
+        if usdpkr_change > 0:
+            # This is complex - depends on company type
+            neutral.append({
+                'category': 'Currency',
+                'signal': f'PKR weakening ({usdpkr_change*100:.2f}%)'
+            })
+    
+    # Oil price (important for energy stocks like PSO)
+    oil_change = latest.get('oil_change', 0)
+    if pd.notna(oil_change) and symbol and symbol.upper() in ['PSO', 'PPL', 'OGDC', 'POL']:
+        if oil_change > 0.01:
+            bullish.append({
+                'category': 'Commodities',
+                'signal': f'Oil prices rising (+{oil_change*100:.1f}%)',
+                'strength': min(oil_change * 10, 1.0)
+            })
+        elif oil_change < -0.01:
+            bearish.append({
+                'category': 'Commodities',
+                'signal': f'Oil prices falling ({oil_change*100:.1f}%)',
+                'strength': min(abs(oil_change) * 10, 1.0)
+            })
+    
+    # =====================================================
+    # 4. VOLATILITY ANALYSIS
+    # =====================================================
+    
+    if len(df) > 20:
+        volatility = df['Close'].pct_change().tail(20).std() * np.sqrt(252) * 100
+        if volatility > 50:
+            bearish.append({
+                'category': 'Volatility',
+                'signal': f'High volatility ({volatility:.0f}% annualized) - increased risk',
+                'strength': min((volatility - 50) / 50, 1.0)
+            })
+        elif volatility < 20:
+            neutral.append({
+                'category': 'Volatility',
+                'signal': f'Low volatility ({volatility:.0f}%) - stable trading'
+            })
+    
+    # =====================================================
+    # 5. VOLUME ANALYSIS
+    # =====================================================
+    
+    if 'Volume' in df.columns and len(df) > 20:
+        avg_vol = df['Volume'].tail(20).mean()
+        latest_vol = latest.get('Volume', avg_vol)
+        if pd.notna(latest_vol) and avg_vol > 0:
+            vol_ratio = latest_vol / avg_vol
+            if vol_ratio > 2:
+                bullish.append({
+                    'category': 'Volume',
+                    'signal': f'Volume surge ({vol_ratio:.1f}x average) - strong interest',
+                    'strength': min((vol_ratio - 1) / 3, 1.0)
+                })
+            elif vol_ratio < 0.5:
+                neutral.append({
+                    'category': 'Volume',
+                    'signal': f'Low volume ({vol_ratio:.1f}x average) - weak conviction'
+                })
+    
+    # =====================================================
+    # GENERATE SUMMARY
+    # =====================================================
+    
+    total_bullish = sum(s.get('strength', 0.5) for s in bullish)
+    total_bearish = sum(s.get('strength', 0.5) for s in bearish)
+    
+    if total_bullish > total_bearish * 1.5:
+        direction = 'BULLISH'
+        emoji = '🟢'
+        explanation = f"Multiple indicators suggest upward momentum. {len(bullish)} bullish signals vs {len(bearish)} bearish."
+    elif total_bearish > total_bullish * 1.5:
+        direction = 'BEARISH'
+        emoji = '🔴'
+        explanation = f"Warning signs detected. {len(bearish)} bearish signals vs {len(bullish)} bullish."
+    else:
+        direction = 'NEUTRAL'
+        emoji = '🟡'
+        explanation = f"Mixed signals. {len(bullish)} bullish, {len(bearish)} bearish."
+    
+    # Format top signals for display
+    top_bullish = sorted(bullish, key=lambda x: x.get('strength', 0), reverse=True)[:3]
+    top_bearish = sorted(bearish, key=lambda x: x.get('strength', 0), reverse=True)[:3]
+    
+    return {
+        'direction': direction,
+        'emoji': emoji,
+        'explanation': explanation,
+        'bullish_count': len(bullish),
+        'bearish_count': len(bearish),
+        'bullish_signals': [
+            {'category': s['category'], 'signal': s['signal']} 
+            for s in top_bullish
+        ],
+        'bearish_signals': [
+            {'category': s['category'], 'signal': s['signal']} 
+            for s in top_bearish
+        ],
+        'neutral_signals': [
+            {'category': s['category'], 'signal': s['signal']} 
+            for s in neutral[:2]  # Only top 2 neutral
+        ]
+    }
+
+
+def format_reasoning_for_display(reasoning: Dict) -> str:
+    """Format reasoning as a human-readable string."""
+    lines = []
+    
+    lines.append(f"{reasoning['emoji']} {reasoning['direction']}: {reasoning['explanation']}")
+    lines.append("")
+    
+    if reasoning['bullish_signals']:
+        lines.append("✅ Bullish Signals:")
+        for s in reasoning['bullish_signals']:
+            lines.append(f"   • [{s['category']}] {s['signal']}")
+    
+    if reasoning['bearish_signals']:
+        lines.append("⚠️ Bearish Signals:")
+        for s in reasoning['bearish_signals']:
+            lines.append(f"   • [{s['category']}] {s['signal']}")
+    
+    if reasoning['neutral_signals']:
+        lines.append("ℹ️ Other Factors:")
+        for s in reasoning['neutral_signals']:
+            lines.append(f"   • [{s['category']}] {s['signal']}")
+    
+    return "\n".join(lines)
