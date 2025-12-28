@@ -29,6 +29,27 @@ except ImportError:
         PREMIUM_FETCHER_AVAILABLE = False
         print("⚠️  Premium news fetcher not available, using fallback")
 
+# Import enhanced news fetcher (multi-source with company aliases)
+try:
+    from backend.enhanced_news_fetcher import (
+        get_enhanced_news_for_symbol, 
+        fetch_multi_source_news,
+        COMPANY_ALIASES
+    )
+    ENHANCED_FETCHER_AVAILABLE = True
+except ImportError:
+    try:
+        from enhanced_news_fetcher import (
+            get_enhanced_news_for_symbol,
+            fetch_multi_source_news,
+            COMPANY_ALIASES
+        )
+        ENHANCED_FETCHER_AVAILABLE = True
+    except ImportError:
+        ENHANCED_FETCHER_AVAILABLE = False
+        COMPANY_ALIASES = {}
+        print("⚠️  Enhanced news fetcher not available")
+
 # Import article scraper for enriched data
 try:
     from backend.article_scraper import get_enriched_stock_data, fetch_live_fundamentals
@@ -332,7 +353,10 @@ def scrape_psx_announcements(symbol: str) -> List[Dict]:
 
 
 def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
-    """Fetch news from all sources using Selenium"""
+    """
+    Fetch news from all sources.
+    Priority: Enhanced multi-source fetcher > Selenium > curl fallback
+    """
     all_news = []
     
     # First check PSX announcements (no Selenium needed)
@@ -341,46 +365,68 @@ def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
     all_news.extend(psx_news)
     print(f"     Found {len(psx_news)} PSX items")
     
-    # Get Selenium driver
-    driver = get_selenium_driver()
-    
-    if driver:
-        # Search terms: symbol + company names
-        search_terms = [symbol] + list(company_names[:2])
-        
-        for source_name, config in NEWS_SOURCES.items():
-            print(f"  🌐 Searching {source_name.replace('_', ' ').title()}...")
+    # NEW: Try enhanced multi-source fetcher (company aliases, Dawn, Pakistan Today, etc.)
+    if ENHANCED_FETCHER_AVAILABLE:
+        print(f"  🔍 Using enhanced multi-source fetcher with company aliases...")
+        try:
+            enhanced_result = get_enhanced_news_for_symbol(symbol)
+            enhanced_news = enhanced_result.get('news_items', [])
             
-            for search_term in search_terms:
-                try:
-                    items = scrape_news_selenium(
-                        driver,
-                        source_name,
-                        config['search_url'],
-                        config['selectors'],
-                        search_term
-                    )
-                    
-                    # Filter to only include relevant news
-                    relevant_items = []
-                    for item in items:
-                        title_lower = item['title'].lower()
-                        if any(term.lower() in title_lower for term in [symbol] + list(company_names)):
-                            relevant_items.append(item)
-                    
-                    all_news.extend(relevant_items)
-                    
-                    if relevant_items:
-                        print(f"     Found {len(relevant_items)} relevant items for '{search_term}'")
-                        break  # Found news, no need to try other search terms
-                except Exception as e:
-                    print(f"     ⚠️ Error: {str(e)[:40]}")
-                    continue
-    else:
-        print("  ⚠️ Selenium not available, using curl fallback...")
-        # Fallback to curl
-        for name in company_names[:2]:
-            all_news.extend(fetch_news_curl(name))
+            if enhanced_news:
+                all_news.extend(enhanced_news)
+                print(f"     ✅ Found {len(enhanced_news)} articles via enhanced fetcher")
+                
+                # Show what queries were used
+                queries = enhanced_result.get('queries_used', [])
+                parent = enhanced_result.get('parent_company')
+                if parent:
+                    print(f"     📊 Parent company: {parent}")
+                if len(queries) > 1:
+                    print(f"     🔎 Also searched: {', '.join(queries[1:3])}")
+        except Exception as e:
+            print(f"     ⚠️ Enhanced fetcher error: {str(e)[:50]}")
+    
+    # Selenium fallback (if we don't have many articles yet)
+    if len(all_news) < 5:
+        driver = get_selenium_driver()
+        
+        if driver:
+            # Search terms: symbol + company names
+            search_terms = [symbol] + list(company_names[:2])
+            
+            for source_name, config in NEWS_SOURCES.items():
+                print(f"  🌐 Searching {source_name.replace('_', ' ').title()}...")
+                
+                for search_term in search_terms:
+                    try:
+                        items = scrape_news_selenium(
+                            driver,
+                            source_name,
+                            config['search_url'],
+                            config['selectors'],
+                            search_term
+                        )
+                        
+                        # Filter to only include relevant news
+                        relevant_items = []
+                        for item in items:
+                            title_lower = item['title'].lower()
+                            if any(term.lower() in title_lower for term in [symbol] + list(company_names)):
+                                relevant_items.append(item)
+                        
+                        all_news.extend(relevant_items)
+                        
+                        if relevant_items:
+                            print(f"     Found {len(relevant_items)} relevant items for '{search_term}'")
+                            break  # Found news, no need to try other search terms
+                    except Exception as e:
+                        print(f"     ⚠️ Error: {str(e)[:40]}")
+                        continue
+        else:
+            print("  ⚠️ Selenium not available, using curl fallback...")
+            # Fallback to curl
+            for name in company_names[:2]:
+                all_news.extend(fetch_news_curl(name))
     
     # Deduplicate
     seen = set()
@@ -391,7 +437,7 @@ def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
             seen.add(key)
             unique_news.append(item)
     
-    return unique_news[:20]
+    return unique_news[:25]  # Increased limit for more comprehensive coverage
 
 
 def fetch_news_curl(search_term: str) -> List[Dict]:
