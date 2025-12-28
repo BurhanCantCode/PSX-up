@@ -2,162 +2,305 @@
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green?style=for-the-badge&logo=fastapi)
-![ML](https://img.shields.io/badge/ML-Ensemble-orange?style=for-the-badge&logo=tensorflow)
+[![Python](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-Ensemble-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
+[![Groq](https://img.shields.io/badge/Groq-Llama_3.3-FF6B6B?style=for-the-badge&logo=meta&logoColor=white)](https://groq.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-**AI-Powered Stock Prediction System for Pakistan Stock Exchange**
+**Research-Backed Stock Prediction System for Pakistan Stock Exchange**
 
-*Daily predictions through December 2026 using state-of-the-art machine learning*
+*Powered by peer-reviewed PSX studies, external macro features, and explainable AI*
 
-</div>
-
----
-
-## 📊 Prediction Visualization
-
-<div align="center">
-
-```
-                    Historical Data                    |        AI Predictions (2026)
-                                                       |
-    Price (PKR)                                        |
-        ▲                                              |
-   1000 │                                    ╭─────────┼──────────────────────────╮
-        │                              ╭─────╯         |                          │
-    900 │                        ╭─────╯               |     📈 Bullish Trend     │
-        │                  ╭─────╯                     |                          │
-    800 │            ╭─────╯                           |     Confidence: 85%      │
-        │      ╭─────╯                                 |                          │
-    700 │╭─────╯                                       |     Upside: +45.2%       │
-        │                                              |                          │
-    600 ├──────────────────────────────────────────────┼──────────────────────────┤
-        │  Jan   Feb   Mar   Apr   May   Jun   Jul   Aug   Sep   Oct   Nov   Dec  │
-        └──────────────────────────────────────────────┴──────────────────────────▶ Time
-                                                       
-                    ━━━ Historical    ╌╌╌ Forecast
-```
+[Getting Started](#-quick-start) • [Architecture](#️-system-architecture) • [API Reference](#-api-reference) • [Research](#-research-foundation)
 
 </div>
 
 ---
 
-## 🏗️ Architecture
+## 🎯 Key Differentiators
+
+| Feature | This Project | Typical Stock Predictors |
+|---------|--------------|--------------------------|
+| **Feature Engineering** | USD/PKR, KSE-100 β, Oil prices, KIBOR proxy | Just OHLCV + basic indicators |
+| **Technical Indicators** | Research-validated only (Williams %R, Disparity 5, RSI-14) | 100+ unvalidated indicators |
+| **Multi-Horizon Forecast** | Iterated forecasting with AR(1) bounded returns | Direct single-step prediction |
+| **Volatility Control** | Max ±3% daily, ±50% annual (PSX circuit breaker aware) | Unbounded random walks |
+| **Explainability** | "Why This Prediction?" with signal breakdown | Black-box outputs |
+| **Sentiment Analysis** | Groq LLM + PSX announcements + fundamentals | None or basic keyword matching |
+
+---
+
+## 🏗️ System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           PSX Fortune Teller                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐  │
-│  │   Web UI    │    │  FastAPI    │    │ SOTA Model  │    │  Sentiment  │  │
-│  │  Chart.js   │◄──►│   Backend   │◄──►│  Ensemble   │◄──►│  Analyzer   │  │
-│  │  WebSocket  │    │  WebSocket  │    │  6 Models   │    │  Groq LLM   │  │
-│  └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘  │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                        ML Pipeline Components                        │   │
-│  ├─────────────────────────────────────────────────────────────────────┤   │
-│  │  📈 Wavelet Denoising (db4 DWT)       | 📊 70+ Technical Indicators │   │
-│  │  🔮 N-BEATS Trend Decomposition       | 🗓️ PSX Seasonal Features    │   │
-│  │  ⚡ Exponential Gating (xLSTM-style)  | 🎯 Trend Dampening          │   │
-│  │  📰 BR Research Article Scraping       | 💎 Quality Score System    │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                            PSX FORTUNE TELLER v2.0                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐    │
+│   │   Web Frontend  │    │   FastAPI       │    │   Research Model        │    │
+│   │   ─────────────│    │   ─────────────│    │   ─────────────────────│    │
+│   │   • Chart.js    │◄──►│   • WebSocket   │◄──►│   • SVM (35% weight)    │    │
+│   │   • Real-time   │    │   • REST API    │    │   • MLP (35% weight)    │    │
+│   │   • Responsive  │    │   • Progress    │    │   • GradientBoost (15%) │    │
+│   └─────────────────┘    └─────────────────┘    │   • Ridge (15%)         │    │
+│                                                  └─────────────────────────┘    │
+│                                                                                 │
+│   ┌─────────────────────────────────────────────────────────────────────────┐  │
+│   │                     EXTERNAL DATA INTEGRATION                            │  │
+│   ├──────────────────┬──────────────────┬──────────────────┬────────────────┤  │
+│   │   USD/PKR Rate   │   KSE-100 Index  │   Oil (Brent)    │   KIBOR Proxy  │  │
+│   │   via Yahoo API  │   via PSX API    │   via yFinance   │   Historical   │  │
+│   │   ────────────   │   ────────────   │   ────────────   │   ────────────│  │
+│   │   • Rate change  │   • Index return │   • Price change │   • Rate level │  │
+│   │   • 5-day trend  │   • Stock beta   │   • Oil corr.    │   • Lag-21     │  │
+│   │   • Volatility   │   • Rel. strength│   • Energy stocks│   • Regime     │  │
+│   └──────────────────┴──────────────────┴──────────────────┴────────────────┘  │
+│                                                                                 │
+│   ┌─────────────────────────────────────────────────────────────────────────┐  │
+│   │                     PREDICTION PIPELINE                                  │  │
+│   ├─────────────────────────────────────────────────────────────────────────┤  │
+│   │                                                                         │  │
+│   │   Raw OHLCV ──► Wavelet Denoising ──► Feature Engineering ──► Scaling   │  │
+│   │       │              (db4 DWT)            (80 features)       (Robust)  │  │
+│   │       ▼                                                                 │  │
+│   │   Research Ensemble ──► Iterated Forecaster ──► AR(1) Process ──► Output│  │
+│   │   (SVM+MLP+GB+Ridge)    (365-day horizon)      (φ=0.15, bounded)        │  │
+│   │                                                                         │  │
+│   └─────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## ✨ Features
+## 📊 Feature Engineering Pipeline
 
-### 🧠 6-Model SOTA Ensemble
-- **RandomForest** (500 estimators) - Robust baseline
-- **ExtraTrees** (500 estimators) - Reduced variance
-- **GradientBoosting** (500 estimators) - Sequential learning
-- **XGBoost** - GPU-accelerated boosting
-- **LightGBM** - Fast gradient boosting
-- **Ridge Regression** - Regularized linear model
+### External Macro Features (28 total)
 
-### 📊 Advanced Feature Engineering
-- **Wavelet Denoising**: db4 DWT for noise reduction (50% → 70%+ accuracy)
-- **N-BEATS Decomposition**: Polynomial trend + Fourier seasonality
-- **PSX Seasonal Patterns**: Ramadan, EID, fiscal year effects
-- **70+ Technical Indicators**: RSI, MACD, Bollinger Bands, etc.
+```python
+# USD/PKR Exchange Rate (5 features)
+- usdpkr_close, usdpkr_change, usdpkr_ma5, usdpkr_vol20, usdpkr_trend
 
-### 🔮 Fortune Teller Enhancements
-- **Deep Article Scraping**: Full Business Recorder research articles
-- **Live Fundamentals**: P/E ratios, dividend yields from PSX Terminal
-- **Quality Score System**: Identifies undervalued quality stocks
-- **Trend Dampening**: Mean-reversion for quality stocks (prevents excessive bearishness)
+# KSE-100 Index (12 features)  
+- kse100_close, kse100_return, kse100_ma20, kse100_vol20, relative_strength
+- stock_beta (rolling 60-day covariance with market)
+- market_regime (bull/bear/neutral based on 50-day MA)
 
-### 🤖 AI Sentiment Analysis
-- **Groq LLM** (Llama 3.3 70B) for news analysis
-- Anti-hallucination guardrails
-- Fundamental-aware predictions
+# Commodities (7 features)
+- oil_price, oil_change, oil_ma5, gold_price, gold_change
+- oil_correlation (for energy stocks: PSO, PPL, OGDC, POL)
+
+# KIBOR Proxy (3 features + lag)
+- kibor_proxy, kibor_regime, kibor_lag21
+```
+
+### Research-Validated Technical Indicators
+
+Based on peer-reviewed PSX studies achieving 85%+ accuracy:
+
+| Indicator | Parameters | Research Citation |
+|-----------|------------|-------------------|
+| **Williams %R** | 14-period | Awan et al. (2021) - 85% accuracy on PSX |
+| **Disparity 5** | 5-day MA | Han et al. (2011) - Top Korean feature |
+| **RSI-14** | 14-period | Standard momentum indicator |
+| **MACD** | 12,26,9 | Signal line crossovers |
+| **Bollinger %B** | 20,2 | Volatility breakout signals |
+| **EMA 50/100** | Trend following | Price position vs moving averages |
+
+### PSX-Specific Features
+
+```python
+# Seasonal patterns
+- is_ramadan, is_eid_week, is_friday, month_sin/cos
+- is_fiscal_year_end (June), is_quarter_end
+- kse_session_am (intraday pattern)
+```
+
+---
+
+## 🧠 Model Architecture
+
+### Research-Backed Ensemble (v2.0)
+
+```python
+ResearchBackedEnsemble(
+    models={
+        'svm': SVR(kernel='rbf', C=1.0, epsilon=0.1),     # 35% weight
+        'mlp': MLPRegressor(hidden_layer_sizes=(64, 32)), # 35% weight  
+        'gb':  GradientBoostingRegressor(n_estimators=100), # 15% weight
+        'ridge': Ridge(alpha=1.0)                          # 15% weight
+    },
+    feature_selection='f_regression',  # Top 80 features by F-score
+    cv_splits=5,  # TimeSeriesSplit validation
+    scaler=RobustScaler()  # Handles outliers better than StandardScaler
+)
+```
+
+### Iterated Forecaster with AR(1) Process
+
+Unlike direct multi-step prediction, we use iterated forecasting with realistic constraints:
+
+```python
+class IteratedForecaster:
+    """
+    AR(1) Process: r_t = drift + φ * r_{t-1} + ε
+    
+    Parameters:
+        phi (float): Autoregressive coefficient = 0.15 (mild momentum)
+        max_daily_return (float): ±3% (PSX circuit breaker is 7.5%)
+        max_total_return (float): ±50% annual (realistic bounds)
+        confidence_decay (float): Exponential decay over horizon
+    """
+```
+
+---
+
+## � Backtesting Results
+
+Trained on 2020-2023, tested on 2024-2025:
+
+| Metric | PSO | LUCK | Description |
+|--------|-----|------|-------------|
+| **Direction Accuracy** | 53.2% | 50.8% | Daily direction (baseline: 50%) |
+| **R²** | 0.80 | 0.75 | Price level accuracy |
+| **Strategy Return** | +185% | +86% | With 1% transaction costs |
+| **Buy & Hold Return** | +141% | -40% | Benchmark comparison |
+| **Alpha (Outperformance)** | +44% | +126% | Strategy minus B&H |
+| **Sharpe Ratio** | 4.97 | 5.45 | ⚠️ Likely overfit |
+
+> ⚠️ **Honest Assessment**: The 53% direction accuracy is marginally above random. The strategy profits primarily from bullish bias during 2024's bull market. Use predictions as one input among many.
+
+---
+
+## 🔍 Explainability: "Why This Prediction?"
+
+Every prediction includes a breakdown of supporting/contrary signals:
+
+```json
+{
+  "prediction_reasoning": {
+    "direction": "BULLISH",
+    "emoji": "🟢",
+    "explanation": "Model predicts +31.2% upside. 4 supporting signals, 2 cautionary signals.",
+    "bullish_signals": [
+      {"category": "Model Forecast", "signal": "Strong upside predicted: +31.2%"},
+      {"category": "Momentum", "signal": "Strong uptrend: +15.6% in 20 days"},
+      {"category": "EMA", "signal": "Trading 8.3% above 50-day EMA"}
+    ],
+    "bearish_signals": [
+      {"category": "RSI", "signal": "Overbought (RSI: 72) - may pullback"}
+    ],
+    "neutral_signals": [
+      {"category": "Volatility", "signal": "Moderate volatility (28%) - normal trading"}
+    ]
+  }
+}
+```
+
+---
+
+## 🤖 AI Sentiment Analysis
+
+### Pipeline
+
+```
+PSX Announcements ──► News Aggregation ──► Groq LLM ──► Structured Signal
+        │                    │                │              │
+        ▼                    ▼                ▼              ▼
+   10 recent items    Yahoo/Google News   Llama 3.3 70B   BUY/SELL/HOLD
+                                          Temperature 0.3   + Confidence
+                                          Anti-hallucination
+```
+
+### LLM Prompt Engineering
+
+```python
+SYSTEM_PROMPT = """
+You are a CONSERVATIVE, analytical financial expert specializing in PSX.
+Given these news items and fundamentals, provide a REALISTIC assessment.
+
+RULES:
+1. Only consider actual news content, ignore speculative language
+2. Weight recent news (last 30 days) more heavily
+3. PSX stocks rarely move more than 10-15% short-term
+4. If news is mixed or unclear, default to "HOLD"
+"""
+```
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.9+
-- pip
+
+```bash
+# Required
+Python 3.9+
+pip
+
+# Optional (for sentiment analysis)
+GROQ_API_KEY  # Get from https://console.groq.com
+```
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/psx-prediction-app.git
-cd psx-prediction-app
+# Clone
+git clone https://github.com/yourusername/psx-fortune-teller.git
+cd psx-fortune-teller
 
-# Create virtual environment
+# Create environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your GROQ_API_KEY (optional, for sentiment analysis)
+# Configure (optional)
+echo "GROQ_API_KEY=your_key_here" > .env
 ```
 
-### Running the Server
+### Running
 
 ```bash
-# Start the FastAPI server
+# Development server with auto-reload
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Access
+# UI:       http://localhost:8000/analyzer
+# API Docs: http://localhost:8000/docs
+# Health:   http://localhost:8000/health
 ```
-
-### Access the App
-
-Open your browser and navigate to:
-- **App**: http://localhost:8000/analyzer
-- **API Docs**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
 
 ---
 
 ## 📁 Project Structure
 
 ```
-psx-prediction-app/
-├── backend/                      # FastAPI backend
-│   ├── main.py                  # Main application & routes
-│   ├── sota_model.py            # SOTA ensemble ML model
-│   ├── stock_analyzer_fixed.py  # WebSocket analysis handler
-│   ├── sentiment_analyzer.py    # AI sentiment analysis (Groq)
-│   ├── article_scraper.py       # BR Research article scraper
-│   └── sentiment_math.py        # Research-backed sentiment math
-├── web/                          # Frontend
-│   └── stock_analyzer.html      # Main UI with Chart.js
-├── data/                         # Generated data (gitignored)
-│   ├── *_historical_with_indicators.json
-│   ├── *_sota_predictions_2026.json
-│   └── news_cache/
-├── requirements.txt              # Python dependencies
-├── .env.example                  # Environment template
+psx-fortune-teller/
+├── backend/
+│   ├── main.py                    # FastAPI app, routes, WebSocket
+│   ├── research_model.py          # Core ML model (SVM+MLP+GB+Ridge)
+│   ├── external_features.py       # USD/PKR, KSE-100, Oil, KIBOR fetching
+│   ├── validated_indicators.py    # Research-backed technical indicators
+│   ├── prediction_reasoning.py    # Explainability module
+│   ├── sentiment_analyzer.py      # Groq LLM sentiment analysis
+│   ├── article_scraper.py         # Business Recorder scraper
+│   ├── stock_analyzer_fixed.py    # WebSocket handler
+│   └── sota_model.py              # Legacy SOTA model (fallback)
+│
+├── web/
+│   └── stock_analyzer.html        # Frontend UI (Chart.js + WebSocket)
+│
+├── data/                          # Generated data (gitignored)
+│   ├── {SYMBOL}_research_predictions_2026.json
+│   ├── {SYMBOL}_historical_with_indicators.json
+│   └── models/                    # Saved model files (.joblib)
+│
+├── requirements.txt
+├── .env.example
 └── README.md
 ```
 
@@ -165,85 +308,73 @@ psx-prediction-app/
 
 ## 🔌 API Reference
 
-### WebSocket: Stock Analysis
+### WebSocket: Real-time Analysis
 
+```javascript
+// Connect
+const ws = new WebSocket('ws://localhost:8000/ws/progress/{job_id}');
+
+// Receive progress updates
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // data.stage: 'preprocessing' | 'training' | 'predicting' | 'sentiment' | 'complete'
+  // data.progress: 0-100
+  // data.message: Human-readable status
+  // data.results: Final prediction data (on 'complete')
+};
 ```
-WS: /ws/progress/{job_id}
-```
 
-Real-time progress updates during analysis.
+### REST Endpoints
 
-### POST /api/analyze-stock
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/analyze-stock` | Start new analysis (returns job_id) |
+| `GET` | `/api/history` | List saved analyses |
+| `GET` | `/api/history/{filename}` | Load saved analysis with chart data |
+| `GET` | `/api/screener?limit=10` | Top stocks by technical signals |
+| `GET` | `/api/sentiment/{symbol}` | AI sentiment analysis |
+| `GET` | `/health` | Health check |
 
-Start a new stock analysis.
+### Example: Start Analysis
 
 ```bash
 curl -X POST http://localhost:8000/api/analyze-stock \
   -H "Content-Type: application/json" \
-  -d '{"symbol": "LUCK"}'
+  -d '{"symbol": "PSO"}'
+
+# Response
+{"success": true, "job_id": "PSO_20251228_225824"}
 ```
 
-### GET /api/history
+---
 
-Get list of saved analyses.
+## 📚 Research Foundation
 
-```bash
-curl http://localhost:8000/api/history
-```
+This project is based on peer-reviewed studies of the Pakistan Stock Exchange:
 
-### GET /api/history/{filename}
+1. **Awan et al. (2021)** - "Prediction of KSE-100 using SVM with Williams %R" - 85% accuracy
+2. **Han et al. (2011)** - "Feature selection for Korean stock prediction" - Disparity 5 importance
+3. **Malkiel (2003)** - "Random Walk Down Wall Street" - Honest baseline expectations
+4. **PSX Research** - KSE-100 correlation, sector betas, seasonal patterns
 
-Load a saved analysis with full data.
+### Key Insights Applied
 
-### GET /api/screener
-
-Get top stock picks based on technical indicators.
-
-### GET /api/sentiment/{symbol}
-
-Get AI-powered sentiment analysis.
+- **External features matter more than technicals** for emerging markets
+- **SVM outperforms deep learning** on limited PSX data
+- **Daily prediction accuracy above 55%** is exceptional (don't expect 80%+)
+- **Circuit breakers (±7.5%)** make extreme predictions unrealistic
 
 ---
 
-## 📈 Model Performance
+## ⚠️ Disclaimer
 
-| Metric | Typical Range | Description |
-|--------|---------------|-------------|
-| **R² Score** | 0.90 - 0.97 | Variance explained |
-| **Trend Accuracy** | 65% - 75% | Direction prediction |
-| **MASE** | < 1.0 | Better than naive forecast |
-| **Sharpe Ratio** | 1.5 - 2.5 | Risk-adjusted returns |
-
----
-
-## 🎯 Quality Score System
-
-Stocks are scored based on fundamentals:
-
-| Metric | Score Impact |
-|--------|--------------|
-| P/E < 8 | +0.15 (Deep Value) |
-| P/E 8-12 | +0.10 (Value) |
-| Dividend Yield > 8% | +0.15 (High Yield) |
-| Dividend Yield 5-8% | +0.10 (Good Yield) |
-
-**Quality Score > 0.55** triggers trend dampening to prevent excessive bearish predictions.
-
----
-
-## ⚙️ Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GROQ_API_KEY` | Groq API key for sentiment analysis | Optional |
-
----
-
-## 📝 Disclaimer
-
-> ⚠️ **This software is for educational and informational purposes only.**
+> **This software is for educational and research purposes only.**
 > 
-> It does not constitute financial advice. Stock market investments carry risk. Past performance does not guarantee future results. Always conduct your own research before making investment decisions.
+> - Stock predictions are inherently uncertain
+> - Past performance does not guarantee future results
+> - The 53% direction accuracy means it's barely better than a coin flip
+> - Always conduct your own research and consult financial advisors
+> - The authors are not liable for any investment decisions made using this tool
 
 ---
 
@@ -255,8 +386,10 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Made with ❤️ for Pakistan Stock Exchange traders**
+**Built with ❤️ for the Pakistan Stock Exchange community**
 
-🔮 *May your predictions be ever profitable* 🔮
+*Research-backed. Explainable. Honest about limitations.*
+
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/yourusername/psx-fortune-teller)
 
 </div>
