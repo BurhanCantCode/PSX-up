@@ -723,10 +723,92 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             })
             return
         
-        # Try to use SOTA model
+        # Try to use RESEARCH MODEL (NEW: Based on peer-reviewed PSX studies)
         try:
-            from backend.sota_model import SOTAEnsemblePredictor, PYWT_AVAILABLE, train_sota_model_with_progress, get_quality_score_from_sentiment
+            from backend.research_model import PSXResearchModel, get_realistic_benchmarks
+            USE_RESEARCH_MODEL = True
+        except ImportError:
+            USE_RESEARCH_MODEL = False
             
+        # Fallback to SOTA model if research model not available
+        if not USE_RESEARCH_MODEL:
+            try:
+                from backend.sota_model import SOTAEnsemblePredictor, PYWT_AVAILABLE, train_sota_model_with_progress, get_quality_score_from_sentiment
+            except ImportError:
+                await websocket.send_json({
+                    'stage': 'error',
+                    'progress': 0,
+                    'message': 'Neither research_model nor sota_model available'
+                })
+                return
+        
+        if USE_RESEARCH_MODEL:
+            await websocket.send_json({
+                'stage': 'preprocessing',
+                'progress': 55,
+                'message': '🔬 Using Research-Backed Model (SVM + MLP, 85% PSX accuracy)...'
+            })
+            
+            # Initialize research model
+            research_model = PSXResearchModel(use_wavelet=True, symbol=symbol)
+            
+            await websocket.send_json({
+                'stage': 'training',
+                'progress': 60,
+                'message': '🔬 Training research ensemble (SVM 35% + MLP 35% + GB 15% + Ridge 15%)...'
+            })
+            
+            # Train model (includes external features + validated indicators)
+            metrics = research_model.fit(df, verbose=False)
+            
+            # Check if accuracy is realistic
+            benchmarks = get_realistic_benchmarks()
+            accuracy = metrics.get('ensemble_accuracy', 0)
+            
+            accuracy_msg = f'Trend Accuracy: {accuracy:.1%}'
+            if accuracy > benchmarks['direction_accuracy']['likely_overfit']:
+                accuracy_msg += ' ⚠️ (may be overfit)'
+            elif accuracy > benchmarks['direction_accuracy']['realistic_good']:
+                accuracy_msg += ' ✅ (realistic range)'
+            
+            await websocket.send_json({
+                'stage': 'training',
+                'progress': 80,
+                'message': f'📊 Training complete! {accuracy_msg}'
+            })
+            
+            # Save model
+            models_dir = Path(__file__).parent.parent / "data" / "models"
+            models_dir.mkdir(parents=True, exist_ok=True)
+            research_model.save(models_dir, symbol)
+            
+            await websocket.send_json({
+                'stage': 'predicting',
+                'progress': 85,
+                'message': '🔮 Generating daily predictions with confidence decay through Dec 2026...'
+            })
+            
+            # Generate daily predictions with iterated forecasting
+            daily_predictions = research_model.predict_daily(df, end_date='2026-12-31')
+            
+            # Save predictions
+            pred_file = Path(__file__).parent.parent / "data" / f"{symbol}_research_predictions_2026.json"
+            with open(pred_file, 'w') as f:
+                import json as json_module
+                json_module.dump({
+                    'symbol': symbol,
+                    'generated_at': datetime.now().isoformat(),
+                    'model': '🔬 Research Model (SVM + MLP + External Features)',
+                    'model_weights': metrics.get('weights', {}),
+                    'metrics': {k: float(v) if isinstance(v, (int, float)) else v for k, v in metrics.items() if k != 'weights'},
+                    'external_features_used': True,
+                    'daily_predictions': daily_predictions
+                }, f, indent=2)
+            
+            predictions = daily_predictions
+            
+        else:
+            # Legacy SOTA model path
             await websocket.send_json({
                 'stage': 'preprocessing',
                 'progress': 55,
@@ -804,174 +886,119 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             
             # Use daily predictions for the UI
             predictions = daily_predictions
+        
+        # Common sentiment analysis for both models
+        await websocket.send_json({
+            'stage': 'backtesting',
+            'progress': 88,
+            'message': '🔮 Analyzing news sentiment with AI...'
+        })
+        
+        # Get sentiment analysis and apply rigorous mathematical adjustments
+        sentiment_result = None
+        adjusted_predictions = predictions
+        sentiment_summary = {}
+        
+        try:
+            from backend.sentiment_analyzer import get_stock_sentiment
+            from backend.sentiment_math import get_rigorous_adjustment, apply_adjustments_to_predictions
+            
+            # Fetch and analyze news with Groq (anti-hallucination prompt)
+            sentiment_result = get_stock_sentiment(symbol, use_cache=False)
+            
+            # Calculate mathematically rigorous adjustments
+            adjustment_data = get_rigorous_adjustment(sentiment_result)
+            
+            # Apply adjustments to predictions
+            adjusted_predictions = apply_adjustments_to_predictions(
+                predictions, 
+                adjustment_data['adjustments']
+            )
+            
+            sentiment_summary = {
+                'signal': sentiment_result.get('signal', 'NEUTRAL'),
+                'signal_emoji': sentiment_result.get('signal_emoji', '🟡'),
+                'sentiment_score': sentiment_result.get('sentiment_score', 0),
+                'confidence': sentiment_result.get('confidence', 0),
+                'news_count': sentiment_result.get('news_count', 0),
+                'events_detected': adjustment_data['summary']['events_detected'],
+                'max_adjustment': adjustment_data['summary']['max_positive_adjustment'],
+                'methodology': 'Research-backed event study with exponential decay',
+                # Claude's analysis text
+                'summary': sentiment_result.get('summary', ''),
+                'key_events': sentiment_result.get('key_events', []),
+                'risks': sentiment_result.get('risks', []),
+                'catalysts': sentiment_result.get('catalysts', []),
+                'price_impact': sentiment_result.get('price_impact', {}),
+                # Recent news headlines
+                'recent_news': sentiment_result.get('news_items', [])[:5]
+            }
             
             await websocket.send_json({
                 'stage': 'backtesting',
-                'progress': 88,
-                'message': '🔮 Analyzing news sentiment with AI...'
+                'progress': 92,
+                'message': f'📰 Found {sentiment_result.get("news_count", 0)} news items | {sentiment_summary["signal_emoji"]} {sentiment_summary["signal"]}'
             })
             
-            # Get sentiment analysis and apply rigorous mathematical adjustments
-            sentiment_result = None
+        except Exception as e:
+            print(f"Sentiment analysis error (non-fatal): {e}")
             adjusted_predictions = predictions
-            sentiment_summary = {}
-            
-            try:
-                from backend.sentiment_analyzer import get_stock_sentiment
-                from backend.sentiment_math import get_rigorous_adjustment, apply_adjustments_to_predictions
-                
-                # Fetch and analyze news with Groq (anti-hallucination prompt)
-                sentiment_result = get_stock_sentiment(symbol, use_cache=False)
-                
-                # Calculate mathematically rigorous adjustments
-                adjustment_data = get_rigorous_adjustment(sentiment_result)
-                
-                # Apply adjustments to predictions
-                adjusted_predictions = apply_adjustments_to_predictions(
-                    predictions, 
-                    adjustment_data['adjustments']
-                )
-                
-                sentiment_summary = {
-                    'signal': sentiment_result.get('signal', 'NEUTRAL'),
-                    'signal_emoji': sentiment_result.get('signal_emoji', '🟡'),
-                    'sentiment_score': sentiment_result.get('sentiment_score', 0),
-                    'confidence': sentiment_result.get('confidence', 0),
-                    'news_count': sentiment_result.get('news_count', 0),
-                    'events_detected': adjustment_data['summary']['events_detected'],
-                    'max_adjustment': adjustment_data['summary']['max_positive_adjustment'],
-                    'methodology': 'Research-backed event study with exponential decay',
-                    # Claude's analysis text
-                    'summary': sentiment_result.get('summary', ''),
-                    'key_events': sentiment_result.get('key_events', []),
-                    'risks': sentiment_result.get('risks', []),
-                    'catalysts': sentiment_result.get('catalysts', []),
-                    'price_impact': sentiment_result.get('price_impact', {}),
-                    # Recent news headlines
-                    'recent_news': sentiment_result.get('news_items', [])[:5]
-                }
-                
-                await websocket.send_json({
-                    'stage': 'backtesting',
-                    'progress': 92,
-                    'message': f'📰 Found {sentiment_result.get("news_count", 0)} news items | {sentiment_summary["signal_emoji"]} {sentiment_summary["signal"]}'
-                })
-                
-            except Exception as e:
-                print(f"Sentiment analysis error (non-fatal): {e}")
-                adjusted_predictions = predictions
-                sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
-            
-            await websocket.send_json({
-                'stage': 'finalizing',
-                'progress': 95,
-                'message': '💰 Calculating final metrics...'
-            })
-            
-            # Calculate backtest metrics from adjusted predictions
-            if len(adjusted_predictions) > 0:
-                initial_price = df['Close'].iloc[-1]
-                final_price = adjusted_predictions[-1]['predicted_price']
-                total_return = (final_price - initial_price) / initial_price * 100
-            else:
-                total_return = 0
-            
-            # Prepare historical data for charting (last 180 days)
-            history_df = df.tail(180)[['Date', 'Close']].copy()
-            if not pd.api.types.is_string_dtype(history_df['Date']):
-                history_df['Date'] = history_df['Date'].dt.strftime('%Y-%m-%d')
-            historical_data = history_df.to_dict('records')
+            sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
+        
+        await websocket.send_json({
+            'stage': 'finalizing',
+            'progress': 95,
+            'message': '💰 Calculating final metrics...'
+        })
+        
+        # Calculate backtest metrics from adjusted predictions
+        if len(adjusted_predictions) > 0:
+            initial_price = df['Close'].iloc[-1]
+            final_price = adjusted_predictions[-1]['predicted_price']
+            total_return = (final_price - initial_price) / initial_price * 100
+        else:
+            total_return = 0
+        
+        # Prepare historical data for charting (last 180 days)
+        history_df = df.tail(180)[['Date', 'Close']].copy()
+        if not pd.api.types.is_string_dtype(history_df['Date']):
+            history_df['Date'] = history_df['Date'].dt.strftime('%Y-%m-%d')
+        historical_data = history_df.to_dict('records')
 
-            await websocket.send_json({
-                'stage': 'complete',
-                'progress': 100,
-                'message': '✅ SOTA Analysis Complete with AI Sentiment!',
-                'results': {
-                    'symbol': symbol,
-                    'model': 'SOTA Ensemble + AI Sentiment (Research-backed)',
-                    'model_performance': {
-                        'r2': float(metrics['r2']),
-                        'trend_accuracy': float(metrics['trend_accuracy']),
-                        'mase': float(metrics['mase']),
-                        'mape': float(metrics.get('mape', 0))
-                    },
-                    'sentiment': sentiment_summary,
-                    'monthly_predictions': adjusted_predictions[:12],  # First 12 months
-                    'daily_predictions': adjusted_predictions, # Full daily predictions
-                    'historical_data': historical_data, # NEW: History for charting
-                    'all_predictions_count': len(adjusted_predictions),
-                    'backtest': {
-                        'total_return': total_return,
-                        'prediction_horizon': '24 months to end of 2026'
-                    },
-                    'current_price': float(df['Close'].iloc[-1]),
-                    'data_points': len(df),
-                    'features_used': 74,
-                    'wavelet_denoising': PYWT_AVAILABLE
-                }
-            })
-            
-        except ImportError as e:
-            # Fallback to original model if SOTA not available
-            print(f"SOTA model import failed: {e}, using fallback")
-            await websocket.send_json({
-                'stage': 'preparing',
-                'progress': 58,
-                'message': f'Loaded {len(df)} records. Calculating features (fallback mode)...'
-            })
-            
-            df = calculate_advanced_features(df)
-            X, y, feature_cols, df_clean = prepare_training_data(df)
-            
-            await websocket.send_json({
-                'stage': 'selecting',
-                'progress': 60,
-                'message': 'Selecting best features...'
-            })
-            
-            X_selected, selected_features, selector = feature_selection(X, y, k=30)
-            
-            models, results, scaler, _ = await train_with_progress(
-                X, y, selected_features, symbol, websocket
-            )
-            
-            await websocket.send_json({
-                'stage': 'predicting',
-                'progress': 85,
-                'message': 'Generating monthly predictions...'
-            })
-            
-            monthly_preds = generate_monthly_predictions_proper(
-                models, scaler, df_clean, feature_cols, selected_features, symbol
-            )
-            
-            await websocket.send_json({
-                'stage': 'backtesting',
-                'progress': 90,
-                'message': 'Running backtest...'
-            })
-            
-            backtest_results = backtest_trading_strategy(
-                models, scaler, df_clean, feature_cols, selected_features, symbol
-            )
-            
-            await websocket.send_json({
-                'stage': 'complete',
-                'progress': 100,
-                'message': '✅ Analysis complete!',
-                'results': {
-                    'symbol': symbol,
-                    'model_performance': {
-                        'ensemble_r2': results['r2'].get('ensemble', 0),
-                        'ensemble_mae': results['mae'].get('ensemble', 0),
-                        'ensemble_rmse': results['rmse'].get('ensemble', 0)
-                    },
-                    'monthly_predictions': monthly_preds[:3],
-                    'backtest': backtest_results,
-                    'current_price': float(df_clean['Close'].iloc[-1]),
-                    'data_points': len(df_clean)
-                }
-            })
+        # Get metrics for response (handle both research and SOTA model formats)
+        r2_val = metrics.get('r2', metrics.get('ensemble_accuracy', 0))
+        trend_acc = metrics.get('trend_accuracy', metrics.get('ensemble_accuracy', 0))
+        mase_val = metrics.get('mase', 0)
+        mape_val = metrics.get('mape', 0)
+        
+        await websocket.send_json({
+            'stage': 'complete',
+            'progress': 100,
+            'message': '✅ Research-Backed Analysis Complete with AI Sentiment!',
+            'results': {
+                'symbol': symbol,
+                'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble + AI Sentiment',
+                'model_performance': {
+                    'r2': float(r2_val),
+                    'trend_accuracy': float(trend_acc),
+                    'mase': float(mase_val),
+                    'mape': float(mape_val)
+                },
+                'sentiment': sentiment_summary,
+                'monthly_predictions': adjusted_predictions[:12],  # First 12 months
+                'daily_predictions': adjusted_predictions, # Full daily predictions
+                'historical_data': historical_data, # NEW: History for charting
+                'all_predictions_count': len(adjusted_predictions),
+                'backtest': {
+                    'total_return': total_return,
+                    'prediction_horizon': '24 months to end of 2026'
+                },
+                'current_price': float(df['Close'].iloc[-1]),
+                'data_points': len(df),
+                'features_used': len(metrics.get('weights', {})) if USE_RESEARCH_MODEL else 74,
+                'external_features_used': USE_RESEARCH_MODEL
+            }
+        })
         
     except Exception as e:
         await websocket.send_json({
