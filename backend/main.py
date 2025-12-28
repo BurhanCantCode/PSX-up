@@ -143,24 +143,39 @@ except ImportError as e:
 
 @app.get("/api/history")
 async def get_prediction_history():
-    """Get list of saved Fortune Teller predictions"""
+    """Get list of saved Fortune Teller predictions (both SOTA and Research models)"""
     try:
         data_dir = BASE_DIR / "data"
-        files = sorted(data_dir.glob("*_sota_predictions_2026.json"), 
-                       key=lambda p: p.stat().st_mtime, reverse=True)
+        
+        # Include both SOTA and Research model predictions
+        sota_files = list(data_dir.glob("*_sota_predictions_2026.json"))
+        research_files = list(data_dir.glob("*_research_predictions_2026.json"))
+        all_files = sota_files + research_files
+        
+        # Sort by modification time (most recent first)
+        all_files = sorted(all_files, key=lambda p: p.stat().st_mtime, reverse=True)
         
         history = []
-        for f in files:
+        seen_symbols = set()  # Only show most recent per symbol
+        
+        for f in all_files:
             try:
                 with open(f, 'r') as file:
                     data = json.load(file)
+                    symbol = data.get('symbol')
+                    
+                    # Skip if we already have a more recent analysis for this symbol
+                    if symbol in seen_symbols:
+                        continue
+                    seen_symbols.add(symbol)
+                    
                     daily_preds = data.get('daily_predictions', [])
                     last_pred = daily_preds[-1] if daily_preds else {}
                     first_pred = daily_preds[0] if daily_preds else {}
                     
                     history.append({
                         "filename": f.name,
-                        "symbol": data.get('symbol'),
+                        "symbol": symbol,
                         "generated_at": data.get('generated_at'),
                         "current_price": first_pred.get('predicted_price', 0),
                         "predicted_return": last_pred.get('upside_potential', 0),
@@ -178,7 +193,9 @@ async def get_prediction_file(filename: str):
     
     Returns complete data structure matching WebSocket response format.
     """
-    if not filename.endswith("_sota_predictions_2026.json") or "/" in filename:
+    # Allow both SOTA and Research model prediction files
+    valid_suffixes = ("_sota_predictions_2026.json", "_research_predictions_2026.json")
+    if not filename.endswith(valid_suffixes) or "/" in filename:
         raise HTTPException(status_code=400, detail="Invalid filename")
         
     file_path = BASE_DIR / "data" / filename
@@ -241,7 +258,8 @@ async def get_prediction_file(filename: str):
         "model_performance": data.get('metrics', {}),
         "daily_predictions": daily_preds,
         "historical_data": historical_data,
-        "sentiment": sentiment
+        "sentiment": sentiment,
+        "prediction_reasoning": data.get('prediction_reasoning')  # Include reasoning if available
     }
 
 # ============================================================================

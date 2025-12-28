@@ -797,7 +797,9 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 from backend.prediction_reasoning import generate_prediction_reasoning
                 # Use preprocessed data for reasoning
                 df_processed = research_model.preprocess(df)
-                reasoning = generate_prediction_reasoning(df_processed, symbol=symbol)
+                # Get the final predicted upside from the last prediction
+                final_upside = daily_predictions[-1]['upside_potential'] if daily_predictions else None
+                reasoning = generate_prediction_reasoning(df_processed, symbol=symbol, predicted_upside=final_upside)
             except Exception as e:
                 print(f"⚠️ Reasoning generation failed: {e}")
                 reasoning = {'error': str(e)}
