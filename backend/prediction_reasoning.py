@@ -258,6 +258,65 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
                 })
     
     # =====================================================
+    # 6. NEWS EVENTS (Business Recorder + Impact Scoring)
+    # =====================================================
+    
+    if symbol:
+        try:
+            from backend.brecorder_scraper import get_brecorder_news_for_symbol
+        except ImportError:
+            try:
+                from brecorder_scraper import get_brecorder_news_for_symbol
+            except ImportError:
+                get_brecorder_news_for_symbol = None
+        
+        if get_brecorder_news_for_symbol:
+            try:
+                news_result = get_brecorder_news_for_symbol(symbol)
+                impact = news_result.get('impact', {})
+                articles = news_result.get('articles', [])[:3]  # Top 3
+                
+                # Add key events as signals
+                for event in impact.get('key_events', [])[:3]:
+                    event_type = event.get('type', 'neutral')
+                    category = event.get('category', 'news')
+                    headline = event.get('headline', '')[:60]
+                    duration = event.get('duration_days', 30)
+                    
+                    signal = {
+                        'category': 'News Event',
+                        'signal': f'{category.title()}: "{headline}..." (impact ~{duration}d)',
+                        'strength': abs(event.get('impact', 0.3))
+                    }
+                    
+                    if event_type == 'positive':
+                        bullish.append(signal)
+                    elif event_type == 'negative':
+                        bearish.append(signal)
+                    else:
+                        neutral.append(signal)
+                
+                # Add general news sentiment
+                news_bias = impact.get('news_bias', 0)
+                if news_bias > 0.2 and not any(s.get('category') == 'News Event' for s in bullish):
+                    if articles:
+                        bullish.append({
+                            'category': 'News Sentiment',
+                            'signal': f'Positive news coverage ({len(articles)} recent articles)',
+                            'strength': news_bias
+                        })
+                elif news_bias < -0.2 and not any(s.get('category') == 'News Event' for s in bearish):
+                    if articles:
+                        bearish.append({
+                            'category': 'News Sentiment', 
+                            'signal': f'Negative news coverage ({len(articles)} recent articles)',
+                            'strength': abs(news_bias)
+                        })
+            except Exception as e:
+                # News fetch failed - continue without news signals
+                pass
+    
+    # =====================================================
     # GENERATE SUMMARY (Model prediction has highest weight)
     # =====================================================
     
