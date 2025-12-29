@@ -52,6 +52,19 @@ except ImportError:
         PSXSeasonalFeatures, trend_accuracy, PYWT_AVAILABLE
     )
 
+# News sentiment integration (optional - graceful fallback)
+try:
+    from backend.sentiment_analyzer import get_sentiment_score_for_model
+    NEWS_SENTIMENT_AVAILABLE = True
+except ImportError:
+    try:
+        from sentiment_analyzer import get_sentiment_score_for_model
+        NEWS_SENTIMENT_AVAILABLE = True
+    except ImportError:
+        NEWS_SENTIMENT_AVAILABLE = False
+        get_sentiment_score_for_model = None
+
+
 
 # ============================================================================
 # RESEARCH-BACKED ENSEMBLE (SVM + MLP achieve 85% on PSX)
@@ -492,6 +505,34 @@ class PSXResearchModel:
             except Exception as e:
                 print(f"   ⚠️ Seasonal features skipped: {e}")
         
+        # 6. News sentiment features (optional - graceful fallback)
+        if NEWS_SENTIMENT_AVAILABLE and self.symbol:
+            print("6. Adding news sentiment features...")
+            try:
+                news_score = get_sentiment_score_for_model(self.symbol, use_cache=True)
+                if news_score.get('available'):
+                    df['news_bias'] = news_score['news_bias']
+                    df['news_volume'] = news_score['news_volume']
+                    df['news_recency'] = news_score['news_recency']
+                    print(f"   ✅ Added news features: bias={news_score['news_bias']:.2f}, volume={news_score['news_volume']:.2f}")
+                else:
+                    # Fallback: neutral values
+                    df['news_bias'] = 0.0
+                    df['news_volume'] = 0.5
+                    df['news_recency'] = 0.5
+                    print("   ⚠️ No news data, using neutral values")
+            except Exception as e:
+                # Fallback: neutral values
+                df['news_bias'] = 0.0
+                df['news_volume'] = 0.5
+                df['news_recency'] = 0.5
+                print(f"   ⚠️ News features failed ({str(e)[:30]}), using neutral")
+        else:
+            # No news integration - add neutral features for consistency
+            df['news_bias'] = 0.0
+            df['news_volume'] = 0.5
+            df['news_recency'] = 0.5
+        
         print(f"\n✅ Preprocessing complete: {len(df)} rows x {len(df.columns)} cols")
         return df
     
@@ -512,7 +553,7 @@ class PSXResearchModel:
                 continue
             if df[col].dtype not in ['float64', 'int64', 'int32', 'float32']:
                 continue
-            # Include validated, external, and seasonal
+            # Include validated, external, seasonal, and NEWS features
             if (col in validated or 
                 'usdpkr' in col.lower() or 
                 'kse100' in col.lower() or
@@ -521,7 +562,8 @@ class PSXResearchModel:
                 'kibor' in col.lower() or
                 'beta' in col.lower() or
                 'seasonal' in col.lower() or
-                'denoised' in col.lower()):
+                'denoised' in col.lower() or
+                'news_' in col.lower()):  # Include news_bias, news_volume, news_recency
                 feature_cols.append(col)
         
         self.feature_cols = feature_cols

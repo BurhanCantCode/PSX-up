@@ -275,24 +275,27 @@ def extract_articles_from_html(html: str, source: str) -> List[Dict]:
 
 
 def get_search_queries(symbol: str) -> List[str]:
-    """Get all search queries for a symbol (expanded with aliases)"""
-    queries = [symbol]
+    """Get all search queries for a symbol (expanded with aliases + PSX context)"""
+    queries = []
     
     if symbol in COMPANY_ALIASES:
         info = COMPANY_ALIASES[symbol]
         
-        # Add company names
-        queries.extend(info['names'][:2])
+        # Add company names WITH PSX context for better relevance
+        for name in info['names'][:2]:
+            queries.append(f"{name} PSX")  # e.g., "Lucky Cement PSX"
         
-        # Add parent company if exists
+        # Also add full company name without PSX (for general business news)
+        if len(info['names']) > 0:
+            queries.append(info['names'][0])  # e.g., "Lucky Cement" 
+        
+        # Add parent company if exists (important for group news like Fauji)
         if info.get('parent'):
-            queries.append(info['parent'])
-        
-        # Add sector keywords (just the main one)
-        sector = info.get('sector')
-        if sector and sector in SECTOR_KEYWORDS:
-            keywords = SECTOR_KEYWORDS[sector][:1]
-            queries.extend(keywords)
+            queries.append(info['parent'])  # e.g., "Fauji Foundation"
+    else:
+        # Unknown symbol - use symbol + PSX context
+        queries.append(f"{symbol} PSX")
+        queries.append(f"{symbol} Pakistan stock")
     
     return list(dict.fromkeys(queries))  # Dedupe while preserving order
 
@@ -300,7 +303,7 @@ def get_search_queries(symbol: str) -> List[str]:
 def fetch_multi_source_news(symbol: str, max_per_source: int = 5) -> List[Dict]:
     """
     Fetch news from multiple sources with expanded queries.
-    This is the main function that should catch news like "UAE $1B Fauji Foundation".
+    Only keeps articles that actually mention the search terms.
     """
     all_news = []
     seen_titles = set()
@@ -325,34 +328,39 @@ def fetch_multi_source_news(symbol: str, max_per_source: int = 5) -> List[Dict]:
                     for article in articles:
                         title_lower = article['title'].lower()
                         if title_lower not in seen_titles:
-                            seen_titles.add(title_lower)
-                            
-                            # Check relevance to the symbol
+                            # STRICT RELEVANCE CHECK: Only keep if title mentions ANY search term
                             is_relevant = any(
                                 q.lower() in title_lower 
                                 for q in queries
                             )
-                            article['is_direct'] = is_relevant
-                            source_news.append(article)
+                            
+                            # ONLY add if relevant
+                            if is_relevant:
+                                seen_titles.add(title_lower)
+                                article['is_direct'] = True
+                                source_news.append(article)
                 
                 if len(source_news) >= max_per_source:
                     break
             
             if source_news:
-                print(f"   ✅ {source_name}: {len(source_news)} articles")
+                print(f"   ✅ {source_name}: {len(source_news)} relevant articles")
                 all_news.extend(source_news[:max_per_source])
             
         except Exception as e:
             print(f"   ⚠️ {source_name}: Error - {str(e)[:30]}")
     
-    # Also fetch macro news that could affect the stock
+    # Also fetch macro news that could affect the stock (these are labeled differently)
     macro_news = fetch_macro_news()
+    for item in macro_news:
+        item['is_direct'] = False
+        item['is_macro'] = True
     all_news.extend(macro_news)
     
     # Sort by relevance (direct mentions first) and date
     all_news.sort(key=lambda x: (not x.get('is_direct', False), x.get('date', '')), reverse=True)
     
-    print(f"   📊 Total: {len(all_news)} unique articles")
+    print(f"   📊 Total: {len(all_news)} relevant articles")
     return all_news
 
 

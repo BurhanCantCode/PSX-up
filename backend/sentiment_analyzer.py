@@ -804,6 +804,85 @@ async def get_market_sentiment() -> Dict:
 
 
 # ============================================================================
+# ML MODEL INTEGRATION - Numeric sentiment features for predictions
+# ============================================================================
+
+def get_sentiment_score_for_model(symbol: str, use_cache: bool = True) -> Dict:
+    """
+    Get sentiment features suitable for ML model integration.
+    
+    Returns dict with numeric features that can be added to model DataFrame:
+    - news_bias: -1 to +1 (bearish to bullish)
+    - news_volume: 0-1 normalized (0=no news, 1=many articles)
+    - news_recency: 0-1 (0=old/no news, 1=very recent)
+    - available: bool (True if we have actual data)
+    
+    Falls back to neutral values if anything fails.
+    """
+    NEUTRAL_RESULT = {
+        'news_bias': 0.0,
+        'news_volume': 0.5,
+        'news_recency': 0.5,
+        'available': False
+    }
+    
+    try:
+        # Get sentiment (uses cache if available)
+        result = get_stock_sentiment(symbol, use_cache=use_cache)
+        
+        if result.get('error'):
+            return NEUTRAL_RESULT
+        
+        # Extract sentiment score (-1 to 1)
+        sentiment = result.get('sentiment_score', 0)
+        
+        # Map signal to bias if sentiment score is exactly 0
+        signal = result.get('signal', 'NEUTRAL')
+        if sentiment == 0:
+            if signal in ['BUY', 'BULLISH', 'STRONG_BUY']:
+                sentiment = 0.3
+            elif signal in ['SELL', 'BEARISH', 'STRONG_SELL']:
+                sentiment = -0.3
+        
+        # Calculate news volume (normalize 0-10 articles to 0-1)
+        news_items = result.get('news_items', [])
+        news_volume = min(len(news_items) / 10.0, 1.0)
+        
+        # Calculate recency (days since most recent news)
+        news_recency = 0.5  # Default to medium
+        if news_items:
+            try:
+                dates = []
+                for item in news_items:
+                    date_str = item.get('date', '')
+                    if date_str:
+                        try:
+                            d = datetime.strptime(date_str[:10], '%Y-%m-%d')
+                            dates.append(d)
+                        except:
+                            pass
+                
+                if dates:
+                    most_recent = max(dates)
+                    days_old = (datetime.now() - most_recent).days
+                    # Map: 0 days = 1.0, 7+ days = 0.0
+                    news_recency = max(0, 1.0 - (days_old / 7.0))
+            except:
+                pass
+        
+        return {
+            'news_bias': round(sentiment, 4),
+            'news_volume': round(news_volume, 4),
+            'news_recency': round(news_recency, 4),
+            'available': True
+        }
+        
+    except Exception as e:
+        print(f"⚠️ Sentiment score error for {symbol}: {str(e)[:50]}")
+        return NEUTRAL_RESULT
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
