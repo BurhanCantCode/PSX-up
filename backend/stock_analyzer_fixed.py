@@ -959,6 +959,29 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             adjusted_predictions = predictions
             sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
         
+        # 🆕 Generate detailed monthly forecasts with news correlation
+        monthly_forecast = []
+        forecast_summary = {}
+        try:
+            from backend.monthly_forecast import generate_monthly_forecast, generate_forecast_summary
+            monthly_forecast = generate_monthly_forecast(
+                adjusted_predictions,
+                sentiment_result,
+                df,
+                symbol
+            )
+            forecast_summary = generate_forecast_summary(monthly_forecast)
+            
+            await websocket.send_json({
+                'stage': 'forecasting',
+                'progress': 93,
+                'message': f'📅 Generated {len(monthly_forecast)} monthly forecasts with {forecast_summary.get("bullish_months", 0)} bullish, {forecast_summary.get("bearish_months", 0)} bearish months'
+            })
+        except Exception as e:
+            print(f"Monthly forecast generation error (non-fatal): {e}")
+            monthly_forecast = []
+            forecast_summary = {'error': str(e)}
+        
         await websocket.send_json({
             'stage': 'finalizing',
             'progress': 95,
@@ -1001,7 +1024,9 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'sentiment': sentiment_summary,
                 'monthly_predictions': adjusted_predictions[:12],  # First 12 months
                 'daily_predictions': adjusted_predictions, # Full daily predictions
-                'historical_data': historical_data, # NEW: History for charting
+                'monthly_forecast': monthly_forecast,  # 🆕 Detailed monthly analysis with reasoning
+                'forecast_summary': forecast_summary,  # 🆕 Overall forecast summary
+                'historical_data': historical_data, # History for charting
                 'all_predictions_count': len(adjusted_predictions),
                 'backtest': {
                     'total_return': total_return,
@@ -1014,6 +1039,25 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'prediction_reasoning': reasoning
             }
         })
+        
+        # 🆕 Save complete analysis with monthly forecast to JSON
+        try:
+            complete_analysis_file = Path(__file__).parent.parent / "data" / f"{symbol}_complete_analysis.json"
+            import json as json_module
+            json_module.dump({
+                'symbol': symbol,
+                'generated_at': datetime.now().isoformat(),
+                'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble',
+                'current_price': float(df['Close'].iloc[-1]),
+                'sentiment': sentiment_summary,
+                'monthly_forecast': monthly_forecast,  # Detailed monthly analysis
+                'forecast_summary': forecast_summary,  # Overall outlook
+                'prediction_reasoning': reasoning,
+                'daily_predictions_count': len(adjusted_predictions),
+            }, open(complete_analysis_file, 'w'), indent=2)
+            print(f"✅ Complete analysis saved to {complete_analysis_file}")
+        except Exception as e:
+            print(f"⚠️ Failed to save complete analysis: {e}")
         
     except Exception as e:
         await websocket.send_json({
