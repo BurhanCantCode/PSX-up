@@ -525,110 +525,137 @@ def merge_external_features(stock_df: pd.DataFrame,
         tv_indicators = tv_result.get('indicators', {})
         
         if tv_indicators and tv_result['source'] == 'tradingview':
-            # Add TradingView values as ADDITIONAL features
-            # These are CURRENT real-time values, so broadcast to all rows (model uses lag features)
+            # IMPORTANT: TradingView values are CURRENT real-time values
+            # To prevent data leakage during backtesting, we ONLY apply them to the LAST row
+            # This ensures historical rows don't have future information
             tv_count = 0
-            
+            last_idx = df.index[-1]
+
+            # Initialize all TV columns with NaN (will be filled only for last row)
             # KEY OSCILLATORS (Most Important)
             if 'rsi_14' in tv_indicators:
-                df['tv_rsi_14'] = tv_indicators['rsi_14']
+                df['tv_rsi_14'] = np.nan
+                df.loc[last_idx, 'tv_rsi_14'] = tv_indicators['rsi_14']
                 print(f"   📊 TradingView RSI: {tv_indicators['rsi_14']:.2f}")
                 tv_count += 1
-            
+
             if 'macd_level' in tv_indicators:
-                df['tv_macd'] = tv_indicators['macd_level']
+                df['tv_macd'] = np.nan
+                df.loc[last_idx, 'tv_macd'] = tv_indicators['macd_level']
                 tv_count += 1
-            
+
             if 'stochastic_k' in tv_indicators:
-                df['tv_stochastic_k'] = tv_indicators['stochastic_k']
+                df['tv_stochastic_k'] = np.nan
+                df.loc[last_idx, 'tv_stochastic_k'] = tv_indicators['stochastic_k']
                 tv_count += 1
-            
+
             if 'adx' in tv_indicators:
-                df['tv_adx'] = tv_indicators['adx']
+                df['tv_adx'] = np.nan
+                df.loc[last_idx, 'tv_adx'] = tv_indicators['adx']
                 tv_count += 1
-            
+
             if 'momentum_10' in tv_indicators:
-                df['tv_momentum'] = tv_indicators['momentum_10']
+                df['tv_momentum'] = np.nan
+                df.loc[last_idx, 'tv_momentum'] = tv_indicators['momentum_10']
                 tv_count += 1
-            
+
             if 'williams_r' in tv_indicators:
-                df['tv_williams_r'] = tv_indicators['williams_r']
+                df['tv_williams_r'] = np.nan
+                df.loc[last_idx, 'tv_williams_r'] = tv_indicators['williams_r']
                 tv_count += 1
-            
+
             if 'cci' in tv_indicators:
-                df['tv_cci'] = tv_indicators['cci']
+                df['tv_cci'] = np.nan
+                df.loc[last_idx, 'tv_cci'] = tv_indicators['cci']
                 tv_count += 1
-            
+
             if 'awesome_oscillator' in tv_indicators:
-                df['tv_awesome'] = tv_indicators['awesome_oscillator']
+                df['tv_awesome'] = np.nan
+                df.loc[last_idx, 'tv_awesome'] = tv_indicators['awesome_oscillator']
                 tv_count += 1
-            
+
             if 'bull_bear_power' in tv_indicators:
-                df['tv_bull_bear'] = tv_indicators['bull_bear_power']
+                df['tv_bull_bear'] = np.nan
+                df.loc[last_idx, 'tv_bull_bear'] = tv_indicators['bull_bear_power']
                 tv_count += 1
-            
+
             # MOVING AVERAGES (Important for trend)
             if 'ema_10' in tv_indicators:
-                df['tv_ema_10'] = tv_indicators['ema_10']
+                df['tv_ema_10'] = np.nan
+                df.loc[last_idx, 'tv_ema_10'] = tv_indicators['ema_10']
                 tv_count += 1
-            
+
             if 'sma_10' in tv_indicators:
-                df['tv_sma_10'] = tv_indicators['sma_10']
+                df['tv_sma_10'] = np.nan
+                df.loc[last_idx, 'tv_sma_10'] = tv_indicators['sma_10']
                 tv_count += 1
-            
+
             if 'ema_20' in tv_indicators:
-                df['tv_ema_20'] = tv_indicators['ema_20']
+                df['tv_ema_20'] = np.nan
+                df.loc[last_idx, 'tv_ema_20'] = tv_indicators['ema_20']
                 tv_count += 1
-            
+
             if 'sma_20' in tv_indicators:
-                df['tv_sma_20'] = tv_indicators['sma_20']
+                df['tv_sma_20'] = np.nan
+                df.loc[last_idx, 'tv_sma_20'] = tv_indicators['sma_20']
                 tv_count += 1
-            
+
             if 'ema_50' in tv_indicators:
-                df['tv_ema_50'] = tv_indicators['ema_50']
+                df['tv_ema_50'] = np.nan
+                df.loc[last_idx, 'tv_ema_50'] = tv_indicators['ema_50']
                 tv_count += 1
-            
+
             if 'sma_50' in tv_indicators:
-                df['tv_sma_50'] = tv_indicators['sma_50']
+                df['tv_sma_50'] = np.nan
+                df.loc[last_idx, 'tv_sma_50'] = tv_indicators['sma_50']
                 tv_count += 1
-            
+
             if 'ema_100' in tv_indicators:
-                df['tv_ema_100'] = tv_indicators['ema_100']
+                df['tv_ema_100'] = np.nan
+                df.loc[last_idx, 'tv_ema_100'] = tv_indicators['ema_100']
                 tv_count += 1
-            
+
             if 'sma_100' in tv_indicators:
-                df['tv_sma_100'] = tv_indicators['sma_100']
+                df['tv_sma_100'] = np.nan
+                df.loc[last_idx, 'tv_sma_100'] = tv_indicators['sma_100']
                 tv_count += 1
-            
+
             # COMPOSITE FEATURES
             # Price vs EMAs (important trend signals)
             current_price = df['Close'].iloc[-1]
-            
+
             if 'ema_20' in tv_indicators and tv_indicators['ema_20'] > 0:
-                df['tv_price_vs_ema20'] = (current_price / tv_indicators['ema_20'] - 1) * 100
+                df['tv_price_vs_ema20'] = np.nan
+                df.loc[last_idx, 'tv_price_vs_ema20'] = (current_price / tv_indicators['ema_20'] - 1) * 100
                 tv_count += 1
-            
+
             if 'ema_50' in tv_indicators and tv_indicators['ema_50'] > 0:
-                df['tv_price_vs_ema50'] = (current_price / tv_indicators['ema_50'] - 1) * 100
+                df['tv_price_vs_ema50'] = np.nan
+                df.loc[last_idx, 'tv_price_vs_ema50'] = (current_price / tv_indicators['ema_50'] - 1) * 100
                 tv_count += 1
-            
+
             # Recommendation counts
             if 'recommendation_buy' in tv_indicators:
-                df['tv_rec_buy'] = tv_indicators['recommendation_buy']
-                df['tv_rec_sell'] = tv_indicators['recommendation_sell']
-                df['tv_rec_neutral'] = tv_indicators['recommendation_neutral']
-                
+                df['tv_rec_buy'] = np.nan
+                df['tv_rec_sell'] = np.nan
+                df['tv_rec_neutral'] = np.nan
+                df['tv_recommendation_score'] = np.nan
+
+                df.loc[last_idx, 'tv_rec_buy'] = tv_indicators['recommendation_buy']
+                df.loc[last_idx, 'tv_rec_sell'] = tv_indicators['recommendation_sell']
+                df.loc[last_idx, 'tv_rec_neutral'] = tv_indicators['recommendation_neutral']
+
                 # Calculate recommendation score (-1 to +1)
-                total = (tv_indicators['recommendation_buy'] + 
-                        tv_indicators['recommendation_sell'] + 
+                total = (tv_indicators['recommendation_buy'] +
+                        tv_indicators['recommendation_sell'] +
                         tv_indicators['recommendation_neutral'])
                 if total > 0:
-                    df['tv_recommendation_score'] = (
+                    df.loc[last_idx, 'tv_recommendation_score'] = (
                         (tv_indicators['recommendation_buy'] - tv_indicators['recommendation_sell']) / total
                     )
                 tv_count += 4
-            
-            print(f"   ✅ Added {tv_count} TradingView indicators/features (source: TradingView)")
+
+            print(f"   ✅ Added {tv_count} TradingView indicators (LAST ROW ONLY - no data leakage)")
         elif tv_indicators and tv_result['source'] == 'local_fallback':
             print(f"   ℹ️ Using local indicators (TradingView unavailable)")
         else:

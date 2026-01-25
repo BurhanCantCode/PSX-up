@@ -64,6 +64,42 @@ except ImportError:
         NEWS_SENTIMENT_AVAILABLE = False
         get_sentiment_score_for_model = None
 
+# Williams %R Classifier integration (research-backed 85% accuracy)
+try:
+    from backend.williams_r_classifier import WilliamsRClassifier
+    WILLIAMS_CLASSIFIER_AVAILABLE = True
+except ImportError:
+    try:
+        from williams_r_classifier import WilliamsRClassifier
+        WILLIAMS_CLASSIFIER_AVAILABLE = True
+    except ImportError:
+        WILLIAMS_CLASSIFIER_AVAILABLE = False
+        WilliamsRClassifier = None
+
+# Sector models integration
+try:
+    from backend.sector_models import SectorModelManager
+    SECTOR_MODELS_AVAILABLE = True
+except ImportError:
+    try:
+        from sector_models import SectorModelManager
+        SECTOR_MODELS_AVAILABLE = True
+    except ImportError:
+        SECTOR_MODELS_AVAILABLE = False
+        SectorModelManager = None
+
+# Prediction stability integration
+try:
+    from backend.prediction_stability import PredictionStabilizer
+    PREDICTION_STABILITY_AVAILABLE = True
+except ImportError:
+    try:
+        from prediction_stability import PredictionStabilizer
+        PREDICTION_STABILITY_AVAILABLE = True
+    except ImportError:
+        PREDICTION_STABILITY_AVAILABLE = False
+        PredictionStabilizer = None
+
 
 
 # ============================================================================
@@ -638,17 +674,35 @@ class PSXResearchModel:
         self.use_wavelet = use_wavelet and PYWT_AVAILABLE
         self.symbol = symbol
         self.use_returns_model = use_returns_model
-        
+
         # Core components
         self.ensemble = ResearchBackedEnsemble()
         self.seasonal_features = PSXSeasonalFeatures()
         self.scaler = StandardScaler()
-        
+
         # Returns-based model (for better accuracy on 21-day predictions)
         self.returns_model = None
         self.returns_feature_cols = []
         self.returns_scaler = StandardScaler()
-        
+
+        # Williams %R Classifier (research-backed 85% accuracy on PSX)
+        self.williams_classifier = None
+        if WILLIAMS_CLASSIFIER_AVAILABLE:
+            self.williams_classifier = WilliamsRClassifier(prediction_horizon=5)
+
+        # Sector detection
+        self.sector_manager = None
+        self.detected_sector = None
+        if SECTOR_MODELS_AVAILABLE:
+            self.sector_manager = SectorModelManager()
+            if symbol:
+                self.detected_sector = self.sector_manager.get_sector(symbol)
+
+        # Prediction stability
+        self.stabilizer = None
+        if PREDICTION_STABILITY_AVAILABLE:
+            self.stabilizer = PredictionStabilizer()
+
         # State
         self.feature_cols = []
         self.is_fitted = False
@@ -877,7 +931,31 @@ class PSXResearchModel:
             sorted_imp = sorted(importance.items(), key=lambda x: x[1], reverse=True)[:10]
             for feat, imp in sorted_imp:
                 print(f"    {feat}: {imp:.4f}")
-        
+
+        # Train Williams %R Classifier (additional direction signal)
+        if self.williams_classifier is not None:
+            if verbose:
+                print("\n" + "=" * 70)
+                print("🎯 TRAINING WILLIAMS %R CLASSIFIER (Research-backed)")
+                print("=" * 70)
+            try:
+                williams_metrics = self.williams_classifier.fit(df, verbose=verbose)
+                metrics['williams_classifier'] = williams_metrics
+                if verbose:
+                    print(f"   ✅ Williams %R Classifier trained - Accuracy: {williams_metrics['mean_accuracy']:.1%}")
+            except Exception as e:
+                if verbose:
+                    print(f"   ⚠️ Williams %R Classifier failed: {e}")
+                self.williams_classifier = None
+
+        # Log sector detection
+        if self.detected_sector and verbose:
+            print(f"\n📊 Sector Detection: {self.symbol} → {self.detected_sector.upper()}")
+            if self.sector_manager:
+                peers = self.sector_manager.get_sector_peers(self.symbol)
+                if peers:
+                    print(f"   Peer stocks: {', '.join(peers[:5])}")
+
         return metrics
     
     def predict(self, df: pd.DataFrame) -> np.ndarray:
@@ -978,6 +1056,68 @@ class PSXResearchModel:
                 progress_callback=progress_callback,
                 force_full_year=force_full_year
             )
+
+        # Enhance predictions with Williams %R direction signal
+        if self.williams_classifier is not None and predictions:
+            try:
+                # Get Williams %R direction prediction
+                williams_proba = self.williams_classifier.predict_proba(df_preprocessed)
+                if len(williams_proba) > 0:
+                    williams_up_prob = float(williams_proba[-1])  # Probability of UP
+                    williams_direction = 'UP' if williams_up_prob > 0.5 else 'DOWN'
+                    williams_confidence = max(williams_up_prob, 1 - williams_up_prob)
+
+                    # Add Williams %R signal to predictions metadata
+                    for pred in predictions:
+                        pred['williams_signal'] = williams_direction
+                        pred['williams_confidence'] = round(williams_confidence, 2)
+
+                        # Boost confidence if Williams %R agrees with prediction direction
+                        pred_direction = 'UP' if pred['upside_potential'] > 0 else 'DOWN'
+                        if williams_direction == pred_direction and williams_confidence > 0.6:
+                            # Agreement bonus: boost confidence by up to 10%
+                            boost = min(0.10, (williams_confidence - 0.5) * 0.2)
+                            pred['confidence'] = min(0.99, pred['confidence'] + boost)
+                            pred['direction_agreement'] = True
+                        else:
+                            pred['direction_agreement'] = False
+
+                    print(f"   ✅ Williams %R signal: {williams_direction} ({williams_confidence:.0%} confident)")
+            except Exception as e:
+                print(f"   ⚠️ Williams %R enhancement skipped: {e}")
+
+        # Apply prediction stability (hysteresis + smoothing)
+        if self.stabilizer is not None and self.symbol and predictions:
+            try:
+                # Get final prediction for stability check
+                final_pred = predictions[-1] if predictions else None
+                if final_pred:
+                    raw_prediction = final_pred['upside_potential']
+                    raw_direction = 'BULLISH' if raw_prediction > 5 else ('BEARISH' if raw_prediction < -5 else 'NEUTRAL')
+
+                    stability_result = self.stabilizer.apply_stability(
+                        symbol=self.symbol,
+                        raw_prediction=raw_prediction,
+                        raw_direction=raw_direction
+                    )
+
+                    # Add stability info to all predictions
+                    for pred in predictions:
+                        pred['stable_direction'] = stability_result['stable_direction']
+                        pred['smoothed_prediction'] = stability_result['smoothed_prediction']
+                        pred['direction_changed'] = stability_result['changed_direction']
+
+                    if stability_result['changed_direction']:
+                        print(f"   📊 Direction change: {stability_result['previous_direction']} → {stability_result['stable_direction']}")
+                    else:
+                        print(f"   📊 Stable direction: {stability_result['stable_direction']} (smoothed: {stability_result['smoothed_prediction']:.1f}%)")
+            except Exception as e:
+                print(f"   ⚠️ Stability check skipped: {e}")
+
+        # Add sector info to predictions
+        if self.detected_sector and predictions:
+            for pred in predictions:
+                pred['sector'] = self.detected_sector
 
         return predictions
     

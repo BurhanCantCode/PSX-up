@@ -1291,6 +1291,33 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             print(f"✅ Complete analysis saved to {complete_analysis_file}")
         except Exception as e:
             print(f"⚠️ Failed to save complete analysis: {e}")
+
+        # 📊 Log prediction for accuracy tracking
+        try:
+            from backend.prediction_logger import get_prediction_logger
+            logger = get_prediction_logger()
+
+            # Log the 7-day prediction for tracking
+            if len(adjusted_predictions) >= 7:
+                pred_7d = adjusted_predictions[6]  # Day 7 (index 6)
+                current_price = float(df['Close'].iloc[-1])
+
+                # Extract Williams signal and sector if available
+                williams_signal = pred_7d.get('williams_signal')
+                sector = pred_7d.get('sector')
+
+                logger.log_prediction(
+                    symbol=symbol,
+                    current_price=current_price,
+                    predicted_price=pred_7d['predicted_price'],
+                    predicted_direction=reasoning.get('direction', 'NEUTRAL'),
+                    confidence=pred_7d.get('confidence', 0.5),
+                    horizon_days=7,
+                    williams_signal=williams_signal,
+                    sector=sector
+                )
+        except Exception as e:
+            print(f"⚠️ Prediction logging skipped: {e}")
         
     except Exception as e:
         await websocket.send_json({
