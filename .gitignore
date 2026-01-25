@@ -38,10 +38,26 @@ dist/
 .pytest_cache/
 .coverage
 htmlcov/
+test_*.py
 
-# Vercel
+# Temporary/generated docs
+ADDRESSING_CONCERNS.md
+ARCHITECTURE_DIAGRAM.md
+FINAL_SUMMARY.md
+IMPLEMENTATION_SUMMARY.md
+QUICK_REFERENCE.md
+
+# Unused directories
+results/
+public/
+
+# Vercel (not used - local only)
 .vercel/
 .output/
+vercel.json
 
 # Node (if using vercel CLI)
 node_modules/
+
+# Claude
+.claude/
