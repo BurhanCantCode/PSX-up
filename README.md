@@ -24,6 +24,10 @@
 |---------|--------------|--------------------------|
 | **Feature Engineering** | USD/PKR, KSE-100 β, Oil prices, KIBOR proxy | Just OHLCV + basic indicators |
 | **Technical Indicators** | Research-validated only (Williams %R, Disparity 5, RSI-14) | 100+ unvalidated indicators |
+| **TradingView Integration** | Real-time technicals from TradingView | Static indicator calculations |
+| **Commodity Correlation** | Gold/Silver price impact analysis | Ignores commodity markets |
+| **Sector-Specific Models** | Tailored models per sector (Banking, Energy, etc.) | One-size-fits-all approach |
+| **Stacking Ensemble** | Meta-learner combining multiple model outputs | Single model predictions |
 | **Multi-Horizon Forecast** | Iterated forecasting with AR(1) bounded returns | Direct single-step prediction |
 | **Volatility Control** | Max ±3% daily, ±50% annual (PSX circuit breaker aware) | Unbounded random walks |
 | **Explainability** | "Why This Prediction?" with signal breakdown | Black-box outputs |
@@ -35,38 +39,39 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                            PSX FORTUNE TELLER v2.0                              │
+│                            PSX FORTUNE TELLER v3.0                              │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │   ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────────┐    │
-│   │   Web Frontend  │    │   FastAPI       │    │   Research Model        │    │
+│   │   Web Frontend  │    │   FastAPI       │    │   Stacking Ensemble     │    │
 │   │   ─────────────│    │   ─────────────│    │   ─────────────────────│    │
-│   │   • Chart.js    │◄──►│   • WebSocket   │◄──►│   • SVM (35% weight)    │    │
-│   │   • Real-time   │    │   • REST API    │    │   • MLP (35% weight)    │    │
-│   │   • Responsive  │    │   • Progress    │    │   • GradientBoost (15%) │    │
-│   └─────────────────┘    └─────────────────┘    │   • Ridge (15%)         │    │
+│   │   • Chart.js    │◄──►│   • WebSocket   │◄──►│   • Sector Models       │    │
+│   │   • Real-time   │    │   • REST API    │    │   • Research Model      │    │
+│   │   • Responsive  │    │   • Vercel      │    │   • Williams %R Class.  │    │
+│   └─────────────────┘    └─────────────────┘    │   • Meta-Learner        │    │
 │                                                  └─────────────────────────┘    │
 │                                                                                 │
 │   ┌─────────────────────────────────────────────────────────────────────────┐  │
 │   │                     EXTERNAL DATA INTEGRATION                            │  │
 │   ├──────────────────┬──────────────────┬──────────────────┬────────────────┤  │
-│   │   USD/PKR Rate   │   KSE-100 Index  │   Oil (Brent)    │   KIBOR Proxy  │  │
-│   │   via Yahoo API  │   via PSX API    │   via yFinance   │   Historical   │  │
+│   │   USD/PKR Rate   │   KSE-100 Index  │   TradingView    │   Commodities  │  │
+│   │   via Yahoo API  │   via PSX API    │   Real-time Tech │   Gold/Silver  │  │
 │   │   ────────────   │   ────────────   │   ────────────   │   ────────────│  │
-│   │   • Rate change  │   • Index return │   • Price change │   • Rate level │  │
-│   │   • 5-day trend  │   • Stock beta   │   • Oil corr.    │   • Lag-21     │  │
-│   │   • Volatility   │   • Rel. strength│   • Energy stocks│   • Regime     │  │
+│   │   • Rate change  │   • Index return │   • RSI, MACD    │   • Correlation│  │
+│   │   • 5-day trend  │   • Stock beta   │   • Stoch, ADX   │   • Price chg  │  │
+│   │   • Volatility   │   • Rel. strength│   • Buy/Sell sig │   • Hedging    │  │
 │   └──────────────────┴──────────────────┴──────────────────┴────────────────┘  │
 │                                                                                 │
 │   ┌─────────────────────────────────────────────────────────────────────────┐  │
 │   │                     PREDICTION PIPELINE                                  │  │
 │   ├─────────────────────────────────────────────────────────────────────────┤  │
 │   │                                                                         │  │
-│   │   Raw OHLCV ──► Wavelet Denoising ──► Feature Engineering ──► Scaling   │  │
-│   │       │              (db4 DWT)            (80 features)       (Robust)  │  │
+│   │   Raw OHLCV ──► Feature Validation ──► Sector Detection ──► Scaling     │  │
+│   │       │              (Quality Check)      (Banking/Energy/etc)          │  │
 │   │       ▼                                                                 │  │
-│   │   Research Ensemble ──► Iterated Forecaster ──► AR(1) Process ──► Output│  │
-│   │   (SVM+MLP+GB+Ridge)    (365-day horizon)      (φ=0.15, bounded)        │  │
+│   │   Stacking Ensemble ──► Stability Check ──► Confidence Score ──► Output │  │
+│   │   (Sector+Research+    (Prediction        (Weighted by                  │  │
+│   │    Williams %R)         Consistency)       Stability)                   │  │
 │   │                                                                         │  │
 │   └─────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                 │
@@ -118,23 +123,90 @@ Based on peer-reviewed PSX studies achieving 85%+ accuracy:
 - kse_session_am (intraday pattern)
 ```
 
+### TradingView Integration (NEW)
+
+Real-time technical indicators scraped from TradingView for enhanced accuracy:
+
+```python
+# TradingView Technicals
+- RSI (14): Relative Strength Index
+- Stochastic %K/%D: Momentum oscillator
+- MACD Signal: Trend direction
+- ADX: Trend strength
+- CCI (20): Commodity Channel Index
+- Buy/Sell/Neutral signals: Aggregated recommendation
+```
+
+### Commodity Correlation Analysis (NEW)
+
+Gold and silver price correlation for hedging and safe-haven analysis:
+
+```python
+# Commodity Features
+- gold_price, gold_change_1d, gold_change_5d
+- silver_price, silver_change_1d, silver_change_5d
+- gold_silver_ratio: Market sentiment indicator
+- psx_gold_correlation: Rolling correlation with KSE-100
+```
+
 ---
 
 ## 🧠 Model Architecture
 
-### Research-Backed Ensemble (v2.0)
+### Stacking Ensemble (v3.0 - NEW)
+
+A meta-learning approach that combines multiple specialized models:
+
+```python
+StackingEnsemble(
+    base_models={
+        'sector_model': SectorSpecificModel(),     # Tailored to Banking/Energy/etc.
+        'research_model': ResearchBackedEnsemble(), # Core SVM+MLP+GB+Ridge
+        'williams_classifier': WilliamsRClassifier(), # Trend classification
+    },
+    meta_learner=RidgeCV(alphas=[0.1, 1.0, 10.0]),
+    cv=TimeSeriesSplit(n_splits=5)
+)
+```
+
+### Sector-Specific Models (NEW)
+
+Different sectors exhibit different behaviors - we train specialized models:
+
+| Sector | Key Features | Model Weights |
+|--------|--------------|---------------|
+| **Banking** | Interest rates, KIBOR, credit growth | Higher weight on macro features |
+| **Energy** | Oil prices, gas prices, circular debt | Commodity correlation focus |
+| **Cement** | Construction activity, exports, fuel costs | Seasonal patterns emphasis |
+| **Fertilizer** | Urea prices, gas availability, subsidy | Agricultural cycle alignment |
+| **Technology** | USD/PKR, IT exports, global tech trends | Currency sensitivity |
+
+### Research-Backed Ensemble (Base Model)
 
 ```python
 ResearchBackedEnsemble(
     models={
         'svm': SVR(kernel='rbf', C=1.0, epsilon=0.1),     # 35% weight
-        'mlp': MLPRegressor(hidden_layer_sizes=(64, 32)), # 35% weight  
+        'mlp': MLPRegressor(hidden_layer_sizes=(64, 32)), # 35% weight
         'gb':  GradientBoostingRegressor(n_estimators=100), # 15% weight
         'ridge': Ridge(alpha=1.0)                          # 15% weight
     },
     feature_selection='f_regression',  # Top 80 features by F-score
     cv_splits=5,  # TimeSeriesSplit validation
     scaler=RobustScaler()  # Handles outliers better than StandardScaler
+)
+```
+
+### Williams %R Classifier (NEW)
+
+Dedicated classifier for trend direction based on Williams %R indicator:
+
+```python
+WilliamsRClassifier(
+    lookback=14,
+    overbought=-20,  # Sell signal threshold
+    oversold=-80,    # Buy signal threshold
+    classifier=GradientBoostingClassifier(n_estimators=50)
 )
 ```
 
@@ -248,8 +320,8 @@ GROQ_API_KEY  # Get from https://console.groq.com
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/psx-fortune-teller.git
-cd psx-fortune-teller
+git clone https://github.com/BurhanCantCode/PSX-up.git
+cd PSX-up
 
 # Create environment
 python -m venv venv
@@ -289,16 +361,31 @@ psx-fortune-teller/
 │   ├── sentiment_analyzer.py      # Groq LLM sentiment analysis
 │   ├── article_scraper.py         # Business Recorder scraper
 │   ├── stock_analyzer_fixed.py    # WebSocket handler
-│   └── sota_model.py              # Legacy SOTA model (fallback)
+│   ├── sota_model.py              # Legacy SOTA model (fallback)
+│   │
+│   │  # New v3.0 modules
+│   ├── tradingview_scraper.py     # TradingView real-time technicals
+│   ├── commodity_predictor.py     # Gold/Silver correlation analysis
+│   ├── sector_models.py           # Sector-specific ML models
+│   ├── stacking_ensemble.py       # Meta-learner stacking ensemble
+│   ├── williams_r_classifier.py   # Williams %R trend classifier
+│   ├── feature_validation.py      # Feature quality validation
+│   ├── prediction_stability.py    # Prediction consistency checks
+│   ├── smart_screener.py          # Advanced stock screener
+│   ├── kse100_analyzer.py         # KSE-100 index analyzer
+│   └── top_stocks_analyzer.py     # Top performers analyzer
 │
 ├── web/
 │   └── stock_analyzer.html        # Frontend UI (Chart.js + WebSocket)
 │
-├── data/                          # Generated data (gitignored)
+├── data/
+│   ├── tradingview_cache/         # Cached TradingView technicals
+│   ├── commodity_cache/           # Cached commodity analysis
 │   ├── {SYMBOL}_research_predictions_2026.json
 │   ├── {SYMBOL}_historical_with_indicators.json
 │   └── models/                    # Saved model files (.joblib)
 │
+├── vercel.json                    # Vercel deployment config
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -332,7 +419,11 @@ ws.onmessage = (event) => {
 | `GET` | `/api/history` | List saved analyses |
 | `GET` | `/api/history/{filename}` | Load saved analysis with chart data |
 | `GET` | `/api/screener?limit=10` | Top stocks by technical signals |
+| `GET` | `/api/smart-screener` | Advanced screener with sector analysis |
+| `GET` | `/api/top-stocks` | Top performing stocks analyzer |
+| `GET` | `/api/kse100-analysis` | KSE-100 index analysis |
 | `GET` | `/api/sentiment/{symbol}` | AI sentiment analysis |
+| `GET` | `/api/commodities` | Gold/Silver analysis |
 | `GET` | `/health` | Health check |
 
 ### Example: Start Analysis
@@ -345,6 +436,42 @@ curl -X POST http://localhost:8000/api/analyze-stock \
 # Response
 {"success": true, "job_id": "PSO_20251228_225824"}
 ```
+
+---
+
+## 🚢 Deployment
+
+### Vercel (Recommended)
+
+The project includes `vercel.json` for easy deployment:
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Deploy
+vercel
+
+# Or link to existing project
+vercel --prod
+```
+
+### Docker (Alternative)
+
+```bash
+# Build
+docker build -t psx-fortune-teller .
+
+# Run
+docker run -p 8000:8000 -e GROQ_API_KEY=your_key psx-fortune-teller
+```
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `GROQ_API_KEY` | Optional | For AI sentiment analysis |
+| `PORT` | Optional | Server port (default: 8000) |
 
 ---
 
@@ -390,6 +517,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 *Research-backed. Explainable. Honest about limitations.*
 
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/yourusername/psx-fortune-teller)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/BurhanCantCode/PSX-up)
 
 </div>
