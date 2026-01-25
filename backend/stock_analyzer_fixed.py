@@ -16,8 +16,10 @@ import numpy as np
 from datetime import datetime
 import joblib
 import asyncio
+from typing import Union, Optional
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import JSONResponse
+from starlette.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -42,8 +44,21 @@ except ImportError:
 
 class StockRequest(BaseModel):
     symbol: str
+    horizon: Union[int, str] = 21  # Default to 21 days (research-validated), can be int or 'full'
 
 progress_data = {}
+
+
+async def safe_send(websocket: WebSocket, data: dict) -> bool:
+    """Safely send data through websocket, checking if connection is still open."""
+    try:
+        if websocket.client_state == WebSocketState.CONNECTED:
+            await websocket.send_json(data)
+            return True
+    except Exception:
+        pass
+    return False
+
 
 def fetch_month_data(symbol: str, month: int, year: int):
     """Fetch historical data for a specific month"""
@@ -125,40 +140,157 @@ def calculate_basic_indicators(data):
             record['Date'] = record['Date'].strftime('%Y-%m-%d')
     return records
 
-async def fetch_historical_data_async(symbol: str, progress_callback=None):
-    """Fetch all historical data with progress updates"""
+async def fetch_historical_data_async(symbol: str, progress_callback=None, existing_data=None):
+    """
+    Fetch historical data with progress updates.
+    If existing_data is provided, only fetches new data from the last date forward (incremental update).
+    """
     symbol = symbol.upper()
     all_data = []
     current_year = datetime.now().year
     current_month = datetime.now().month
     start_year = 2020
     
-    total_months = (current_year - start_year) * 12 + current_month
-    fetched = 0
+    # Determine what months to fetch
+    if existing_data and len(existing_data) > 0:
+        # Incremental update: find last date and fetch only new months
+        existing_dates = [pd.to_datetime(d['Date']).date() for d in existing_data if 'Date' in d]
+        if existing_dates:
+            last_date = max(existing_dates)
+            last_year = last_date.year
+            last_month = last_date.month
+            
+            # Start from the SAME month as last date (to catch new days in that month)
+            start_fetch_year = last_year
+            start_fetch_month = last_month
+
+            # Use existing data as base
+            all_data = existing_data.copy()
+
+            if progress_callback:
+                await progress_callback({
+                    'stage': 'fetching',
+                    'progress': 10,
+                    'message': f'📥 Found existing data up to {last_date}. Checking for new data from {start_fetch_year}-{start_fetch_month:02d}...'
+                })
+        else:
+            # Existing data but no valid dates, fetch everything
+            start_fetch_year = start_year
+            start_fetch_month = 1
+            if progress_callback:
+                await progress_callback({
+                    'stage': 'fetching',
+                    'progress': 10,
+                    'message': f'📡 Existing data invalid. Fetching all historical data...'
+                })
+    else:
+        # Full fetch from scratch
+        start_fetch_year = start_year
+        start_fetch_month = 1
+        if progress_callback:
+            await progress_callback({
+                'stage': 'fetching',
+                'progress': 10,
+                'message': f'📡 First-time analysis: Fetching all historical data from {start_year} to today...'
+            })
     
-    for year in range(start_year, current_year + 1):
-        start_month = 1 if year > start_year else 1
-        end_month = current_month if year == current_year else 12
+    # Calculate total months to fetch
+    if start_fetch_year < current_year or (start_fetch_year == current_year and start_fetch_month <= current_month):
+        total_months = (current_year - start_fetch_year) * 12 + (current_month - start_fetch_month + 1)
+    else:
+        total_months = 0
+    
+    fetched = 0
+    new_data = []
+    
+    # Only fetch if there are months to fetch
+    if total_months > 0:
+        for year in range(start_fetch_year, current_year + 1):
+            start_month = start_fetch_month if year == start_fetch_year else 1
+            end_month = current_month if year == current_year else 12
+            
+            for month in range(start_month, end_month + 1):
+                fetched += 1
+                progress = int((fetched / total_months) * 40) + 10  # 10-50%
+                
+                if progress_callback:
+                    await progress_callback({
+                        'stage': 'fetching',
+                        'progress': progress,
+                        'message': f'Fetching {year}-{month:02d}... ({fetched}/{total_months})'
+                    })
+                
+                html = fetch_month_data(symbol, month, year)
+                
+                if html:
+                    month_data = parse_html_table(html)
+                    if month_data:
+                        new_data.extend(month_data)
+                
+                await asyncio.sleep(0.05)
         
-        for month in range(start_month, end_month + 1):
-            fetched += 1
-            progress = int((fetched / total_months) * 40) + 10  # 10-50%
+        # Merge new data with existing (if any) - deduplicate by date
+        if new_data:
+            # Add new data
+            all_data.extend(new_data)
+
+            # Deduplicate by date (keep latest version of each date)
+            seen_dates = set()
+            unique_data = []
+            original_count = len(existing_data) if existing_data else 0
+
+            # Process in reverse so newer records take precedence
+            for record in reversed(all_data):
+                date_key = record.get('Date', '')
+                if date_key and date_key not in seen_dates:
+                    seen_dates.add(date_key)
+                    unique_data.append(record)
+
+            unique_data.reverse()  # Restore chronological order
+            unique_data.sort(key=lambda x: x.get('Date', ''))
+            all_data = unique_data
+
+            actual_new = len(all_data) - original_count
+            if progress_callback:
+                if actual_new > 0:
+                    await progress_callback({
+                        'stage': 'fetching',
+                        'progress': 45,
+                        'message': f'✅ Added {actual_new} new trading days. Total: {len(all_data)} records.'
+                    })
+                else:
+                    await progress_callback({
+                        'stage': 'fetching',
+                        'progress': 45,
+                        'message': f'✅ Cache is up-to-date. No new trading days from PSX.'
+                    })
+        elif existing_data:
+            # No new data found, but we have existing data - ensure it's sorted and deduplicated
+            seen_dates = set()
+            unique_data = []
+            for record in all_data:
+                date_key = record.get('Date', '')
+                if date_key and date_key not in seen_dates:
+                    seen_dates.add(date_key)
+                    unique_data.append(record)
+            
+            unique_data.sort(key=lambda x: x.get('Date', ''))
             
             if progress_callback:
                 await progress_callback({
                     'stage': 'fetching',
-                    'progress': progress,
-                    'message': f'Fetching {year}-{month:02d}... ({fetched}/{total_months})'
+                    'progress': 45,
+                    'message': f'✅ No new data found. Using existing data ({len(unique_data)} records)...'
                 })
             
-            html = fetch_month_data(symbol, month, year)
+            # Save the cleaned data
+            data_dir = Path(__file__).parent.parent / "data"
+            data_dir.mkdir(exist_ok=True)
+            filename = data_dir / f"{symbol}_historical_with_indicators.json"
+            with open(filename, 'w') as f:
+                json.dump(unique_data, f, indent=2)
             
-            if html:
-                month_data = parse_html_table(html)
-                if month_data:
-                    all_data.extend(month_data)
-            
-            await asyncio.sleep(0.05)
+            return unique_data
     
     # Check if we got any data
     if not all_data or len(all_data) == 0:
@@ -188,7 +320,17 @@ async def fetch_historical_data_async(symbol: str, progress_callback=None):
             })
         raise ValueError(f"Failed to process data for symbol {symbol}")
     
-    all_data.sort(key=lambda x: x['Date'])
+    # Remove duplicates by Date (keep the latest entry if duplicates exist)
+    seen_dates = set()
+    unique_data = []
+    for record in all_data:
+        date_key = record.get('Date', '')
+        if date_key and date_key not in seen_dates:
+            seen_dates.add(date_key)
+            unique_data.append(record)
+    
+    all_data = unique_data
+    all_data.sort(key=lambda x: x.get('Date', ''))
     
     data_dir = Path(__file__).parent.parent / "data"
     data_dir.mkdir(exist_ok=True)
@@ -243,7 +385,7 @@ def calculate_advanced_features(df):
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-8)  # Safe division - prevent crash when loss = 0
     df['RSI_14'] = 100 - (100 / (1 + rs))
     
     ema12 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -338,7 +480,7 @@ def roll_forward_features(df, predicted_price, date_offset=1):
     delta = df_extended['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
+    rs = gain / (loss + 1e-8)  # Safe division - prevent crash when loss = 0
     df_extended['RSI_14'] = 100 - (100 / (1 + rs))
     
     ema12 = df_extended['Close'].ewm(span=12, adjust=False).mean()
@@ -660,12 +802,23 @@ async def check_data(symbol: str):
 async def analyze_stock(request: StockRequest):
     """Start stock analysis - returns job ID"""
     symbol = request.symbol.upper()
+
+    # Handle horizon parameter ('full' → None for no limit, number → days)
+    horizon = request.horizon
+    if horizon == 'full':
+        horizon_days = None  # No limit (will default to Dec 2026)
+    elif isinstance(horizon, int):
+        horizon_days = horizon
+    else:
+        horizon_days = 21  # Default: research-validated 21 days
+
     job_id = f"{symbol}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     progress_data[job_id] = {
         'status': 'starting',
         'progress': 0,
         'message': 'Initializing...',
-        'symbol': symbol
+        'symbol': symbol,
+        'horizon': horizon_days  # Store for websocket handler
     }
     return {'job_id': job_id, 'symbol': symbol}
 
@@ -686,7 +839,8 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             return
         
         symbol = progress_data[job_id]['symbol']
-        
+        horizon_days = progress_data[job_id].get('horizon', 21)  # Get horizon, default 21
+
         await websocket.send_json({
             'stage': 'checking',
             'progress': 5,
@@ -695,18 +849,47 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         
         data_file = Path(__file__).parent.parent / "data" / f"{symbol}_historical_with_indicators.json"
         data_exists = data_file.exists()
+        needs_refresh = False
         
-        if not data_exists:
-            await websocket.send_json({
-                'stage': 'fetching',
-                'progress': 10,
-                'message': f'📡 No existing data found. Fetching historical data for {symbol}...'
-            })
+        # Check if data exists and is fresh (up to today)
+        if data_exists:
+            df_temp = load_data(symbol)
+            if df_temp is not None and len(df_temp) > 0:
+                last_date = pd.to_datetime(df_temp['Date'].max()).date()
+                today = datetime.now().date()
+                # If data is at least 1 day old, check for new data
+                days_old = (today - last_date).days
+                if days_old >= 1:
+                    needs_refresh = True
+                    await websocket.send_json({
+                        'stage': 'fetching',
+                        'progress': 10,
+                        'message': f'🔄 Data is {days_old} day(s) old. Checking for latest data...'
+                    })
+            else:
+                needs_refresh = True
+        
+        if not data_exists or needs_refresh:
+            if not needs_refresh:
+                await websocket.send_json({
+                    'stage': 'fetching',
+                    'progress': 10,
+                    'message': f'📡 First-time analysis: Fetching all historical data for {symbol} from 2020 to today...'
+                })
+            
+            # Load existing data for incremental update
+            existing_data = None
+            if needs_refresh and data_exists:
+                try:
+                    with open(data_file, 'r') as f:
+                        existing_data = json.load(f)
+                except Exception:
+                    existing_data = None
             
             async def progress_callback(update):
-                await websocket.send_json(update)
-            
-            await fetch_historical_data_async(symbol, progress_callback)
+                await safe_send(websocket, update)
+
+            await fetch_historical_data_async(symbol, progress_callback, existing_data=existing_data)
         
         await websocket.send_json({
             'stage': 'loading',
@@ -789,8 +972,33 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'message': '🔮 Generating daily predictions with confidence decay through Dec 2026...'
             })
             
+            # Progress callback for prediction loop
+            def prediction_progress_sync(update):
+                """Sync wrapper that safely sends updates"""
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(safe_send(websocket, update))
+                except Exception:
+                    pass  # Don't break if progress update fails
+            
             # Generate daily predictions with iterated forecasting
-            daily_predictions = research_model.predict_daily(df, end_date='2026-12-31')
+            # Use horizon_days for 21-day predictions, or full year if None
+            if horizon_days:
+                daily_predictions = research_model.predict_daily(
+                    df,
+                    end_date='2026-12-31',
+                    max_horizon=horizon_days,
+                    progress_callback=prediction_progress_sync
+                )
+            else:
+                # Full year predictions (no horizon limit)
+                daily_predictions = research_model.predict_daily(
+                    df,
+                    end_date='2026-12-31',
+                    progress_callback=prediction_progress_sync,
+                    force_full_year=True
+                )
             
             # Generate prediction reasoning (explains WHY bullish/bearish)
             try:
@@ -879,8 +1087,33 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'message': '🔮 FORTUNE TELLER: Generating daily predictions through Dec 2026...'
             })
             
+            # Progress callback for SOTA prediction loop
+            def sota_prediction_progress_sync(update):
+                """Sync wrapper that safely sends updates"""
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(safe_send(websocket, update))
+                except Exception:
+                    pass  # Don't break if progress update fails
+            
             # Generate DAILY predictions through 2026 (Fortune Teller feature!)
-            daily_predictions = sota_model.predict_daily(df, end_date='2026-12-31')
+            # Use horizon_days for 21-day predictions, or full year if None
+            if horizon_days:
+                daily_predictions = sota_model.predict_daily(
+                    df,
+                    end_date='2026-12-31',
+                    max_horizon=horizon_days,
+                    progress_callback=sota_prediction_progress_sync
+                )
+            else:
+                # Full year predictions (no horizon limit)
+                daily_predictions = sota_model.predict_daily(
+                    df,
+                    end_date='2026-12-31',
+                    progress_callback=sota_prediction_progress_sync,
+                    force_full_year=True
+                )
             
             # Also generate monthly summaries for backward compatibility
             monthly_predictions = sota_model.predict_future(df, months_ahead=24)

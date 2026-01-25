@@ -541,7 +541,7 @@
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" id="topSearch" placeholder="Search stock (e.g. LUCK, OGDC, SYS)..."
+                <input type="text" id="topSearch" placeholder="Search stock or index (e.g. LUCK, OGDC, KSE100)..."
                     onkeypress="if(event.key === 'Enter') quickAnalyze()">
             </div>
             <div class="user-profile">
@@ -556,8 +556,8 @@
             <h2 class="section-header">Analyze Stock</h2>
 
             <div class="input-card">
-                <div class="input-label">STOCK SYMBOL</div>
-                <input type="text" id="symbolInput" class="input-field" placeholder="Enter Symbol (e.g. LUCK)"
+                <div class="input-label">STOCK SYMBOL OR INDEX</div>
+                <input type="text" id="symbolInput" class="input-field" placeholder="Enter Symbol (e.g. LUCK, KSE100)"
                     value="LUCK">
                 <div class="search-icon" onclick="analyzeStock()">
                     <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -565,6 +565,21 @@
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                 </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                <button class="time-btn" onclick="analyzeStock('KSE100')" style="background: var(--accent); color: var(--primary); font-weight: 600;">
+                    📈 Analyze KSE100 Index
+                </button>
+                <button class="time-btn" onclick="analyzeStock('LUCK')" style="background: #f3f4f6;">
+                    LUCK
+                </button>
+                <button class="time-btn" onclick="analyzeStock('OGDC')" style="background: #f3f4f6;">
+                    OGDC
+                </button>
+                <button class="time-btn" onclick="analyzeStock('PSO')" style="background: #f3f4f6;">
+                    PSO
+                </button>
             </div>
 
             <div id="resultsArea" style="display:none;">
@@ -786,8 +801,10 @@
             document.getElementById('resultsArea').style.display = 'block';
 
             document.getElementById('resSymbol').innerText = res.symbol;
-            document.getElementById('resSymbolShort').innerText = res.symbol.substring(0, 2);
-            document.getElementById('resCompany').innerText = `${res.symbol} - PSX Listed`;
+            const shortText = res.symbol === 'KSE100' ? 'KSE' : res.symbol.substring(0, 2);
+            document.getElementById('resSymbolShort').innerText = shortText;
+            const companyText = res.symbol === 'KSE100' ? 'KSE-100 Index' : `${res.symbol} - PSX Listed`;
+            document.getElementById('resCompany').innerText = companyText;
             const price = typeof res.current_price === 'number' ? res.current_price : 0;
             document.getElementById('resPrice').innerText = `PKR ${price.toFixed(2)}`;
 

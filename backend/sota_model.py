@@ -1308,44 +1308,90 @@ class SOTAEnsemblePredictor:
         
         return predictions
     
-    def predict_daily(self, df: pd.DataFrame, end_date: str = '2026-12-31', 
-                       seed: int = 42) -> List[Dict]:
+    def predict_daily(self, df: pd.DataFrame, end_date: str = '2026-12-31',
+                       seed: int = 42, progress_callback=None, max_horizon: int = None,
+                       force_full_year: bool = False) -> List[Dict]:
         """
-        🔮 FORTUNE TELLER: Generate DAILY predictions through Dec 2026.
-        
+        🔮 Generate DAILY predictions with research-validated horizons.
+
+        ⚠️ RESEARCH FINDING: R² collapses after 20 days (PSX LSTM study 2025)
+        - Predictions beyond 21 days labeled as "low_reliability" (informational only)
+        - Hard cap at 60 days to prevent fantasy predictions
+
         Uses multi-horizon ensemble weighting:
-        - Short-term (1-5 days): XGBoost/LightGBM with 35% weight
-        - Medium-term (6-21 days): RandomForest/ExtraTrees with 30% weight
-        - Long-term (22-63 days): GradientBoosting with 20% weight
-        - Trend (64+ days): Ridge regression with 15% weight
-        
+        - Short-term (1-7 days): XGBoost/LightGBM with 35% weight - HIGH RELIABILITY
+        - Medium-term (8-21 days): RandomForest/ExtraTrees with 30% weight - MEDIUM RELIABILITY
+        - Long-term (22-60 days): GradientBoosting with 20% weight - LOW RELIABILITY (informational)
+
         Args:
             df: Historical DataFrame with OHLCV data
-            end_date: Target end date for predictions
+            end_date: Target end date for predictions (capped at 60 days from last date)
             seed: Random seed for reproducibility
-        
+            max_horizon: Maximum prediction horizon (default 21 days, max 60 days)
+
         Returns:
-            List of daily predictions with confidence intervals
+            List of daily predictions with confidence intervals and reliability tiers
         """
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit() first.")
-        
+
         # Set random seed for reproducibility
         np.random.seed(seed)
-        
+
+        # Enforce research-backed horizon limits
+        if max_horizon is None:
+            if force_full_year:
+                # Full year predictions for visualization (informational only)
+                max_horizon = 365
+                print(f"  📅 Full year prediction mode (informational beyond 21 days)")
+            else:
+                # Default to 60 day cap when not forcing full year
+                max_horizon = 60
+                print(f"  📅 Using default 60-day horizon (use force_full_year=True for longer)")
+        else:
+            # Apply 60-day hard cap for research-validated mode (unless force_full_year)
+            if not force_full_year:
+                max_horizon = min(max_horizon, 60)
+            if max_horizon > 21:
+                print(f"  ⚠️ WARNING: Horizon {max_horizon} days exceeds research-validated range (21 days)")
+                print(f"  ⚠️ Predictions beyond day 21 are LOW RELIABILITY (R² drops below 0.70)")
+
         predictions = []
         current_df = df.copy()
         current_price = df['Close'].iloc[-1]
         current_date = pd.to_datetime(df['Date'].iloc[-1])
         end_date_obj = pd.to_datetime(end_date)
-        
+
+        # Cap end date to max_horizon
+        max_end_date = current_date + pd.Timedelta(days=max_horizon * 2)  # *2 to account for weekends
+        if end_date_obj > max_end_date:
+            end_date_obj = max_end_date
+            print(f"  📅 Capping predictions to {max_horizon} days: {end_date_obj.strftime('%Y-%m-%d')}")
+
         day_offset = 0
-        max_days = 600  # Safety limit
+        max_days = max_horizon  # Research-validated limit
         
         print(f"  🔮 Generating daily predictions from {current_date.strftime('%Y-%m-%d')} to {end_date}...")
         
+        # Progress update interval
+        progress_interval = max(1, min(50, max_days // 10))
+        
         while current_date < end_date_obj and day_offset < max_days:
             day_offset += 1
+            
+            # Send progress updates periodically
+            if progress_callback and (day_offset % progress_interval == 0 or day_offset >= max_days - 1):
+                progress_pct = 85 + int((day_offset / max_days) * 10)  # 85-95% range
+                try:
+                    update_data = {
+                        'stage': 'predicting',
+                        'progress': min(95, progress_pct),
+                        'message': f'🔮 Generating predictions... {day_offset}/{max_days} days ({min(95, progress_pct)}%)'
+                    }
+                    if callable(progress_callback):
+                        progress_callback(update_data)
+                except Exception:
+                    pass  # Don't break prediction if progress update fails
             
             # Skip weekends (PSX is closed)
             next_date = current_date + pd.Timedelta(days=1)
@@ -1430,6 +1476,9 @@ class SOTAEnsemblePredictor:
             upside = (ensemble_pred - current_price) / current_price * 100
             confidence = max(0, min(1, 1 - (pred_std * uncertainty_factor) / (abs(ensemble_pred) + 1e-8)))
             
+            # Determine reliability tier based on research
+            reliability = self._get_reliability_tier(day_offset)
+
             predictions.append({
                 'date': current_date.strftime('%Y-%m-%d'),
                 'day_offset': day_offset,
@@ -1438,7 +1487,8 @@ class SOTAEnsemblePredictor:
                 'upper_ci': float(round(upper_ci, 2)),
                 'upside_potential': float(round(upside, 2)),
                 'confidence': float(round(confidence, 3)),
-                'horizon_type': self._get_horizon_type(day_offset)
+                'horizon_type': self._get_horizon_type(day_offset),
+                'reliability': reliability  # NEW: Research-backed reliability tier
             })
             
             # Roll forward: add predicted price to dataframe for next iteration
@@ -1460,14 +1510,30 @@ class SOTAEnsemblePredictor:
     
     def _get_horizon_type(self, day_offset: int) -> str:
         """Get human-readable horizon type for a given day offset."""
-        if day_offset <= 5:
+        if day_offset <= 7:
             return 'short_term'
         elif day_offset <= 21:
             return 'medium_term'
-        elif day_offset <= 63:
+        elif day_offset <= 60:
             return 'long_term'
         else:
             return 'trend'
+
+    def _get_reliability_tier(self, day_offset: int) -> str:
+        """
+        Get research-validated reliability tier.
+
+        Based on PSX LSTM study (arXiv 2025):
+        - R² day 7: 0.84-0.86 (HIGH)
+        - R² day 21: 0.70-0.80 (MEDIUM)
+        - R² beyond 21: <0.70 (LOW)
+        """
+        if day_offset <= 7:
+            return 'high'  # R² > 0.84
+        elif day_offset <= 21:
+            return 'medium'  # R² 0.70-0.80
+        else:
+            return 'low'  # R² < 0.70 (informational only)
     
     def backtest_model(self, df: pd.DataFrame, test_months: int = 6) -> Dict:
         """

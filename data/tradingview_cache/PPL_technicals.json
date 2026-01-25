@@ -1,0 +1,33 @@
+{
+  "symbol": "PPL",
+  "cached_at": "2026-01-14T23:42:49.561833",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 67.12,
+    "stochastic_k": 66.46,
+    "cci": 79.88,
+    "adx": 48.42,
+    "awesome_oscillator": 15.33,
+    "momentum_10": 9.62,
+    "macd_level": 7.87,
+    "stochastic_rsi": 23.86,
+    "williams_r": -22.91,
+    "bull_bear_power": 10.1,
+    "ultimate_oscillator": 51.14,
+    "ema_10": 239.62,
+    "sma_10": 241.53,
+    "ema_20": 234.01,
+    "sma_20": 233.04,
+    "ema_30": 228.63,
+    "sma_30": 228.07,
+    "ema_50": 220.17,
+    "sma_50": 215.3,
+    "ema_100": 207.07,
+    "sma_100": 203.07,
+    "vwma": 237.24,
+    "hma": 239.81
+  }
+}

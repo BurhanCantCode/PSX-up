@@ -1,0 +1,33 @@
+{
+  "symbol": "SYS",
+  "cached_at": "2026-01-20T02:04:08.251774",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 43.93,
+    "stochastic_k": 18.87,
+    "cci": -97.14,
+    "adx": 24.99,
+    "awesome_oscillator": -3.78,
+    "momentum_10": -8.91,
+    "macd_level": -0.22,
+    "stochastic_rsi": 14.93,
+    "williams_r": -76.45,
+    "bull_bear_power": -4.35,
+    "ultimate_oscillator": 34.59,
+    "ema_10": 162.78,
+    "sma_10": 163.97,
+    "ema_20": 163.81,
+    "sma_20": 165.99,
+    "ema_30": 163.09,
+    "sma_30": 165.57,
+    "ema_50": 160.53,
+    "sma_50": 159.29,
+    "ema_100": 152.99,
+    "sma_100": 154.07,
+    "vwma": 166.48,
+    "hma": 157.82
+  }
+}

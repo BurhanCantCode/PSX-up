@@ -1,0 +1,33 @@
+{
+  "symbol": "KTML",
+  "cached_at": "2026-01-16T15:59:14.450605",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 55.48,
+    "stochastic_k": 76.45,
+    "cci": 92.86,
+    "adx": 12.95,
+    "awesome_oscillator": 0.79,
+    "momentum_10": 5.18,
+    "macd_level": 0.75,
+    "stochastic_rsi": 62.67,
+    "williams_r": -13.58,
+    "bull_bear_power": 1.89,
+    "ultimate_oscillator": 58.05,
+    "ema_10": 66.73,
+    "sma_10": 66.34,
+    "ema_20": 66.19,
+    "sma_20": 65.89,
+    "ema_30": 65.62,
+    "sma_30": 66.43,
+    "ema_50": 64.42,
+    "sma_50": 63.37,
+    "ema_100": 60.68,
+    "sma_100": 62.62,
+    "vwma": 66.04,
+    "hma": 67.63
+  }
+}

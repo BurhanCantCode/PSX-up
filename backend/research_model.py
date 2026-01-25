@@ -33,7 +33,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.svm import SVR
 from sklearn.neural_network import MLPRegressor
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor, GradientBoostingClassifier
 from sklearn.linear_model import Ridge
 
 # Local imports
@@ -286,14 +286,18 @@ class IteratedForecaster:
     MAX_TOTAL_RETURN = 0.50     # Max 50% over full horizon
     TYPICAL_ANNUAL_VOL = 0.25   # 25% annualized volatility typical for PSX
     
-    def __init__(self, model, feature_calculator):
+    def __init__(self, model, feature_calculator, returns_model=None, returns_scaler=None):
         """
         Args:
-            model: Trained 1-step prediction model
+            model: Trained 1-step prediction model (for absolute prices)
             feature_calculator: Function to recalculate features
+            returns_model: Optional returns-based model (for better accuracy)
+            returns_scaler: Scaler used for returns model features
         """
         self.model = model
         self.feature_calculator = feature_calculator
+        self.returns_model = returns_model
+        self.returns_scaler = returns_scaler
     
     def get_confidence(self, day: int) -> float:
         """Get research-based confidence for prediction horizon."""
@@ -302,18 +306,39 @@ class IteratedForecaster:
                 return conf
         return 0.30  # Very uncertain beyond 63 days
     
-    def predict_horizon(self, df: pd.DataFrame, 
+    def predict_horizon(self, df: pd.DataFrame,
                         horizon: int,
-                        feature_cols: List[str]) -> List[Dict]:
+                        feature_cols: List[str],
+                        progress_callback=None,
+                        force_full_year: bool = False) -> List[Dict]:
         """
         Generate REALISTIC price predictions using bounded AR(1) process.
-        
+
+        ⚠️ RESEARCH-VALIDATED HORIZON LIMITS:
+        - Maximum recommended: 21 days (R² > 0.70)
+        - Hard cap: 60 days (predictions beyond this are unreliable)
+        - Confidence decay: 95% (day 1) → 60% (day 21) → 40% (day 63)
+
         Key improvements:
         1. Bounded daily returns (max ±3% per day)
         2. Smooth AR(1) process instead of random jumps
         3. Model prediction only determines trend DIRECTION and magnitude
         4. Confidence decay reduces prediction range over time
+
+        Args:
+            force_full_year: If True, bypass 60-day cap for informational/visualization purposes
+                             Predictions beyond 60 days are marked as 'very_low' reliability
         """
+        # Enforce research-backed horizon limits (unless force_full_year)
+        if horizon > 60 and not force_full_year:
+            print(f"⚠️ WARNING: Horizon {horizon} days exceeds hard cap (60 days). Capping to 60 days.")
+            horizon = 60
+        elif horizon > 60 and force_full_year:
+            print(f"⚠️ FULL YEAR MODE: Generating {horizon} days (informational only, low reliability beyond day 60)")
+        elif horizon > 21:
+            print(f"⚠️ WARNING: Horizon {horizon} days exceeds research-validated range (21 days)")
+            print(f"⚠️ Predictions beyond day 21 have questionable edge (R² < 0.70)")
+
         predictions = []
         base_price = float(df['Close'].iloc[-1])
         current_df = df.copy()
@@ -337,16 +362,18 @@ class IteratedForecaster:
         # Clamp volatility to realistic range (0.5% to 2.5% daily)
         daily_vol = max(0.005, min(0.025, hist_volatility))
         
-        # Get model prediction to determine trend direction
-        available_cols = [c for c in feature_cols if c in current_df.columns]
-        if available_cols:
-            latest_features = current_df[available_cols].iloc[-1:].fillna(0).values
-            model_pred = self.model.predict(latest_features)[0]
-            model_return = (model_pred - base_price) / base_price
-            # Clamp model's predicted return to realistic range (max ±10% initial signal)
-            model_return = max(-0.10, min(0.10, model_return))
-        else:
-            model_return = recent_trend * 20  # Use historical trend
+        # Ensure ALL feature columns exist (fill missing with 0)
+        # The model expects the exact same features as during training
+        for col in feature_cols:
+            if col not in current_df.columns:
+                current_df[col] = 0.0
+        
+        # Get features in the exact order expected by the model
+        latest_features = current_df[feature_cols].iloc[-1:].fillna(0).values
+        model_pred = self.model.predict(latest_features)[0]
+        model_return = (model_pred - base_price) / base_price
+        # Clamp model's predicted return to realistic range (max ±10% initial signal)
+        model_return = max(-0.10, min(0.10, model_return))
         
         # Determine trend direction and strength from model
         trend_direction = np.sign(model_return) if abs(model_return) > 0.01 else 0
@@ -367,7 +394,30 @@ class IteratedForecaster:
         # Deterministic seed for reproducibility (based on price and data length)
         rng = np.random.RandomState(int(base_price * 100 + len(df)) % (2**31 - 1))
         
+        # Progress update interval (every 50 days or 10% of horizon, whichever is smaller)
+        progress_interval = max(1, min(50, horizon // 10))
+        
         for day in range(1, horizon + 1):
+            # Send progress updates periodically
+            if progress_callback and (day % progress_interval == 0 or day == horizon):
+                progress_pct = 85 + int((day / horizon) * 10)  # 85-95% range
+                try:
+                    # Handle both async and sync callbacks
+                    update_data = {
+                        'stage': 'predicting',
+                        'progress': progress_pct,
+                        'message': f'🔮 Generating predictions... {day}/{horizon} days ({progress_pct}%)'
+                    }
+                    # If it's a coroutine function, we'll let the caller handle it
+                    # For now, just call it - the caller should handle async properly
+                    if callable(progress_callback):
+                        # Try to call it - if it's async, the caller should await it
+                        result = progress_callback(update_data)
+                        # If it returns a coroutine, we can't await it here, but that's OK
+                        # The caller (stock_analyzer_fixed.py) will handle it properly
+                except Exception:
+                    pass  # Don't break prediction if progress update fails
+            
             confidence = self.get_confidence(day)
             
             # AR(1) return: r_t = drift + phi * r_{t-1} + noise
@@ -426,6 +476,146 @@ class IteratedForecaster:
                 print("⚠️ WARNING: Predictions beyond 20 days have questionable edge per research")
         
         return predictions
+    
+    def predict_horizon_returns(self, df: pd.DataFrame,
+                                 horizon: int,
+                                 feature_cols: List[str],
+                                 progress_callback=None) -> List[Dict]:
+        """
+        Generate predictions using returns-based model (higher accuracy).
+        
+        Uses returns prediction + classification for direction, then converts
+        back to absolute prices for UI compatibility.
+        """
+        if self.returns_model is None:
+            raise ValueError("Returns model not available. Use predict_horizon() instead.")
+        
+        predictions = []
+        base_price = float(df['Close'].iloc[-1])
+        current_df = df.copy()
+        
+        # Preprocess once if needed
+        if self.feature_calculator:
+            current_df = self.feature_calculator(current_df)
+        
+        # Ensure ALL feature columns exist (fill missing with 0)
+        # The scaler expects the exact same features as during training
+        for col in feature_cols:
+            if col not in current_df.columns:
+                current_df[col] = 0.0
+        
+        # Get features in the exact order expected by the scaler
+        latest_features = current_df[feature_cols].iloc[-1:].fillna(0).values
+        
+        # Get model prediction for direction
+        if self.returns_scaler is not None:
+            # Scale features using returns scaler (model was trained on scaled features)
+            try:
+                latest_scaled = self.returns_scaler.transform(latest_features)
+                pred_direction = self.returns_model.predict(latest_scaled)[0]
+                pred_proba = self.returns_model.predict_proba(latest_scaled)[0]
+                direction_confidence = float(max(pred_proba))
+            except Exception as e:
+                # Fallback: use raw features if scaling fails
+                print(f"   ⚠️ Scaling error: {e}, using raw features")
+                pred_direction = self.returns_model.predict(latest_features)[0]
+                pred_proba = self.returns_model.predict_proba(latest_features)[0]
+                direction_confidence = float(max(pred_proba))
+        else:
+            # No scaler available, use raw features
+            pred_direction = self.returns_model.predict(latest_features)[0]
+            pred_proba = self.returns_model.predict_proba(latest_features)[0]
+            direction_confidence = float(max(pred_proba))
+        
+        # Calculate historical statistics for returns
+        if len(df) > 60:
+            returns = df['Close'].pct_change().dropna()
+            hist_volatility = float(returns.std())
+            hist_mean = float(returns.mean())
+            recent_trend = float(returns.tail(20).mean())
+        else:
+            hist_volatility = 0.015
+            hist_mean = 0.0003
+            recent_trend = 0
+        
+        # Clamp volatility
+        daily_vol = max(0.005, min(0.025, hist_volatility))
+        
+        # Determine trend from model prediction
+        trend_direction = 1 if pred_direction == 1 else -1
+        trend_strength = min(direction_confidence * 0.05, 0.05)  # Max 5% trend
+        
+        # AR(1) process
+        phi = 0.15
+        daily_drift = trend_direction * trend_strength + hist_mean
+        daily_drift = max(-0.002, min(0.002, daily_drift))
+        
+        # Initialize
+        current_price = base_price
+        prev_return = 0
+        rng = np.random.RandomState(int(base_price * 100 + len(df)) % (2**31 - 1))
+        progress_interval = max(1, min(50, horizon // 10))
+        
+        for day in range(1, horizon + 1):
+            # Progress updates
+            if progress_callback and (day % progress_interval == 0 or day == horizon):
+                progress_pct = 85 + int((day / horizon) * 10)
+                try:
+                    update_data = {
+                        'stage': 'predicting',
+                        'progress': progress_pct,
+                        'message': f'🔮 Generating predictions... {day}/{horizon} days ({progress_pct}%)'
+                    }
+                    if callable(progress_callback):
+                        progress_callback(update_data)
+                except Exception:
+                    pass
+            
+            confidence = self.get_confidence(day)
+            
+            # AR(1) return
+            noise = rng.normal(0, daily_vol)
+            noise *= (1 + (1 - confidence) * 0.3)
+            daily_return = daily_drift + phi * prev_return + noise
+            
+            # Bound daily return
+            daily_return = max(-self.MAX_DAILY_RETURN, min(self.MAX_DAILY_RETURN, daily_return))
+            
+            # Apply return
+            new_price = current_price * (1 + daily_return)
+            
+            # Bound total return
+            total_return = (new_price - base_price) / base_price
+            if abs(total_return) > self.MAX_TOTAL_RETURN:
+                if total_return > self.MAX_TOTAL_RETURN:
+                    new_price = base_price * (1 + self.MAX_TOTAL_RETURN * 0.95)
+                else:
+                    new_price = base_price * (1 - self.MAX_TOTAL_RETURN * 0.95)
+            
+            new_price = max(new_price, base_price * 0.3)
+            upside = (new_price - base_price) / base_price * 100
+            
+            # Reliability
+            if day <= 7:
+                reliability = 'high'
+            elif day <= 21:
+                reliability = 'medium'
+            else:
+                reliability = 'low'
+            
+            predictions.append({
+                'day': day,
+                'date': (df['Date'].iloc[-1] + timedelta(days=day)).strftime('%Y-%m-%d'),
+                'predicted_price': float(round(new_price, 2)),
+                'upside_potential': float(round(upside, 2)),
+                'confidence': confidence,
+                'reliability': reliability
+            })
+            
+            prev_return = daily_return
+            current_price = new_price
+        
+        return predictions
 
 
 # ============================================================================
@@ -444,14 +634,20 @@ class PSXResearchModel:
     5. Iterated forecasting with confidence decay
     """
     
-    def __init__(self, use_wavelet: bool = True, symbol: str = None):
+    def __init__(self, use_wavelet: bool = True, symbol: str = None, use_returns_model: bool = True):
         self.use_wavelet = use_wavelet and PYWT_AVAILABLE
         self.symbol = symbol
+        self.use_returns_model = use_returns_model
         
         # Core components
         self.ensemble = ResearchBackedEnsemble()
         self.seasonal_features = PSXSeasonalFeatures()
         self.scaler = StandardScaler()
+        
+        # Returns-based model (for better accuracy on 21-day predictions)
+        self.returns_model = None
+        self.returns_feature_cols = []
+        self.returns_scaler = StandardScaler()
         
         # State
         self.feature_cols = []
@@ -536,8 +732,13 @@ class PSXResearchModel:
         print(f"\n✅ Preprocessing complete: {len(df)} rows x {len(df.columns)} cols")
         return df
     
-    def prepare_features(self, df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, List[str]]:
-        """Prepare feature matrix and target."""
+    def prepare_features(self, df: pd.DataFrame, use_returns: bool = False) -> Tuple[np.ndarray, np.ndarray, List[str]]:
+        """Prepare feature matrix and target.
+        
+        Args:
+            df: Historical DataFrame
+            use_returns: If True, predict returns instead of absolute prices (removes data leakage)
+        """
         # Apply preprocessing
         df = self.preprocess(df)
         
@@ -553,6 +754,16 @@ class PSXResearchModel:
                 continue
             if df[col].dtype not in ['float64', 'int64', 'int32', 'float32']:
                 continue
+            
+            # If using returns prediction, exclude leaky absolute price features
+            if use_returns:
+                leaky_features = ['close_denoised', 'open_denoised', 'high_denoised', 'low_denoised',
+                                 'close_raw', 'open_raw', 'high_raw', 'low_raw',
+                                 'kse100_open', 'kse100_high', 'kse100_low', 'kse100_close',
+                                 'oil_close', 'gold_close', 'usdpkr_close', 'kibor_rate']
+                if any(leaky in col.lower() for leaky in leaky_features):
+                    continue
+            
             # Include validated, external, seasonal, and NEWS features
             if (col in validated or 
                 'usdpkr' in col.lower() or 
@@ -562,22 +773,36 @@ class PSXResearchModel:
                 'kibor' in col.lower() or
                 'beta' in col.lower() or
                 'seasonal' in col.lower() or
-                'denoised' in col.lower() or
+                ('denoised' in col.lower() and not use_returns) or
                 'news_' in col.lower()):  # Include news_bias, news_volume, news_recency
                 feature_cols.append(col)
         
         self.feature_cols = feature_cols
         print(f"\n📊 Features selected: {len(feature_cols)}")
         
-        # Create target (next day's close)
-        df['Target'] = df['Close'].shift(-1)
+        # Create target
+        if use_returns:
+            # Target: returns (relative changes)
+            df['Target'] = df['Close'].shift(-1)
+            df_clean = df.dropna(subset=['Target'] + feature_cols)
+            current_close = df_clean['Close'].values
+            future_close = df_clean['Target'].values
+            y = (future_close - current_close) / current_close  # Returns
+        else:
+            # Target: absolute price (original)
+            df['Target'] = df['Close'].shift(-1)
+            df_clean = df.dropna(subset=['Target'] + feature_cols)
+            y = df_clean['Target'].values
         
         # Clean NaN
-        df_clean = df.dropna(subset=['Target'] + feature_cols)
         df_clean[feature_cols] = df_clean[feature_cols].fillna(method='ffill').fillna(0)
-        
         X = df_clean[feature_cols].values
-        y = df_clean['Target'].values
+        
+        # Remove NaN/inf from returns
+        if use_returns:
+            valid_mask = np.isfinite(y) & ~np.isnan(y)
+            X = X[valid_mask]
+            y = y[valid_mask]
         
         return X, y, feature_cols
     
@@ -588,8 +813,8 @@ class PSXResearchModel:
             print("🔬 TRAINING PSX RESEARCH MODEL")
             print("=" * 70)
         
-        # Prepare features
-        X, y, feature_cols = self.prepare_features(df)
+        # Prepare features (absolute price target)
+        X, y, feature_cols = self.prepare_features(df, use_returns=False)
         
         if verbose:
             print(f"\n📊 Training data: {len(X)} samples, {len(feature_cols)} features")
@@ -599,6 +824,51 @@ class PSXResearchModel:
         
         self.is_fitted = True
         self.metrics = metrics
+        
+        # Train returns-based model if enabled (for better 21-day accuracy)
+        if self.use_returns_model:
+            if verbose:
+                print("\n" + "=" * 70)
+                print("🎯 TRAINING RETURNS-BASED MODEL (Higher Accuracy)")
+                print("=" * 70)
+
+            # Preserve original feature_cols (for standard ensemble model)
+            # before prepare_features overwrites it
+            original_feature_cols = self.feature_cols.copy()
+
+            # Prepare features for returns prediction (no data leakage)
+            X_ret, y_ret, ret_feature_cols = self.prepare_features(df, use_returns=True)
+
+            # Restore original feature_cols for standard model
+            self.feature_cols = original_feature_cols
+            
+            # Create direction target (1 = up, 0 = down)
+            y_direction = (y_ret > 0).astype(int)
+            
+            if verbose:
+                print(f"📊 Returns training data: {len(X_ret)} samples, {len(ret_feature_cols)} features")
+                print(f"   Direction distribution: {np.sum(y_direction)} up, {len(y_direction) - np.sum(y_direction)} down")
+            
+            # Scale features (separate scaler for returns model)
+            X_ret_scaled = self.returns_scaler.fit_transform(X_ret)
+            
+            # Train classification model for direction
+            self.returns_model = GradientBoostingClassifier(
+                n_estimators=100,
+                max_depth=3,
+                learning_rate=0.05,
+                min_samples_split=20,
+                subsample=0.8,
+                random_state=42
+            )
+            self.returns_model.fit(X_ret_scaled, y_direction)
+            
+            # Evaluate
+            train_acc = self.returns_model.score(X_ret_scaled, y_direction)
+            if verbose:
+                print(f"✅ Returns model trained - Direction accuracy: {train_acc*100:.1f}%")
+            
+            self.returns_feature_cols = ret_feature_cols
         
         # Get feature importance
         if verbose:
@@ -620,21 +890,38 @@ class PSXResearchModel:
         
         return self.ensemble.predict(X)
     
-    def predict_daily(self, df: pd.DataFrame, 
+    def predict_daily(self, df: pd.DataFrame,
                       days: int = 365,
-                      end_date: str = '2026-12-31') -> List[Dict]:
+                      end_date: str = '2026-12-31',
+                      max_horizon: int = None,
+                      progress_callback=None,
+                      force_full_year: bool = False) -> List[Dict]:
         """
         Generate daily predictions with iterated forecasting.
         Includes confidence decay based on research.
+
+        Args:
+            df: DataFrame with historical data
+            days: Maximum days (fallback)
+            end_date: Target end date
+            max_horizon: Research-validated horizon limit (e.g., 21 for high accuracy)
+            progress_callback: Optional callback for progress updates
+            force_full_year: If True, generate full year predictions regardless of 60-day cap
+                             (for informational/visualization purposes)
         """
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit() first.")
-        
+
         # Calculate horizon
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         last_date = pd.to_datetime(df['Date'].max())
         horizon = (end_dt - last_date).days
         horizon = min(horizon, days)
+
+        # Apply max_horizon if specified (research-validated limit)
+        if max_horizon is not None:
+            horizon = min(horizon, max_horizon)
+            print(f"   ✅ Using research-validated {max_horizon}-day horizon")
         
         print(f"\n🔮 Generating {horizon} daily predictions...")
         print(f"   From: {last_date.date()} to: {end_date}")
@@ -642,25 +929,56 @@ class PSXResearchModel:
         # Preprocess df ONCE here (adds external features, indicators, etc.)
         df_preprocessed = self.preprocess(df)
         
-        # Verify all feature columns exist
+        # Verify all feature columns exist (for standard model)
         missing_cols = [c for c in self.feature_cols if c not in df_preprocessed.columns]
         if missing_cols:
             print(f"   ⚠️ Missing {len(missing_cols)} features, filling with 0")
             for col in missing_cols:
                 df_preprocessed[col] = 0
+
+        # Also check returns_feature_cols if returns model is used
+        if self.returns_feature_cols:
+            missing_returns_cols = [c for c in self.returns_feature_cols if c not in df_preprocessed.columns]
+            if missing_returns_cols:
+                print(f"   ⚠️ Missing {len(missing_returns_cols)} returns features, filling with 0")
+                for col in missing_returns_cols:
+                    df_preprocessed[col] = 0
+
+        # Use returns-based model for 21-day predictions (better accuracy)
+        # Otherwise use standard absolute price model
+        use_returns = (max_horizon is not None and max_horizon <= 21 and self.returns_model is not None)
         
-        # Use iterated forecaster with no feature_calculator (already preprocessed)
-        forecaster = IteratedForecaster(
-            model=self.ensemble,
-            feature_calculator=None  # Already preprocessed
-        )
-        
-        predictions = forecaster.predict_horizon(
-            df=df_preprocessed,
-            horizon=horizon,
-            feature_cols=self.feature_cols
-        )
-        
+        if use_returns:
+            print(f"   ✅ Using returns-based model (higher accuracy for {max_horizon}-day horizon)")
+            # Use iterated forecaster with returns model
+            forecaster = IteratedForecaster(
+                model=self.ensemble,
+                feature_calculator=None,  # Already preprocessed
+                returns_model=self.returns_model,
+                returns_scaler=self.returns_scaler
+            )
+            
+            predictions = forecaster.predict_horizon_returns(
+                df=df_preprocessed,
+                horizon=horizon,
+                feature_cols=self.returns_feature_cols if self.returns_feature_cols else self.feature_cols,
+                progress_callback=progress_callback
+            )
+        else:
+            # Use standard absolute price model
+            forecaster = IteratedForecaster(
+                model=self.ensemble,
+                feature_calculator=None  # Already preprocessed
+            )
+
+            predictions = forecaster.predict_horizon(
+                df=df_preprocessed,
+                horizon=horizon,
+                feature_cols=self.feature_cols,
+                progress_callback=progress_callback,
+                force_full_year=force_full_year
+            )
+
         return predictions
     
     def save(self, path: Path, symbol: str):

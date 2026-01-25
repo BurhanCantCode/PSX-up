@@ -1,0 +1,33 @@
+{
+  "symbol": "OGDC",
+  "cached_at": "2026-01-18T15:45:27.100254",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 83.24,
+    "stochastic_k": 94.72,
+    "cci": 190.99,
+    "adx": 41.23,
+    "awesome_oscillator": 20.94,
+    "momentum_10": 34.76,
+    "macd_level": 11.06,
+    "stochastic_rsi": 95.61,
+    "williams_r": -4.8,
+    "bull_bear_power": 44.77,
+    "ultimate_oscillator": 67.19,
+    "ema_10": 301.53,
+    "sma_10": 299.89,
+    "ema_20": 292.04,
+    "sma_20": 287.7,
+    "ema_30": 285.98,
+    "sma_30": 282.94,
+    "ema_50": 278.62,
+    "sma_50": 271.42,
+    "ema_100": 267.87,
+    "sma_100": 269.7,
+    "vwma": 296.84,
+    "hma": 313.55
+  }
+}

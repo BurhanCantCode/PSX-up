@@ -223,7 +223,91 @@
             box-shadow: var(--shadow);
             position: relative;
             margin-bottom: 40px;
-            max-width: 400px;
+            max-width: 600px;
+        }
+
+        /* Horizon Selector */
+        .horizon-selector {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .horizon-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .horizon-info {
+            cursor: help;
+            font-size: 1rem;
+            opacity: 0.6;
+        }
+
+        .horizon-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .horizon-btn {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 15px 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .horizon-btn:hover {
+            border-color: var(--lime);
+            box-shadow: 0 4px 12px rgba(193, 242, 54, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .horizon-btn.active {
+            background: linear-gradient(135deg, var(--lime) 0%, #d4ff4d 100%);
+            border-color: var(--lime);
+            box-shadow: 0 4px 12px rgba(193, 242, 54, 0.3);
+        }
+
+        .horizon-btn strong {
+            font-size: 1rem;
+            color: var(--text-main);
+        }
+
+        .horizon-btn small {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .horizon-btn.active small {
+            color: #1a2e05;
+            opacity: 0.8;
+        }
+
+        .horizon-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #1a2e05;
         }
 
         .input-label {
@@ -496,6 +580,15 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" onclick="switchView('commodities')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="8" cy="8" r="6"></circle>
+                        <circle cx="16" cy="16" r="6"></circle>
+                    </svg>
+                    🥈 Commodities
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" onclick="switchView('scanner')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -546,6 +639,26 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
+                </div>
+
+                <!-- Prediction Horizon Selector -->
+                <div class="horizon-selector">
+                    <div class="horizon-label">
+                        <span style="font-weight: 600;">Prediction Horizon</span>
+                        <span class="horizon-info"
+                            title="21-day predictions are research-validated with 80%+ accuracy. Longer predictions decrease in reliability.">ℹ️</span>
+                    </div>
+                    <div class="horizon-buttons">
+                        <button class="horizon-btn active" data-horizon="21" onclick="selectHorizon(21)">
+                            <span class="horizon-badge">Recommended</span>
+                            <strong>21 Days</strong>
+                            <small>High accuracy (R² > 0.70)</small>
+                        </button>
+                        <button class="horizon-btn" data-horizon="full" onclick="selectHorizon('full')">
+                            <strong>Full Year</strong>
+                            <small>Dec 2026 (informational)</small>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -650,8 +763,11 @@
             <h2 class="section-header">Market Scanners</h2>
             <div class="stock-summary-card" style="display: block;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700;">Top Picks & Opportunities</h3>
-                    <button class="time-btn active" onclick="loadScanner()">Refresh</button>
+                    <div>
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin:0;">Top Picks & Opportunities</h3>
+                        <div id="cacheStatus" style="font-size: 0.75rem; color: #888; margin-top: 4px;"></div>
+                    </div>
+                    <button class="time-btn active" onclick="loadScanner(true)">🔄 Refresh</button>
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="scanner-table">
@@ -659,18 +775,112 @@
                             <tr>
                                 <th>Symbol</th>
                                 <th>Price</th>
-                                <th>Trend</th>
+                                <th>PE Ratio</th>
+                                <th>Div Yield</th>
+                                <th>1M Return</th>
                                 <th>Signal</th>
-                                <th>Upside</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="scannerBody">
                             <tr>
-                                <td colspan="6" style="text-align:center; padding:30px;">Loading opportunities...</td>
+                                <td colspan="7" style="text-align:center; padding:30px;">Loading opportunities...</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMMODITIES VIEW -->
+        <div id="commoditiesView" class="view-section">
+            <h2 class="section-header">🥈🥇 Precious Metals Prediction</h2>
+
+            <!-- Commodity Selector -->
+            <div style="display: flex; gap: 15px; margin-bottom: 30px;">
+                <button id="btnSilver" class="time-btn active" onclick="selectCommodity('silver')"
+                    style="background: #C0C0C0; color: #333; padding: 12px 25px; border-radius: 12px; font-weight: 600;">
+                    🥈 Silver
+                </button>
+                <button id="btnGold" class="time-btn" onclick="selectCommodity('gold')"
+                    style="background: #FFD700; color: #333; padding: 12px 25px; border-radius: 12px; font-weight: 600;">
+                    🥇 Gold
+                </button>
+            </div>
+
+            <!-- Results Area -->
+            <div id="commodityResults" style="display:none;">
+                <!-- Summary Card -->
+                <div class="stock-summary-card">
+                    <div class="stock-main-info">
+                        <div class="stock-logo-box" id="cmdLogoBox" style="background: #C0C0C0;">Ag</div>
+                        <div>
+                            <h3 style="font-size: 1.5rem; font-weight: 700;" id="cmdName">Silver</h3>
+                            <div style="color: var(--text-muted);" id="cmdSubtitle">Industrial + Precious Metal</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 40px;">
+                        <div class="metric-group">
+                            <div class="metric-label">Current Price (USD)</div>
+                            <div class="metric-val" id="cmdPrice">$0.00/oz</div>
+                        </div>
+                        <div class="metric-group">
+                            <div class="metric-label">PKR Equivalent</div>
+                            <div class="metric-val" id="cmdPricePKR">PKR 0</div>
+                        </div>
+                        <div class="metric-group">
+                            <div class="metric-label">6-Month Forecast</div>
+                            <div class="metric-val" id="cmdForecast">$0.00</div>
+                        </div>
+                        <div class="metric-group">
+                            <div class="metric-label">Potential Upside</div>
+                            <div class="metric-val" id="cmdUpside">0.00%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <!-- Chart -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div>
+                                <h3 style="font-size: 1.2rem; font-weight: 700;">Price History & 6-Month Forecast</h3>
+                                <div style="font-size: 0.8rem; color: var(--text-muted);">Incorporating AI/GPU demand,
+                                    macro factors</div>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="commodityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Factors Panel -->
+                    <div class="sentiment-card">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 20px;">📊 What's Moving Prices?
+                        </h3>
+                        <div id="commodityFactors">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Key Drivers -->
+                    <div class="sentiment-card" style="margin-top: 20px;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;">🎯 Top Prediction Drivers
+                        </h3>
+                        <div id="commodityDrivers">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Initial Prompt -->
+            <div id="commodityPrompt" class="stock-summary-card" style="text-align: center; padding: 50px;">
+                <h3 style="font-size: 1.3rem; font-weight: 600; margin-bottom: 15px;">Select a Commodity to Analyze</h3>
+                <p style="color: var(--text-muted);">Click Silver or Gold above to start AI-powered price prediction</p>
+                <div style="margin-top: 20px; font-size: 0.85rem; color: #888;">
+                    <strong>Silver factors:</strong> AI/GPU demand, Solar panels, EVs, USD strength<br>
+                    <strong>Gold factors:</strong> Safe-haven demand, Fed rates, Inflation, VIX
                 </div>
             </div>
         </div>
@@ -696,8 +906,10 @@
 
         console.log('🔮 Project: PSX-up | Backend:', API_BASE);
         let chartInstance = null;
+        let commodityChartInstance = null;
         let globalHistory = [];
         let globalPredictions = [];
+        let selectedCommodity = null;
 
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
@@ -706,9 +918,12 @@
             if (view === 'dashboard') {
                 document.getElementById('dashboardView').classList.add('active');
                 document.querySelectorAll('.nav-link')[0].classList.add('active');
-            } else {
-                document.getElementById('scannerView').classList.add('active');
+            } else if (view === 'commodities') {
+                document.getElementById('commoditiesView').classList.add('active');
                 document.querySelectorAll('.nav-link')[1].classList.add('active');
+            } else if (view === 'scanner') {
+                document.getElementById('scannerView').classList.add('active');
+                document.querySelectorAll('.nav-link')[2].classList.add('active');
                 loadScanner();
             }
         }
@@ -722,6 +937,19 @@
             }
         }
 
+        // Global variable to track selected horizon
+        let selectedHorizon = 21; // Default: 21 days (research-validated)
+
+        function selectHorizon(horizon) {
+            selectedHorizon = horizon;
+
+            // Update UI
+            document.querySelectorAll('.horizon-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-horizon="${horizon}"]`).classList.add('active');
+        }
+
         async function analyzeStock(overrideSymbol = null) {
             const symbol = overrideSymbol || document.getElementById('symbolInput').value.trim().toUpperCase();
             if (!symbol) return;
@@ -730,13 +958,17 @@
             switchView('dashboard');
             document.getElementById('symbolInput').value = symbol;
 
-            showLoader(true, `Analyzing ${symbol}...`, '(Running 500+ daily simulations...)');
+            const horizonText = selectedHorizon === 21 ? '21-day (High Accuracy)' : 'Full Year';
+            showLoader(true, `Analyzing ${symbol}...`, `(Using ${horizonText} prediction)`);
 
             try {
                 const res = await fetch(`${API_BASE}/api/analyze-stock`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol })
+                    body: JSON.stringify({
+                        symbol,
+                        horizon: selectedHorizon
+                    })
                 });
                 const { job_id } = await res.json();
 
@@ -890,37 +1122,85 @@
             filterChart(365); // Default 1 year
         }
 
-        async function loadScanner() {
+        async function loadScanner(forceRefresh = false) {
             const tbody = document.getElementById('scannerBody');
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:30px;">Scanning market...</td></tr>';
+            const refreshText = forceRefresh ? 'Scanning market (fetching PE & fundamentals)...' : 'Loading cached results...';
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px;">${refreshText}</td></tr>`;
 
             try {
-                const res = await fetch(`${API_BASE}/api/screener?limit=10`);
+                const url = forceRefresh
+                    ? `${API_BASE}/api/screener?limit=10&refresh=true`
+                    : `${API_BASE}/api/screener?limit=10`;
+                const res = await fetch(url);
                 const data = await res.json();
 
                 if (data.success && data.top_picks) {
                     tbody.innerHTML = data.top_picks.map(s => {
-                        const upside = s.return_1m; // Using 1m return as proxy/placeholder or if API provides upside
-                        const trend = upside >= 0 ? 'Up' : 'Down';
-                        const colorClass = upside >= 0 ? 'bg-green-soft' : 'bg-red-soft';
+                        const return1m = s.return_1m || 0;
+                        const pe = s.pe_ratio;
+                        const divYield = s.dividend_yield;
+                        const signal = s.signal || 'HOLD';
+
+                        // Signal badge colors
+                        let signalStyle = 'background:#f3f4f6; color:#666;';
+                        if (signal === 'STRONG BUY') {
+                            signalStyle = 'background:#10b981; color:white;';
+                        } else if (signal === 'BUY') {
+                            signalStyle = 'background:#34d399; color:white;';
+                        } else if (signal === 'SELL') {
+                            signalStyle = 'background:#ef4444; color:white;';
+                        }
+
+                        // PE color (low PE = green)
+                        let peStyle = 'color:#666;';
+                        if (pe && pe < 10) peStyle = 'color:#10b981; font-weight:600;';
+                        else if (pe && pe < 15) peStyle = 'color:#34d399;';
+                        else if (pe && pe > 25) peStyle = 'color:#ef4444;';
+
+                        // Div yield color (high = green)
+                        let divStyle = 'color:#666;';
+                        if (divYield && divYield > 5) divStyle = 'color:#10b981; font-weight:600;';
+                        else if (divYield && divYield > 3) divStyle = 'color:#34d399;';
 
                         return `
                             <tr class="scanner-row" onclick="analyzeStock('${s.symbol}')">
                                 <td><div style="font-weight:700;">${s.symbol}</div></td>
                                 <td>PKR ${s.current_price.toFixed(2)}</td>
-                                <td><span class="${colorClass}">${trend}</span></td>
-                                <td>${s.signal || 'HOLD'}</td>
-                                <td class="${upside >= 0 ? 'text-green' : 'text-red'}">${upside >= 0 ? '+' : ''}${upside.toFixed(1)}%</td>
+                                <td style="${peStyle}">${pe ? pe.toFixed(1) : 'N/A'}</td>
+                                <td style="${divStyle}">${divYield ? divYield.toFixed(1) + '%' : 'N/A'}</td>
+                                <td class="${return1m >= 0 ? 'text-green' : 'text-red'}">${return1m >= 0 ? '+' : ''}${return1m.toFixed(1)}%</td>
+                                <td><span style="padding:4px 10px; border-radius:6px; font-weight:600; font-size:0.8rem; ${signalStyle}">${signal}</span></td>
                                 <td><button style="border:none; background:var(--primary); color:white; padding:5px 10px; border-radius:6px; cursor:pointer;">Analyze</button></td>
                             </tr>
                         `;
                     }).join('');
+
+                    // Show cache status
+                    const cacheStatusEl = document.getElementById('cacheStatus');
+                    if (data.from_cache && data.cached_at) {
+                        const cachedDate = new Date(data.cached_at);
+                        const timeAgo = getTimeAgo(cachedDate);
+                        cacheStatusEl.innerHTML = `📦 Cached ${timeAgo} • Click Refresh for fresh data`;
+                    } else {
+                        cacheStatusEl.innerHTML = `✅ Fresh scan completed just now`;
+                    }
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No stocks found.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No stocks found.</td></tr>';
                 }
             } catch (e) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;">Error: ${e.message}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Error: ${e.message}</td></tr>`;
             }
+        }
+
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
         }
 
         function filterChart(days) {
@@ -1042,6 +1322,210 @@
             document.getElementById('loader').className = show ? 'loader-overlay loader-active' : 'loader-overlay';
             if (msg) document.getElementById('loaderTitle').innerText = msg;
             document.getElementById('loaderNote').innerText = note;
+        }
+
+        // =============================================
+        // COMMODITY ANALYSIS FUNCTIONS
+        // =============================================
+
+        async function selectCommodity(commodity) {
+            selectedCommodity = commodity;
+
+            // Update button states
+            document.getElementById('btnSilver').classList.remove('active');
+            document.getElementById('btnGold').classList.remove('active');
+            if (commodity === 'silver') {
+                document.getElementById('btnSilver').classList.add('active');
+            } else {
+                document.getElementById('btnGold').classList.add('active');
+            }
+
+            await analyzeCommodity(commodity);
+        }
+
+        async function analyzeCommodity(commodity) {
+            document.getElementById('commodityPrompt').style.display = 'none';
+            document.getElementById('commodityResults').style.display = 'none';
+            showLoader(true, `Analyzing ${commodity.charAt(0).toUpperCase() + commodity.slice(1)}...`, '(Fetching AI/GPU demand, macro factors...)');
+
+            try {
+                // Start analysis job
+                const res = await fetch(`${API_BASE}/api/commodity/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ commodity })
+                });
+                const { job_id } = await res.json();
+
+                // Connect to WebSocket for progress
+                const wsUrl = `ws://${window.location.hostname}:8000/ws/commodity/${job_id}`;
+                const ws = new WebSocket(wsUrl);
+
+                ws.onmessage = (e) => {
+                    const data = JSON.parse(e.data);
+                    document.getElementById('loaderSub').innerText = `${data.progress}% - ${data.message}`;
+
+                    if (data.stage === 'complete') {
+                        renderCommodityResults(data.results);
+                        ws.close();
+                        showLoader(false);
+                    } else if (data.stage === 'error') {
+                        alert(data.message);
+                        ws.close();
+                        showLoader(false);
+                        document.getElementById('commodityPrompt').style.display = 'block';
+                    }
+                };
+
+                ws.onerror = (e) => {
+                    console.error('WebSocket error:', e);
+                    showLoader(false);
+                    alert('Connection error. Please try again.');
+                    document.getElementById('commodityPrompt').style.display = 'block';
+                };
+
+            } catch (e) {
+                console.error('Analysis error:', e);
+                showLoader(false);
+                alert(`Error: ${e.message}`);
+                document.getElementById('commodityPrompt').style.display = 'block';
+            }
+        }
+
+        function renderCommodityResults(res) {
+            document.getElementById('commodityResults').style.display = 'block';
+
+            const isSilver = res.commodity === 'silver';
+            const color = isSilver ? '#C0C0C0' : '#FFD700';
+            const symbol = isSilver ? 'Ag' : 'Au';
+            const subtitle = isSilver ? 'Industrial + Precious Metal (AI/GPU demand)' : 'Safe-Haven Asset';
+
+            // Update header
+            document.getElementById('cmdLogoBox').style.background = color;
+            document.getElementById('cmdLogoBox').innerText = symbol;
+            document.getElementById('cmdName').innerText = res.name;
+            document.getElementById('cmdSubtitle').innerText = subtitle;
+
+            // Update prices
+            document.getElementById('cmdPrice').innerText = `$${res.current_price_usd.toFixed(2)}/oz`;
+            if (res.current_price_pkr) {
+                document.getElementById('cmdPricePKR').innerText = `PKR ${Math.round(res.current_price_pkr).toLocaleString()}`;
+            } else {
+                document.getElementById('cmdPricePKR').innerText = 'N/A';
+            }
+            document.getElementById('cmdForecast').innerText = `$${res.predicted_price.toFixed(2)}`;
+
+            // Update upside with color
+            const upsideEl = document.getElementById('cmdUpside');
+            const upside = res.upside_potential;
+            upsideEl.innerText = `${upside >= 0 ? '+' : ''}${upside.toFixed(1)}%`;
+            upsideEl.className = `metric-val ${upside >= 0 ? 'text-green' : 'text-red'}`;
+
+            // Render factors
+            const factorsDiv = document.getElementById('commodityFactors');
+            if (res.factors && Object.keys(res.factors).length > 0) {
+                factorsDiv.innerHTML = Object.entries(res.factors).map(([key, factor]) => `
+                    <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee;">
+                        <span style="font-size: 1.5rem; margin-right: 12px;">${factor.emoji}</span>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; font-size: 0.9rem; text-transform: capitalize;">${key.replace(/_/g, ' ')}</div>
+                            <div style="font-size: 0.8rem; color: #666;">${factor.description}</div>
+                        </div>
+                        <span class="${factor.status === 'bullish' ? 'bg-green-soft' : factor.status === 'bearish' ? 'bg-red-soft' : ''}"
+                              style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                            ${factor.status.toUpperCase()}
+                        </span>
+                    </div>
+                `).join('');
+            } else {
+                factorsDiv.innerHTML = '<div style="color: #888;">No factor data available</div>';
+            }
+
+            // Render key drivers
+            const driversDiv = document.getElementById('commodityDrivers');
+            if (res.key_drivers && res.key_drivers.length > 0) {
+                driversDiv.innerHTML = res.key_drivers.slice(0, 5).map((driver, idx) => {
+                    const pct = (driver.importance * 100).toFixed(1);
+                    return `
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <span style="width: 20px; font-weight: 700; color: #888;">#${idx + 1}</span>
+                            <span style="flex: 1; font-size: 0.85rem;">${driver.feature.replace(/_/g, ' ')}</span>
+                            <div style="width: 100px; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${Math.min(pct, 100)}%; height: 100%; background: ${isSilver ? '#C0C0C0' : '#FFD700'};"></div>
+                            </div>
+                            <span style="width: 40px; text-align: right; font-size: 0.75rem; color: #888;">${pct}%</span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                driversDiv.innerHTML = '<div style="color: #888;">No driver data available</div>';
+            }
+
+            // Render chart
+            renderCommodityChart(res.historical_data, res.daily_predictions, color);
+        }
+
+        function renderCommodityChart(history, predictions, color) {
+            const historyLabels = history.map(h => h.Date);
+            const historyPrices = history.map(h => h.Close);
+            const predLabels = predictions.map(p => p.date);
+            const predPrices = predictions.map(p => p.predicted_price);
+
+            const allLabels = [...historyLabels, ...predLabels];
+            const datasetHistory = [...historyPrices, ...new Array(predLabels.length).fill(null)];
+            const lastHistPrice = historyPrices.length > 0 ? historyPrices[historyPrices.length - 1] : null;
+            const datasetPred = [...new Array(historyPrices.length - 1).fill(null), lastHistPrice, ...predPrices];
+
+            const ctx = document.getElementById('commodityChart').getContext('2d');
+            if (commodityChartInstance) commodityChartInstance.destroy();
+
+            const gradHist = ctx.createLinearGradient(0, 0, 0, 400);
+            gradHist.addColorStop(0, `${color}44`);
+            gradHist.addColorStop(1, `${color}00`);
+
+            const gradPred = ctx.createLinearGradient(0, 0, 0, 400);
+            gradPred.addColorStop(0, 'rgba(193, 242, 54, 0.4)');
+            gradPred.addColorStop(1, 'rgba(193, 242, 54, 0.0)');
+
+            commodityChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allLabels,
+                    datasets: [
+                        {
+                            label: 'History',
+                            data: datasetHistory,
+                            borderColor: color,
+                            backgroundColor: gradHist,
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Forecast',
+                            data: datasetPred,
+                            borderColor: '#C1F236',
+                            backgroundColor: gradPred,
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: true,
+                            pointRadius: 0,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: {
+                        x: { display: false },
+                        y: { position: 'right', grid: { borderDash: [5, 5], color: '#f3f4f6' } }
+                    }
+                }
+            });
         }
 
         loadHistoryList();

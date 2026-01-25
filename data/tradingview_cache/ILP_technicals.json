@@ -1,0 +1,33 @@
+{
+  "symbol": "ILP",
+  "cached_at": "2026-01-20T02:15:59.557264",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 67.27,
+    "stochastic_k": 72.33,
+    "cci": 86.85,
+    "adx": 20.92,
+    "awesome_oscillator": 3.95,
+    "momentum_10": 3.94,
+    "macd_level": 1.67,
+    "stochastic_rsi": 55.52,
+    "williams_r": -18.02,
+    "bull_bear_power": 3.25,
+    "ultimate_oscillator": 57.84,
+    "ema_10": 82.54,
+    "sma_10": 83.16,
+    "ema_20": 81.16,
+    "sma_20": 80.35,
+    "ema_30": 80.23,
+    "sma_30": 79.52,
+    "ema_50": 78.98,
+    "sma_50": 78.33,
+    "ema_100": 76.58,
+    "sma_100": 76.68,
+    "vwma": 81.77,
+    "hma": 82.98
+  }
+}

@@ -8,6 +8,7 @@ Uses the same features as the model but explains them in plain English.
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Tuple
+from backend.prediction_stability import PredictionStabilizer
 
 
 def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicted_upside: float = None) -> Dict:
@@ -116,8 +117,8 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
     # 2. TECHNICAL INDICATORS
     # =====================================================
     
-    # RSI
-    rsi = latest.get('rsi_14', 50)
+    # RSI (prioritize TradingView, fallback to local)
+    rsi = latest.get('tv_rsi_14', latest.get('RSI_14', latest.get('rsi_14', 50)))
     if pd.notna(rsi):
         if rsi > 70:
             bearish.append({
@@ -325,18 +326,45 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
     
     # If we have a prediction, use it as primary direction
     if predicted_upside is not None:
+        # Apply stability logic to prevent flip-flop
+        stabilizer = PredictionStabilizer()
+        
+        # Determine raw direction based on threshold
         if predicted_upside > 5:
-            direction = 'BULLISH'
-            emoji = '🟢'
-            explanation = f"Model predicts +{predicted_upside:.1f}% upside. {len(bullish)} supporting signals, {len(bearish)} cautionary signals."
+            raw_direction = 'BULLISH'
         elif predicted_upside < -5:
-            direction = 'BEARISH'
-            emoji = '🔴'
-            explanation = f"Model predicts {predicted_upside:.1f}% downside. {len(bearish)} supporting signals, {len(bullish)} contrary signals."
+            raw_direction = 'BEARISH'
         else:
-            direction = 'NEUTRAL'
+            raw_direction = 'NEUTRAL'
+        
+        # Apply stability (hysteresis + smoothing)
+        stability_result = stabilizer.apply_stability(
+            symbol or 'UNKNOWN',
+            predicted_upside,
+            raw_direction
+        )
+        
+        # Use stable direction and smoothed prediction
+        direction = stability_result['stable_direction']
+        smoothed_upside = stability_result['smoothed_prediction']
+        
+        # Generate explanation with stability info
+        if direction == 'BULLISH':
+            emoji = '🟢'
+            explanation = f"Model predicts +{smoothed_upside:.1f}% upside (raw: {predicted_upside:+.1f}%). {len(bullish)} supporting signals, {len(bearish)} cautionary signals."
+            if stability_result['changed_direction']:
+                explanation += " ⚠️ Direction changed from previous prediction."
+        elif direction == 'BEARISH':
+            emoji = '🔴'
+            explanation = f"Model predicts {smoothed_upside:.1f}% downside (raw: {predicted_upside:+.1f}%). {len(bearish)} supporting signals, {len(bullish)} contrary signals."
+            if stability_result['changed_direction']:
+                explanation += " ⚠️ Direction changed from previous prediction."
+        else:
             emoji = '🟡'
-            explanation = f"Model predicts {predicted_upside:+.1f}% (marginal). Mixed signals: {len(bullish)} bullish, {len(bearish)} bearish."
+            explanation = f"Model predicts {smoothed_upside:+.1f}% (raw: {predicted_upside:+.1f}%, marginal). Mixed signals: {len(bullish)} bullish, {len(bearish)} bearish."
+        
+        # Update predicted_upside to smoothed value for consistency
+        predicted_upside = smoothed_upside
     else:
         # Fallback to indicator-based direction
         if total_bullish > total_bearish * 1.5:

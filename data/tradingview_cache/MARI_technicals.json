@@ -1,0 +1,33 @@
+{
+  "symbol": "MARI",
+  "cached_at": "2026-01-20T04:20:04.009801",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 59.01,
+    "stochastic_k": 48.61,
+    "cci": 64.9,
+    "adx": 24.59,
+    "awesome_oscillator": 13.83,
+    "momentum_10": 0.89,
+    "macd_level": 6.89,
+    "stochastic_rsi": 28.24,
+    "williams_r": -48.45,
+    "bull_bear_power": 14.54,
+    "ultimate_oscillator": 38.53,
+    "ema_10": 731.36,
+    "sma_10": 733.69,
+    "ema_20": 726.0,
+    "sma_20": 724.1,
+    "ema_30": 721.97,
+    "sma_30": 718.25,
+    "ema_50": 716.42,
+    "sma_50": 711.2,
+    "ema_100": 702.28,
+    "sma_100": 710.48,
+    "vwma": 728.08,
+    "hma": 730.87
+  }
+}

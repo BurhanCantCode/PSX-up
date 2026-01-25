@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 PSX Stock Screener - Quick Market Scan
-Quickly screens multiple stocks to identify top performers without full SOTA training.
-Uses lightweight metrics: momentum, volatility, recent returns, volume.
+Quickly screens multiple stocks to identify top performers.
+Uses both technical metrics (momentum, volatility, RSI) AND fundamental metrics (PE ratio, dividend yield).
 """
 
 import asyncio
@@ -14,6 +14,18 @@ from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import pandas as pd
 import numpy as np
+
+# Import fundamental data fetcher
+try:
+    from backend.article_scraper import fetch_live_fundamentals
+    FUNDAMENTALS_AVAILABLE = True
+except ImportError:
+    try:
+        from article_scraper import fetch_live_fundamentals
+        FUNDAMENTALS_AVAILABLE = True
+    except ImportError:
+        FUNDAMENTALS_AVAILABLE = False
+        print("⚠️ Fundamentals fetcher not available - using technical metrics only")
 
 # Major PSX stocks - KSE-100 constituents
 PSX_MAJOR_STOCKS = [
@@ -156,7 +168,7 @@ def calculate_screening_metrics(symbol: str, data: List[Dict]) -> Dict:
         delta = df['Close'].diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss
+        rs = gain / (loss + 1e-8)  # Safe division - prevent crash when loss = 0
         rsi = 100 - (100 / (1 + rs)).iloc[-1] if len(df) >= 15 else 50
         
         # Trend strength (percentage of up days)
@@ -195,29 +207,93 @@ def calculate_screening_metrics(symbol: str, data: List[Dict]) -> Dict:
 
 
 def screen_stock(symbol: str) -> Dict:
-    """Screen a single stock"""
+    """Screen a single stock with both technical and fundamental metrics"""
     print(f"  Scanning {symbol}...", end=' ')
     data = fetch_recent_data(symbol, months=3)
     if data:
         metrics = calculate_screening_metrics(symbol, data)
         if metrics:
-            print(f"✓ ({metrics['data_points']} records)")
+            # Fetch fundamental data (PE, dividend yield)
+            if FUNDAMENTALS_AVAILABLE:
+                try:
+                    fundamentals = fetch_live_fundamentals(symbol)
+                    pe = fundamentals.get('pe_ratio')
+                    div_yield = fundamentals.get('dividend_yield')
+                    
+                    # Add fundamentals to metrics
+                    metrics['pe_ratio'] = round(pe, 1) if pe else None
+                    metrics['dividend_yield'] = round(div_yield, 1) if div_yield else None
+                    
+                    # Calculate value score based on fundamentals (0-30 points)
+                    value_score = 0
+                    if pe:
+                        if pe < 8:
+                            value_score += 15  # Deep value
+                        elif pe < 12:
+                            value_score += 10  # Good value
+                        elif pe < 18:
+                            value_score += 5   # Fair value
+                        # High PE doesn't add points
+                    
+                    if div_yield:
+                        if div_yield > 8:
+                            value_score += 15  # Excellent dividend
+                        elif div_yield > 5:
+                            value_score += 10  # Good dividend
+                        elif div_yield > 2:
+                            value_score += 5   # Moderate dividend
+                    
+                    metrics['value_score'] = value_score
+                    
+                    # Recalculate composite with value score
+                    # Original: max ~100 points, now add value: max ~130 points
+                    metrics['composite_score'] = round(metrics['composite_score'] + value_score, 1)
+                    
+                except Exception as e:
+                    metrics['pe_ratio'] = None
+                    metrics['dividend_yield'] = None
+                    metrics['value_score'] = 0
+            else:
+                metrics['pe_ratio'] = None
+                metrics['dividend_yield'] = None
+                metrics['value_score'] = 0
+            
+            # Generate signal based on composite score and momentum
+            score = metrics['composite_score']
+            momentum = metrics['momentum_score']
+            rsi = metrics['rsi']
+            
+            if score >= 90 and momentum >= 2:
+                metrics['signal'] = 'STRONG BUY'
+            elif score >= 70 or (score >= 60 and momentum >= 2):
+                metrics['signal'] = 'BUY'
+            elif score >= 50 or (30 < rsi < 70):
+                metrics['signal'] = 'HOLD'
+            else:
+                metrics['signal'] = 'SELL'
+            
+            pe_str = f"PE:{metrics['pe_ratio']}" if metrics['pe_ratio'] else "PE:N/A"
+            print(f"✓ ({metrics['data_points']} pts, {pe_str}, Signal:{metrics['signal']})")
             return metrics
     print("✗ (no data)")
     return None
 
 
-def run_screener(stocks: List[str] = None, max_workers: int = 5) -> List[Dict]:
+def run_screener(stocks: List[str] = None, max_workers: int = 5, limit: int = None) -> List[Dict]:
     """Run the stock screener on multiple symbols"""
     import time
     
     if stocks is None:
         stocks = PSX_MAJOR_STOCKS
     
+    # Limit stocks if specified
+    if limit and limit < len(stocks):
+        stocks = stocks[:limit * 2]  # Scan more to get enough valid results
+    
     print("="*70)
-    print("🔍 PSX STOCK SCREENER - Quick Market Scan")
+    print("🔍 PSX STOCK SCREENER - Quick Market Scan (with PE & Fundamentals)")
     print("="*70)
-    print(f"Scanning {len(stocks)} stocks (this takes ~1-2 minutes)...")
+    print(f"Scanning {len(stocks)} stocks...")
     print()
     
     results = []
@@ -236,6 +312,10 @@ def run_screener(stocks: List[str] = None, max_workers: int = 5) -> List[Dict]:
     
     # Sort by composite score
     results.sort(key=lambda x: x['composite_score'], reverse=True)
+    
+    # Limit results if specified
+    if limit:
+        results = results[:limit]
     
     return results
 

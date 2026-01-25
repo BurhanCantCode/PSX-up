@@ -25,6 +25,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Tuple, Optional, List
 
+# TradingView scraper
+try:
+    from backend.tradingview_scraper import get_tradingview_indicators
+    TRADINGVIEW_AVAILABLE = True
+except ImportError:
+    TRADINGVIEW_AVAILABLE = False
+
 # Try yfinance import
 try:
     import yfinance as yf
@@ -406,31 +413,65 @@ def merge_external_features(stock_df: pd.DataFrame,
         df = df.drop(columns=['date'], errors='ignore')
         print(f"   ✅ Added {len([c for c in df.columns if 'usdpkr' in c])} USD/PKR features")
     
-    # 2. KSE-100
-    print("\n2. Fetching KSE-100...")
-    kse100 = fetch_kse100(start_year=start_year, end_date=end_date)
-    if not kse100.empty:
-        df = pd.merge_asof(
-            df.sort_values('Date'),
-            kse100.sort_values('date'),
-            left_on='Date',
-            right_on='date',
-            direction='backward'
-        )
-        df = df.drop(columns=['date'], errors='ignore')
-        
-        # Calculate beta vs KSE-100
-        if 'Close' in df.columns and 'kse100_return' in df.columns:
-            stock_returns = df['Close'].pct_change().fillna(0).values
-            df['stock_beta'] = calculate_stock_beta(stock_returns, df['kse100_return'].fillna(0).values)
-            
-            # Correlation with KSE-100
-            df['kse100_correlation'] = calculate_correlation(
-                df['Close'].pct_change().fillna(0).values,
-                df['kse100_return'].fillna(0).values
+    # 2. KSE-100 features
+    if symbol and symbol.upper() != 'KSE100':
+        # For regular stocks: fetch KSE100 as external feature
+        print("\n2. Fetching KSE-100...")
+        kse100 = fetch_kse100(start_year=start_year, end_date=end_date)
+        if not kse100.empty:
+            df = pd.merge_asof(
+                df.sort_values('Date'),
+                kse100.sort_values('date'),
+                left_on='Date',
+                right_on='date',
+                direction='backward'
             )
+            df = df.drop(columns=['date'], errors='ignore')
+            
+            # Calculate beta vs KSE-100
+            if 'Close' in df.columns and 'kse100_return' in df.columns:
+                stock_returns = df['Close'].pct_change().fillna(0).values
+                df['stock_beta'] = calculate_stock_beta(stock_returns, df['kse100_return'].fillna(0).values)
+                
+                # Correlation with KSE-100
+                df['kse100_correlation'] = calculate_correlation(
+                    df['Close'].pct_change().fillna(0).values,
+                    df['kse100_return'].fillna(0).values
+                )
+            
+            print(f"   ✅ Added {len([c for c in df.columns if 'kse100' in c.lower() or 'beta' in c.lower()])} KSE-100 features")
+    else:
+        # For KSE100 itself: use its own data as features (real features, not zeros!)
+        print("\n2. Adding KSE-100 features from own data...")
         
-        print(f"   ✅ Added {len([c for c in df.columns if 'kse100' in c.lower() or 'beta' in c.lower()])} KSE-100 features")
+        # Use KSE100's own OHLCV data as features
+        df['kse100_open'] = df['Open'].values
+        df['kse100_high'] = df['High'].values
+        df['kse100_low'] = df['Low'].values
+        df['kse100_close'] = df['Close'].values
+        df['kse100_volume'] = df['Volume'].values
+        
+        # Calculate returns and momentum from KSE100's own data
+        df['kse100_return'] = df['Close'].pct_change().fillna(0)
+        df['kse100_volatility'] = df['kse100_return'].rolling(20).std().fillna(0)
+        df['kse100_trend'] = (df['Close'] / df['Close'].shift(20) - 1).fillna(0)
+        
+        # Moving average signals
+        sma50 = df['Close'].rolling(50).mean()
+        sma200 = df['Close'].rolling(200).mean()
+        df['kse100_above_sma50'] = (df['Close'] > sma50).astype(int).fillna(0)
+        df['kse100_above_sma200'] = (df['Close'] > sma200).astype(int).fillna(0)
+        
+        # Beta and correlation with itself (perfect correlation)
+        df['stock_beta'] = 1.0  # KSE100 has beta of 1.0 with itself
+        df['kse100_correlation'] = 1.0  # Perfect correlation with itself
+        
+        # Additional momentum features from KSE100's own data
+        df['kse100_momentum_5'] = (df['Close'] / df['Close'].shift(5) - 1).fillna(0)
+        df['kse100_momentum_10'] = (df['Close'] / df['Close'].shift(10) - 1).fillna(0)
+        df['kse100_momentum_20'] = (df['Close'] / df['Close'].shift(20) - 1).fillna(0)
+        
+        print(f"   ✅ Added {len([c for c in df.columns if 'kse100' in c.lower() or 'beta' in c.lower()])} real KSE-100 features from own data")
     
     # 3. Commodities (Oil, Gold)
     print("\n3. Fetching Commodities...")
@@ -465,7 +506,135 @@ def merge_external_features(stock_df: pd.DataFrame,
         df[col] = kibor_df[col].values
     print(f"   ✅ Added {len(kibor_df.columns)} KIBOR features")
     
-    # 5. USD/PKR correlation with stock
+    # 5. TradingView Technical Indicators (ALWAYS fetch fresh - no old cache)
+    if TRADINGVIEW_AVAILABLE and symbol:
+        print(f"\n5. Fetching TradingView indicators for {symbol}...")
+        
+        # Delete old cache to force fresh fetch
+        from pathlib import Path
+        cache_file = Path(__file__).parent.parent / "data" / "tradingview_cache" / f"{symbol.upper()}_technicals.json"
+        if cache_file.exists():
+            try:
+                cache_file.unlink()
+                print(f"   🔄 Cleared old TradingView cache for fresh fetch")
+            except:
+                pass
+        
+        # Fetch from TradingView (fresh data)
+        tv_result = get_tradingview_indicators(symbol, fallback_local=None)
+        tv_indicators = tv_result.get('indicators', {})
+        
+        if tv_indicators and tv_result['source'] == 'tradingview':
+            # Add TradingView values as ADDITIONAL features
+            # These are CURRENT real-time values, so broadcast to all rows (model uses lag features)
+            tv_count = 0
+            
+            # KEY OSCILLATORS (Most Important)
+            if 'rsi_14' in tv_indicators:
+                df['tv_rsi_14'] = tv_indicators['rsi_14']
+                print(f"   📊 TradingView RSI: {tv_indicators['rsi_14']:.2f}")
+                tv_count += 1
+            
+            if 'macd_level' in tv_indicators:
+                df['tv_macd'] = tv_indicators['macd_level']
+                tv_count += 1
+            
+            if 'stochastic_k' in tv_indicators:
+                df['tv_stochastic_k'] = tv_indicators['stochastic_k']
+                tv_count += 1
+            
+            if 'adx' in tv_indicators:
+                df['tv_adx'] = tv_indicators['adx']
+                tv_count += 1
+            
+            if 'momentum_10' in tv_indicators:
+                df['tv_momentum'] = tv_indicators['momentum_10']
+                tv_count += 1
+            
+            if 'williams_r' in tv_indicators:
+                df['tv_williams_r'] = tv_indicators['williams_r']
+                tv_count += 1
+            
+            if 'cci' in tv_indicators:
+                df['tv_cci'] = tv_indicators['cci']
+                tv_count += 1
+            
+            if 'awesome_oscillator' in tv_indicators:
+                df['tv_awesome'] = tv_indicators['awesome_oscillator']
+                tv_count += 1
+            
+            if 'bull_bear_power' in tv_indicators:
+                df['tv_bull_bear'] = tv_indicators['bull_bear_power']
+                tv_count += 1
+            
+            # MOVING AVERAGES (Important for trend)
+            if 'ema_10' in tv_indicators:
+                df['tv_ema_10'] = tv_indicators['ema_10']
+                tv_count += 1
+            
+            if 'sma_10' in tv_indicators:
+                df['tv_sma_10'] = tv_indicators['sma_10']
+                tv_count += 1
+            
+            if 'ema_20' in tv_indicators:
+                df['tv_ema_20'] = tv_indicators['ema_20']
+                tv_count += 1
+            
+            if 'sma_20' in tv_indicators:
+                df['tv_sma_20'] = tv_indicators['sma_20']
+                tv_count += 1
+            
+            if 'ema_50' in tv_indicators:
+                df['tv_ema_50'] = tv_indicators['ema_50']
+                tv_count += 1
+            
+            if 'sma_50' in tv_indicators:
+                df['tv_sma_50'] = tv_indicators['sma_50']
+                tv_count += 1
+            
+            if 'ema_100' in tv_indicators:
+                df['tv_ema_100'] = tv_indicators['ema_100']
+                tv_count += 1
+            
+            if 'sma_100' in tv_indicators:
+                df['tv_sma_100'] = tv_indicators['sma_100']
+                tv_count += 1
+            
+            # COMPOSITE FEATURES
+            # Price vs EMAs (important trend signals)
+            current_price = df['Close'].iloc[-1]
+            
+            if 'ema_20' in tv_indicators and tv_indicators['ema_20'] > 0:
+                df['tv_price_vs_ema20'] = (current_price / tv_indicators['ema_20'] - 1) * 100
+                tv_count += 1
+            
+            if 'ema_50' in tv_indicators and tv_indicators['ema_50'] > 0:
+                df['tv_price_vs_ema50'] = (current_price / tv_indicators['ema_50'] - 1) * 100
+                tv_count += 1
+            
+            # Recommendation counts
+            if 'recommendation_buy' in tv_indicators:
+                df['tv_rec_buy'] = tv_indicators['recommendation_buy']
+                df['tv_rec_sell'] = tv_indicators['recommendation_sell']
+                df['tv_rec_neutral'] = tv_indicators['recommendation_neutral']
+                
+                # Calculate recommendation score (-1 to +1)
+                total = (tv_indicators['recommendation_buy'] + 
+                        tv_indicators['recommendation_sell'] + 
+                        tv_indicators['recommendation_neutral'])
+                if total > 0:
+                    df['tv_recommendation_score'] = (
+                        (tv_indicators['recommendation_buy'] - tv_indicators['recommendation_sell']) / total
+                    )
+                tv_count += 4
+            
+            print(f"   ✅ Added {tv_count} TradingView indicators/features (source: TradingView)")
+        elif tv_indicators and tv_result['source'] == 'local_fallback':
+            print(f"   ℹ️ Using local indicators (TradingView unavailable)")
+        else:
+            print(f"   ⚠️ TradingView unavailable, using local indicators")
+    
+    # 6. USD/PKR correlation with stock
     if 'usdpkr_change' in df.columns and 'Close' in df.columns:
         df['usdpkr_correlation'] = calculate_correlation(
             df['Close'].pct_change().values,
