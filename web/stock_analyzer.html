@@ -1994,6 +1994,19 @@
         const batchStocks = {};
         let batchCompleted = 0;
         let batchTotal = 0;
+        let batchJobQueue = [];
+        let batchActiveSockets = 0;
+        const MAX_BATCH_WS_CONCURRENCY = 1; // Reliability-first: process one live websocket at a time
+
+        function pumpBatchQueue() {
+            while (batchActiveSockets < MAX_BATCH_WS_CONCURRENCY && batchJobQueue.length > 0) {
+                const job = batchJobQueue.shift();
+                if (!job || !job.symbol || !job.job_id) continue;
+                if (!batchStocks[job.symbol] || batchStocks[job.symbol].finished) continue;
+                batchActiveSockets++;
+                connectBatchWebSocket(job.symbol, job.job_id);
+            }
+        }
 
         async function startBatchAnalysis() {
             const input = document.getElementById('batchSymbolsInput').value.trim();
@@ -2019,6 +2032,8 @@
             Object.keys(batchStocks).forEach(k => delete batchStocks[k]);
             batchCompleted = 0;
             batchTotal = symbols.length;
+            batchJobQueue = [];
+            batchActiveSockets = 0;
 
             document.getElementById('batchStatus').innerText = `Analyzing ${symbols.length} stocks...`;
 
@@ -2041,14 +2056,10 @@
                     document.getElementById('batchStatus').innerText = `Error: ${msg}`;
                     return;
                 }
-                // Stagger WebSocket connections so server can accept each (avoids "connection failed" when opening many at once)
-                const delayMs = 350;
-                data.jobs.forEach((job, index) => {
-                    if (!job || !job.symbol || !job.job_id || batchStocks[job.symbol] == null) return;
-                    setTimeout(() => {
-                        connectBatchWebSocket(job.symbol, job.job_id);
-                    }, index * delayMs);
-                });
+                batchJobQueue = data.jobs.filter(job =>
+                    job && job.symbol && job.job_id && batchStocks[job.symbol] != null
+                );
+                pumpBatchQueue();
             } catch (e) {
                 document.getElementById('batchStatus').innerText = `Error: ${e.message}`;
             }
@@ -2102,6 +2113,7 @@
             const p = `batch-${symbol}`;
             const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/progress/${jobId}`);
             batchStocks[symbol].ws = ws;
+            let finalized = false;
 
             function markBatchSymbolFinished(symbol) {
                 const rec = batchStocks[symbol];
@@ -2109,6 +2121,14 @@
                 rec.finished = true;
                 batchCompleted++;
                 updateBatchStatus();
+            }
+
+            function finalizeBatchSymbol(symbol) {
+                if (finalized) return;
+                finalized = true;
+                markBatchSymbolFinished(symbol);
+                batchActiveSockets = Math.max(0, batchActiveSockets - 1);
+                pumpBatchQueue();
             }
 
             ws.onmessage = (e) => {
@@ -2145,14 +2165,14 @@
                             : (results ? 'Invalid or incomplete data' : 'No data returned');
                     }
                     ws.close();
-                    markBatchSymbolFinished(symbol);
+                    finalizeBatchSymbol(symbol);
                 } else if (data.stage === 'error') {
                     document.getElementById(`${p}-loader`).style.display = 'none';
                     document.getElementById(`${p}-error`).style.display = 'block';
                     document.getElementById(`${p}-error-msg`).innerText = data.message || 'Analysis failed';
                     batchStocks[symbol].data = 'error';
                     ws.close();
-                    markBatchSymbolFinished(symbol);
+                    finalizeBatchSymbol(symbol);
                 }
             };
 
@@ -2162,7 +2182,7 @@
                 document.getElementById(`${p}-error-msg`).innerText = 'WebSocket connection failed';
                 batchStocks[symbol].data = 'error';
                 ws.close();
-                markBatchSymbolFinished(symbol);
+                finalizeBatchSymbol(symbol);
             };
 
             ws.onclose = (ev) => {
@@ -2172,7 +2192,7 @@
                     document.getElementById(`${p}-error`).style.display = 'block';
                     document.getElementById(`${p}-error-msg`).innerText = 'Connection closed unexpectedly';
                     batchStocks[symbol].data = 'error';
-                    markBatchSymbolFinished(symbol);
+                    finalizeBatchSymbol(symbol);
                 }
             };
         }
@@ -2304,10 +2324,13 @@
             document.getElementById(`${p}-progress`).innerText = 'Retrying...';
             const rec = batchStocks[symbol];
             if (rec) {
+                if (rec.ws && rec.ws.readyState === WebSocket.OPEN) rec.ws.close();
                 rec.data = null;
+                if (rec.finished) {
+                    batchCompleted = Math.max(0, batchCompleted - 1);
+                }
                 rec.finished = false;
             }
-            batchCompleted--;
             updateBatchStatus();
 
             fetch(`${API_BASE}/api/analyze-stock`, {
@@ -2316,13 +2339,20 @@
                 body: JSON.stringify({ symbol, horizon: selectedHorizon })
             })
             .then(r => r.json())
-            .then(data => connectBatchWebSocket(symbol, data.job_id))
+            .then(data => {
+                if (!data || !data.job_id) throw new Error('Retry did not return a job ID');
+                batchJobQueue.push({ symbol, job_id: data.job_id });
+                pumpBatchQueue();
+            })
             .catch(err => {
                 document.getElementById(`${p}-loader`).style.display = 'none';
                 document.getElementById(`${p}-error`).style.display = 'block';
                 document.getElementById(`${p}-error-msg`).innerText = err.message;
                 batchStocks[symbol].data = 'error';
-                batchCompleted++;
+                if (rec && !rec.finished) {
+                    rec.finished = true;
+                    batchCompleted++;
+                }
                 updateBatchStatus();
             });
         }
