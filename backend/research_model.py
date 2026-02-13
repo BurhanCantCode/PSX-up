@@ -335,6 +335,24 @@ def get_prediction_start_date(data_last_date: datetime) -> datetime:
     return next_trading_day
 
 
+def count_trading_days(start_date: datetime, end_date: datetime) -> int:
+    """
+    Count trading days between start and end dates (inclusive), skipping weekends.
+    """
+    start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    if start > end:
+        return 0
+
+    count = 0
+    current = start
+    while current <= end:
+        if current.weekday() < 5:
+            count += 1
+        current = current + timedelta(days=1)
+    return count
+
+
 def add_weekend_predictions(predictions: List[Dict], include_all_days: bool = True) -> List[Dict]:
     """
     Add weekend predictions with Friday's closing price.
@@ -604,8 +622,10 @@ class IteratedForecaster:
                 reliability = 'high'
             elif day <= 21:
                 reliability = 'medium'
-            else:
+            elif day <= 60:
                 reliability = 'low'
+            else:
+                reliability = 'very_low'
             
             # Calculate prediction date using TRADING days (skip weekends)
             # Day 1 = prediction_start_date, Day N = (N-1) trading days after start
@@ -714,7 +734,7 @@ class IteratedForecaster:
         
         # AR(1) process
         phi = 0.15
-        daily_drift = trend_direction * trend_strength + hist_mean
+        daily_drift = trend_direction * trend_strength / 100 + hist_mean
         daily_drift = max(-0.002, min(0.002, daily_drift))
         
         # Initialize
@@ -767,8 +787,10 @@ class IteratedForecaster:
                 reliability = 'high'
             elif day <= 21:
                 reliability = 'medium'
-            else:
+            elif day <= 60:
                 reliability = 'low'
+            else:
+                reliability = 'very_low'
 
             # Calculate prediction date using TRADING days (skip weekends)
             # Day 1 = prediction_start_date, Day N = (N-1) trading days after start
@@ -1128,10 +1150,11 @@ class PSXResearchModel:
         if not self.is_fitted:
             raise ValueError("Model not fitted. Call fit() first.")
 
-        # Calculate horizon
+        # Calculate horizon in TRADING days from the proper prediction start date
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         last_date = pd.to_datetime(df['Date'].max())
-        horizon = (end_dt - last_date).days
+        prediction_start_date = get_prediction_start_date(last_date)
+        horizon = count_trading_days(prediction_start_date, end_dt)
         horizon = min(horizon, days)
 
         # Apply max_horizon if specified (research-validated limit)
@@ -1139,8 +1162,12 @@ class PSXResearchModel:
             horizon = min(horizon, max_horizon)
             print(f"   ✅ Using research-validated {max_horizon}-day horizon")
         
+        if horizon <= 0:
+            print(f"\n🔮 No future trading days available up to {end_date}")
+            return []
+
         print(f"\n🔮 Generating {horizon} daily predictions...")
-        print(f"   From: {last_date.date()} to: {end_date}")
+        print(f"   From: {prediction_start_date.date()} to: {end_date}")
         
         # Preprocess df ONCE here (adds external features, indicators, etc.)
         df_preprocessed = self.preprocess(df)

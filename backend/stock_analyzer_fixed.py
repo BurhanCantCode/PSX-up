@@ -42,6 +42,28 @@ try:
 except ImportError:
     XGBOOST_AVAILABLE = False
 
+try:
+    from backend.prediction_tuning import (
+        apply_prediction_tweaks,
+        get_live_tweak_config,
+        direction_from_change_pct,
+    )
+except Exception:
+    # Safe fallbacks if tuning module is unavailable
+    def apply_prediction_tweaks(predictions, config):
+        return predictions
+
+    def get_live_tweak_config():
+        class _Cfg:
+            enabled = False
+            neutral_band_pct = 0.0
+        return _Cfg()
+
+    def direction_from_change_pct(change_pct, neutral_band_pct=0.0):
+        if abs(change_pct) <= neutral_band_pct:
+            return "NEUTRAL"
+        return "BULLISH" if change_pct > 0 else "BEARISH"
+
 class StockRequest(BaseModel):
     symbol: str
     horizon: Union[int, str] = 21  # Default to 21 days (research-validated), can be int or 'full'
@@ -1221,6 +1243,27 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             print(f"Sentiment analysis error (non-fatal): {e}")
             adjusted_predictions = predictions
             sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
+
+        # Apply lightweight, globally-configurable prediction quality tweaks
+        live_tweak_config = get_live_tweak_config()
+        tuning_meta = {"enabled": bool(getattr(live_tweak_config, "enabled", False))}
+        try:
+            if adjusted_predictions and tuning_meta["enabled"]:
+                adjusted_predictions = apply_prediction_tweaks(adjusted_predictions, live_tweak_config)
+                tuning_meta.update(
+                    {
+                        "neutral_band_pct": float(getattr(live_tweak_config, "neutral_band_pct", 0.0)),
+                        "applied_to_days": len(adjusted_predictions),
+                    }
+                )
+                await websocket.send_json({
+                    'stage': 'forecasting',
+                    'progress': 94,
+                    'message': f'🛠️ Applied prediction tuning ({len(adjusted_predictions)} days)'
+                })
+        except Exception as e:
+            print(f"Prediction tuning skipped (non-fatal): {e}")
+            tuning_meta = {"enabled": False, "error": str(e)}
         
         # 🆕 Generate detailed monthly forecasts with news correlation
         monthly_forecast = []
@@ -1299,7 +1342,8 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'data_points': len(df),
                 'features_used': len(metrics.get('weights', {})) if USE_RESEARCH_MODEL else 74,
                 'external_features_used': USE_RESEARCH_MODEL,
-                'prediction_reasoning': reasoning
+                'prediction_reasoning': reasoning,
+                'tuning': tuning_meta,
             }
         })
         
@@ -1307,17 +1351,19 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         try:
             complete_analysis_file = Path(__file__).parent.parent / "data" / f"{symbol}_complete_analysis.json"
             import json as json_module
-            json_module.dump({
-                'symbol': symbol,
-                'generated_at': datetime.now().isoformat(),
-                'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble',
-                'current_price': float(df['Close'].iloc[-1]),
-                'sentiment': sentiment_summary,
-                'monthly_forecast': monthly_forecast,  # Detailed monthly analysis
-                'forecast_summary': forecast_summary,  # Overall outlook
-                'prediction_reasoning': reasoning,
-                'daily_predictions_count': len(adjusted_predictions),
-            }, open(complete_analysis_file, 'w'), indent=2)
+            with open(complete_analysis_file, 'w') as cf:
+                json_module.dump({
+                    'symbol': symbol,
+                    'generated_at': datetime.now().isoformat(),
+                    'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble',
+                    'current_price': float(df['Close'].iloc[-1]),
+                    'sentiment': sentiment_summary,
+                    'monthly_forecast': monthly_forecast,  # Detailed monthly analysis
+                    'forecast_summary': forecast_summary,  # Overall outlook
+                    'prediction_reasoning': reasoning,
+                    'daily_predictions_count': len(adjusted_predictions),
+                    'tuning': tuning_meta,
+                }, cf, indent=2)
             print(f"✅ Complete analysis saved to {complete_analysis_file}")
         except Exception as e:
             print(f"⚠️ Failed to save complete analysis: {e}")
@@ -1340,7 +1386,10 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                     symbol=symbol,
                     current_price=current_price,
                     predicted_price=pred_7d['predicted_price'],
-                    predicted_direction=reasoning.get('direction', 'NEUTRAL'),
+                    predicted_direction=direction_from_change_pct(
+                        float(pred_7d.get('upside_potential', 0) or 0),
+                        neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
+                    ),
                     confidence=pred_7d.get('confidence', 0.5),
                     horizon_days=7,
                     williams_signal=williams_signal,
