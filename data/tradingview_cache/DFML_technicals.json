@@ -1,0 +1,33 @@
+{
+  "symbol": "DFML",
+  "cached_at": "2026-02-01T20:48:58.282696",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 44.89,
+    "stochastic_k": 23.19,
+    "cci": -89.59,
+    "adx": 24.79,
+    "awesome_oscillator": 0.48,
+    "momentum_10": -0.55,
+    "macd_level": -0.02,
+    "stochastic_rsi": 25.6,
+    "williams_r": -89.81,
+    "bull_bear_power": -1.11,
+    "ultimate_oscillator": 40.43,
+    "ema_10": 24.78,
+    "sma_10": 24.8,
+    "ema_20": 24.8,
+    "sma_20": 25.24,
+    "ema_30": 24.86,
+    "sma_30": 24.44,
+    "ema_50": 25.38,
+    "sma_50": 24.75,
+    "ema_100": 27.45,
+    "sma_100": 27.66,
+    "vwma": 25.71,
+    "hma": 24.64
+  }
+}

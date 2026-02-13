@@ -1,0 +1,33 @@
+{
+  "symbol": "JVDC",
+  "cached_at": "2026-01-26T17:26:03.792717",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 87.38,
+    "stochastic_k": 85.09,
+    "cci": 151.96,
+    "adx": 48.23,
+    "awesome_oscillator": 35.83,
+    "momentum_10": 33.7,
+    "macd_level": 13.76,
+    "stochastic_rsi": 72.35,
+    "williams_r": -9.65,
+    "bull_bear_power": 35.81,
+    "ultimate_oscillator": 55.76,
+    "ema_10": 135.81,
+    "sma_10": 133.88,
+    "ema_20": 124.94,
+    "sma_20": 125.04,
+    "ema_30": 116.64,
+    "sma_30": 111.7,
+    "ema_50": 105.94,
+    "sma_50": 97.21,
+    "ema_100": 93.47,
+    "sma_100": 88.55,
+    "vwma": 133.43,
+    "hma": 147.08
+  }
+}

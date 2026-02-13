@@ -8,7 +8,7 @@ import sys
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 
 from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -94,6 +94,29 @@ if ANALYZER_AVAILABLE:
     @app.websocket("/ws/progress/{job_id}")
     async def ws_progress(websocket: WebSocket, job_id: str):
         await stock_websocket(websocket, job_id)
+
+    class BatchAnalyzeRequest(BaseModel):
+        symbols: str  # Comma-separated symbols like "LUCK,EFERT,PPL"
+        horizon: Union[int, str] = 21
+
+    @app.post("/api/batch-analyze")
+    async def api_batch_analyze(request: BatchAnalyzeRequest):
+        """Start batch analysis for multiple symbols. Returns independent job_ids."""
+        symbols = list(dict.fromkeys(
+            s.strip().upper() for s in request.symbols.split(",") if s.strip()
+        ))
+        if not symbols:
+            raise HTTPException(status_code=400, detail="No symbols provided")
+        if len(symbols) > 10:
+            raise HTTPException(status_code=400, detail="Maximum 10 symbols per batch")
+
+        jobs = []
+        for symbol in symbols:
+            stock_request = StockRequest(symbol=symbol, horizon=request.horizon)
+            result = await start_stock_analysis(stock_request)
+            jobs.append({"symbol": symbol, "job_id": result["job_id"]})
+
+        return {"jobs": jobs, "total": len(jobs)}
 
     print("✅ Stock Analyzer routes registered")
 
@@ -435,47 +458,87 @@ if COMMODITY_AVAILABLE:
 
 @app.get("/api/history")
 async def get_prediction_history():
-    """Get list of saved Fortune Teller predictions (both SOTA and Research models)"""
+    """Get list of saved predictions with rich metadata for dashboard display."""
     try:
         data_dir = BASE_DIR / "data"
-        
-        # Include both SOTA and Research model predictions
+
         sota_files = list(data_dir.glob("*_sota_predictions_2026.json"))
         research_files = list(data_dir.glob("*_research_predictions_2026.json"))
         all_files = sota_files + research_files
-        
-        # Sort by modification time (most recent first)
         all_files = sorted(all_files, key=lambda p: p.stat().st_mtime, reverse=True)
-        
+
         history = []
-        seen_symbols = set()  # Only show most recent per symbol
-        
+        seen_symbols = set()
+
         for f in all_files:
             try:
                 with open(f, 'r') as file:
                     data = json.load(file)
                     symbol = data.get('symbol')
-                    
-                    # Skip if we already have a more recent analysis for this symbol
+
                     if symbol in seen_symbols:
                         continue
                     seen_symbols.add(symbol)
-                    
+
                     daily_preds = data.get('daily_predictions', [])
                     last_pred = daily_preds[-1] if daily_preds else {}
                     first_pred = daily_preds[0] if daily_preds else {}
-                    
-                    history.append({
+
+                    entry = {
                         "filename": f.name,
                         "symbol": symbol,
                         "generated_at": data.get('generated_at'),
                         "current_price": first_pred.get('predicted_price', 0),
                         "predicted_return": last_pred.get('upside_potential', 0),
-                    })
+                        "model": data.get('model', 'Unknown'),
+                        "prediction_days": len(daily_preds),
+                    }
+
+                    # Model performance
+                    metrics = data.get('metrics', {})
+                    entry["model_performance"] = {
+                        "r2": metrics.get('r2'),
+                        "trend_accuracy": metrics.get('trend_accuracy', metrics.get('ensemble_accuracy')),
+                        "mape": metrics.get('mape'),
+                    }
+
+                    # Prediction reasoning
+                    reasoning = data.get('prediction_reasoning', {})
+                    entry["direction"] = reasoning.get('direction', 'NEUTRAL')
+                    entry["direction_emoji"] = reasoning.get('emoji', '')
+                    entry["bullish_count"] = reasoning.get('bullish_count', 0)
+                    entry["bearish_count"] = reasoning.get('bearish_count', 0)
+
+                    # Complete analysis data (sentiment, forecast summary)
+                    complete_file = data_dir / f"{symbol}_complete_analysis.json"
+                    if complete_file.exists():
+                        try:
+                            with open(complete_file, 'r') as cf:
+                                complete = json.load(cf)
+                            sentiment = complete.get('sentiment', {})
+                            entry["sentiment_signal"] = sentiment.get('signal', 'NEUTRAL')
+                            entry["sentiment_emoji"] = sentiment.get('signal_emoji', '')
+                            forecast_summary = complete.get('forecast_summary', {})
+                            entry["overall_direction"] = forecast_summary.get('overall_direction', 'UNKNOWN')
+                            entry["bullish_months"] = forecast_summary.get('bullish_months', 0)
+                            entry["bearish_months"] = forecast_summary.get('bearish_months', 0)
+                        except Exception:
+                            pass
+
+                    history.append(entry)
             except Exception:
                 continue
-        
-        return {"success": True, "history": history}
+
+        # Prediction log entries for the dashboard table
+        prediction_log = []
+        try:
+            from backend.prediction_logger import get_prediction_logger
+            logger = get_prediction_logger()
+            prediction_log = logger.get_recent_predictions(limit=50)
+        except Exception:
+            pass
+
+        return {"success": True, "history": history, "prediction_log": prediction_log}
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -541,7 +604,20 @@ async def get_prediction_file(filename: str):
                 }
         except Exception as e:
             print(f"Error loading sentiment cache: {e}")
-    
+
+    # Load monthly_forecast and forecast_summary from complete analysis if available
+    complete_file = BASE_DIR / "data" / f"{symbol}_complete_analysis.json"
+    monthly_forecast = []
+    forecast_summary = {}
+    if complete_file.exists():
+        try:
+            with open(complete_file, 'r') as cf:
+                complete_data = json.load(cf)
+            monthly_forecast = complete_data.get('monthly_forecast', [])
+            forecast_summary = complete_data.get('forecast_summary', {})
+        except Exception:
+            pass
+
     # Return complete structure matching WebSocket response
     return {
         "symbol": symbol,
@@ -551,7 +627,9 @@ async def get_prediction_file(filename: str):
         "daily_predictions": daily_preds,
         "historical_data": historical_data,
         "sentiment": sentiment,
-        "prediction_reasoning": data.get('prediction_reasoning')  # Include reasoning if available
+        "prediction_reasoning": data.get('prediction_reasoning'),  # Include reasoning if available
+        "monthly_forecast": monthly_forecast,
+        "forecast_summary": forecast_summary,
     }
 
 # ============================================================================

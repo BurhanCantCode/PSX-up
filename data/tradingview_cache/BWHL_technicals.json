@@ -1,0 +1,33 @@
+{
+  "symbol": "BWHL",
+  "cached_at": "2026-02-01T20:09:20.643199",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 50.79,
+    "stochastic_k": 12.54,
+    "cci": -70.09,
+    "adx": 40.57,
+    "awesome_oscillator": 6.45,
+    "momentum_10": -11.11,
+    "macd_level": 3.87,
+    "stochastic_rsi": 7.95,
+    "williams_r": -81.1,
+    "bull_bear_power": -9.4,
+    "ultimate_oscillator": 35.51,
+    "ema_10": 215.52,
+    "sma_10": 218.44,
+    "ema_20": 214.06,
+    "sma_20": 220.09,
+    "ema_30": 210.35,
+    "sma_30": 209.57,
+    "ema_50": 203.97,
+    "sma_50": 198.85,
+    "ema_100": 193.28,
+    "sma_100": 192.94,
+    "vwma": 226.02,
+    "hma": 205.56
+  }
+}

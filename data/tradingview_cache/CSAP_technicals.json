@@ -1,0 +1,33 @@
+{
+  "symbol": "CSAP",
+  "cached_at": "2026-02-01T19:53:00.826294",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 73.49,
+    "stochastic_k": 75.12,
+    "cci": 96.63,
+    "adx": 66.37,
+    "awesome_oscillator": 21.66,
+    "momentum_10": 16.88,
+    "macd_level": 8.22,
+    "stochastic_rsi": 36.63,
+    "williams_r": -28.48,
+    "bull_bear_power": 14.59,
+    "ultimate_oscillator": 45.83,
+    "ema_10": 131.12,
+    "sma_10": 131.46,
+    "ema_20": 124.44,
+    "sma_20": 122.67,
+    "ema_30": 119.74,
+    "sma_30": 115.81,
+    "ema_50": 114.22,
+    "sma_50": 109.43,
+    "ema_100": 109.4,
+    "sma_100": 105.56,
+    "vwma": 126.25,
+    "hma": 137.38
+  }
+}

@@ -546,6 +546,52 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* ===== PREDICTION INSIGHTS ===== */
+        .insights-panel { margin-top: 30px; }
+        .insights-section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        .entry-exit-card { background: var(--bg-card); border-radius: 20px; padding: 25px; box-shadow: var(--shadow); display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; margin-bottom: 25px; }
+        .entry-exit-item { text-align: center; padding: 15px; border-radius: 12px; }
+        .entry-exit-item.entry-highlight { background: rgba(16,185,129,0.08); border: 2px solid rgba(16,185,129,0.2); }
+        .entry-exit-item.exit-highlight { background: rgba(193,242,54,0.12); border: 2px solid rgba(193,242,54,0.3); }
+        .entry-exit-item .ee-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; }
+        .entry-exit-item .ee-value { font-size: 1.4rem; font-weight: 700; margin-bottom: 4px; }
+        .entry-exit-item .ee-sub { font-size: 0.8rem; color: var(--text-muted); }
+        .metrics-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-bottom: 25px; }
+        .metric-card { background: var(--bg-card); border-radius: 15px; padding: 18px; box-shadow: var(--shadow); text-align: center; }
+        .metric-card .mc-label { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; text-transform: uppercase; }
+        .metric-card .mc-value { font-size: 1.1rem; font-weight: 700; }
+        .metric-card .mc-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 3px; }
+        .prediction-table-wrapper { background: var(--bg-card); border-radius: 20px; padding: 25px; box-shadow: var(--shadow); margin-bottom: 25px; max-height: 500px; overflow-y: auto; }
+        .prediction-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .prediction-table th { position: sticky; top: 0; background: var(--bg-card); text-align: left; padding: 10px 12px; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; border-bottom: 2px solid var(--border); }
+        .prediction-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+        .prediction-table tr:hover { background: #f8fafc; }
+        .prediction-table tr.row-entry { background: rgba(16,185,129,0.06); border-left: 3px solid var(--green); }
+        .prediction-table tr.row-exit { background: rgba(193,242,54,0.1); border-left: 3px solid var(--lime); }
+        .prediction-table .badge-sm { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; }
+        .prediction-table .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; margin-left: 4px; }
+        .badge-conf-high { background: rgba(16,185,129,0.15); color: #059669; }
+        .badge-conf-mid { background: rgba(234,179,8,0.2); color: #b45309; }
+        .badge-conf-low { background: rgba(239,68,68,0.15); color: #dc2626; }
+        .badge-rel-high { background: rgba(16,185,129,0.15); color: #059669; }
+        .badge-rel-mid { background: rgba(234,179,8,0.2); color: #b45309; }
+        .badge-rel-low { background: rgba(239,68,68,0.15); color: #dc2626; }
+        .badge-buy { background: rgba(16,185,129,0.2); color: #059669; }
+        .badge-sell { background: rgba(193,242,54,0.3); color: #6b7280; }
+        .confidence-card { background: var(--bg-card); border-radius: 20px; padding: 25px; box-shadow: var(--shadow); margin-bottom: 25px; }
+        .confidence-card .chart-area { height: 180px; position: relative; }
+        .batch-insights-compact { margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
+        .batch-entry-exit { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .batch-entry-exit .bee-item { text-align: center; padding: 8px; border-radius: 8px; background: #f8fafc; }
+        .batch-entry-exit .bee-item .bee-label { font-size: 0.65rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+        .batch-entry-exit .bee-item .bee-value { font-size: 0.9rem; font-weight: 700; margin-top: 2px; }
+        .batch-metrics-mini { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.75rem; }
+        .batch-metrics-mini .bm-item { display: flex; align-items: center; gap: 4px; }
+        .batch-metrics-mini .bm-label { color: var(--text-muted); }
+        .batch-metrics-mini .bm-value { font-weight: 700; }
+        @media (max-width: 1200px) { .entry-exit-card { grid-template-columns: 1fr 1fr; } .metrics-row { grid-template-columns: repeat(3, 1fr); } }
+        @media (max-width: 768px) { .entry-exit-card { grid-template-columns: 1fr; } .metrics-row { grid-template-columns: repeat(2, 1fr); } }
     </style>
 </head>
 
@@ -594,6 +640,17 @@
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                     Scanners
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" onclick="switchView('batch')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="9"></rect>
+                        <rect x="14" y="3" width="7" height="5"></rect>
+                        <rect x="14" y="12" width="7" height="9"></rect>
+                        <rect x="3" y="16" width="7" height="5"></rect>
+                    </svg>
+                    Batch Analysis
                 </a>
             </li>
         </ul>
@@ -658,6 +715,21 @@
                             <strong>Full Year</strong>
                             <small>Dec 2026 (informational)</small>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Predictions Dashboard -->
+            <div id="dashboardHistorySection" style="margin-bottom:30px;">
+                <h2 class="section-header">Previous Predictions</h2>
+                <div id="dashboardHistoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;" role="list">
+                    <div style="color:var(--text-muted); font-size:0.9rem;">Loading history...</div>
+                </div>
+
+                <div style="margin-top:30px;">
+                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Accuracy Tracker</h3>
+                    <div id="predictionLogTable" style="overflow-x:auto;">
+                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
                     </div>
                 </div>
             </div>
@@ -755,6 +827,7 @@
                         </div>
                     </div>
                 </div>
+                <div id="insightsPanel"></div>
             </div>
         </div>
 
@@ -885,6 +958,28 @@
             </div>
         </div>
 
+        <!-- BATCH ANALYSIS VIEW -->
+        <div id="batchView" class="view-section">
+            <h2 class="section-header">Batch Analysis</h2>
+
+            <div class="input-card" style="max-width: 700px;">
+                <div class="input-label">STOCK SYMBOLS (comma-separated)</div>
+                <input type="text" id="batchSymbolsInput" class="input-field"
+                    placeholder="LUCK, EFERT, PPL, OGDC"
+                    style="text-transform: uppercase;"
+                    onkeypress="if(event.key === 'Enter') startBatchAnalysis()">
+                <div style="margin-top: 15px; display: flex; gap: 10px; align-items: center;">
+                    <button onclick="startBatchAnalysis()"
+                        style="background: var(--primary); color: var(--lime); border: none; padding: 12px 25px; border-radius: 12px; font-weight: 600; font-family: 'Outfit', sans-serif; cursor: pointer; font-size: 0.95rem;">
+                        Analyze All
+                    </button>
+                    <span id="batchStatus" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                </div>
+            </div>
+
+            <div id="batchResultsContainer" style="margin-top: 30px;"></div>
+        </div>
+
     </main>
 
     <!-- Overlay -->
@@ -910,6 +1005,357 @@
         let globalHistory = [];
         let globalPredictions = [];
         let selectedCommodity = null;
+        let insightsConfidenceChart = null;
+
+        // =============================================
+        // PREDICTION INSIGHTS - PURE COMPUTATION
+        // =============================================
+        function computeInsights(res) {
+            const preds = res.daily_predictions || [];
+            const currentPrice = res.current_price || 0;
+            if (preds.length === 0) return null;
+
+            // Daily changes
+            const dailyChanges = preds.map((p, i) => {
+                const prevPrice = i === 0 ? currentPrice : preds[i - 1].predicted_price;
+                const dailyChangePct = prevPrice > 0 ? ((p.predicted_price - prevPrice) / prevPrice) * 100 : 0;
+                const cumulativePct = currentPrice > 0 ? ((p.predicted_price - currentPrice) / currentPrice) * 100 : 0;
+                return { ...p, daily_change_pct: dailyChangePct, cumulative_pct: cumulativePct };
+            });
+
+            // Entry: predicted bottom (min price)
+            let minIdx = 0;
+            for (let i = 1; i < preds.length; i++) {
+                if (preds[i].predicted_price < preds[minIdx].predicted_price) minIdx = i;
+            }
+            // Exit: predicted peak AFTER bottom
+            let maxAfterMinIdx = minIdx;
+            for (let i = minIdx + 1; i < preds.length; i++) {
+                if (preds[i].predicted_price > preds[maxAfterMinIdx].predicted_price) maxAfterMinIdx = i;
+            }
+            // Overall high
+            let maxIdx = 0;
+            for (let i = 1; i < preds.length; i++) {
+                if (preds[i].predicted_price > preds[maxIdx].predicted_price) maxIdx = i;
+            }
+
+            const entryPrice = preds[minIdx].predicted_price;
+            const exitPrice = preds[maxAfterMinIdx].predicted_price;
+            const potentialGainPct = entryPrice > 0 ? ((exitPrice - entryPrice) / entryPrice) * 100 : 0;
+            const currentToBottomPct = currentPrice > 0 ? ((entryPrice - currentPrice) / currentPrice) * 100 : 0;
+
+            // Max drawdown
+            let maxDrawdown = 0, peakPrice = preds[0].predicted_price;
+            for (let i = 1; i < preds.length; i++) {
+                if (preds[i].predicted_price > peakPrice) peakPrice = preds[i].predicted_price;
+                const dd = ((peakPrice - preds[i].predicted_price) / peakPrice) * 100;
+                if (dd > maxDrawdown) maxDrawdown = dd;
+            }
+
+            // Volatility & win rate
+            const changes = dailyChanges.map(d => d.daily_change_pct);
+            const avgChange = changes.reduce((a, b) => a + b, 0) / changes.length;
+            const variance = changes.reduce((s, c) => s + Math.pow(c - avgChange, 2), 0) / changes.length;
+            const upDays = changes.filter(c => c > 0).length;
+
+            // Confidence timeline
+            const reliableZoneEnd = preds.findIndex(p => (p.confidence || 0) < 0.70);
+
+            return {
+                dailyChanges,
+                entry: { date: preds[minIdx].date, day: preds[minIdx].day, price: entryPrice, currentToBottomPct },
+                exit: { date: preds[maxAfterMinIdx].date, day: preds[maxAfterMinIdx].day, price: exitPrice, potentialGainPct },
+                hasTradeSetup: maxAfterMinIdx > minIdx,
+                metrics: {
+                    predictedHigh: { price: preds[maxIdx].predicted_price, date: preds[maxIdx].date, day: preds[maxIdx].day },
+                    predictedLow: { price: preds[minIdx].predicted_price, date: preds[minIdx].date, day: preds[minIdx].day },
+                    maxDrawdownPct: maxDrawdown,
+                    volatility: Math.sqrt(variance),
+                    avgDailyChangePct: avgChange,
+                    winRatePct: (upDays / changes.length) * 100,
+                    totalDays: preds.length,
+                    upDays,
+                    downDays: preds.length - upDays
+                },
+                confidence: {
+                    data: preds.map(p => ({ day: p.day, date: p.date, confidence: p.confidence || 0, reliability: p.reliability || 'unknown' })),
+                    reliableZoneEndDay: reliableZoneEnd === -1 ? preds.length : reliableZoneEnd,
+                    avgConfidence: preds.reduce((s, p) => s + (p.confidence || 0), 0) / preds.length
+                }
+            };
+        }
+
+        function formatShortDate(dateStr) {
+            if (!dateStr) return '--';
+            try {
+                const d = new Date(dateStr + 'T12:00:00');
+                return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } catch (e) { return dateStr || '--'; }
+        }
+
+        function renderConfidenceChart(canvasId, insights) {
+            if (!insights || !insights.confidence || !insights.confidence.data.length) return;
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            if (insightsConfidenceChart) {
+                insightsConfidenceChart.destroy();
+                insightsConfidenceChart = null;
+            }
+            const ctx = canvas.getContext('2d');
+            const data = insights.confidence.data;
+            const thresholdPlugin = {
+                id: 'threshold70',
+                afterDraw(chart) {
+                    const yScale = chart.scales.y;
+                    if (!yScale) return;
+                    const y70 = yScale.getPixelForValue(70);
+                    const left = chart.chartArea.left;
+                    const right = chart.chartArea.right;
+                    const c = chart.ctx;
+                    c.save();
+                    c.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+                    c.setLineDash([5, 5]);
+                    c.lineWidth = 1.5;
+                    c.beginPath();
+                    c.moveTo(left, y70);
+                    c.lineTo(right, y70);
+                    c.stroke();
+                    c.restore();
+                }
+            };
+            insightsConfidenceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.day),
+                    datasets: [{
+                        label: 'Confidence %',
+                        data: data.map(d => (d.confidence * 100)),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        threshold70: {}
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Day' } },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            title: { display: true, text: 'Confidence %' }
+                        }
+                    }
+                },
+                plugins: [thresholdPlugin]
+            });
+        }
+
+        function renderInsightsPanel(res, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            const insights = computeInsights(res);
+            if (!insights) return;
+
+            const fmt = (n) => (n == null || n === '') ? '--' : Number(n).toFixed(2);
+            const pct = (n) => n == null ? '--' : (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+            const entry = insights.entry;
+            const exit = insights.exit;
+            const m = insights.metrics;
+            const conf = insights.confidence;
+            const reliableEnd = conf.reliableZoneEndDay;
+            const avgConfPct = (conf.avgConfidence * 100).toFixed(0);
+
+            // 2a. Entry/Exit Strategy Card
+            let html = `
+            <div class="insights-panel" style="margin-top:24px;">
+                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:16px;">📈 Prediction Insights</h3>
+                <div class="entry-exit-card">
+                    <div class="entry-exit-item entry-highlight">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Best Entry (Buy)</div>
+                        <div style="font-size:1.25rem; font-weight:700;">PKR ${fmt(entry.price)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${formatShortDate(entry.date)} (Day ${entry.day})</div>
+                    </div>
+                    <div class="entry-exit-item exit-highlight">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Best Exit (Sell)</div>
+                        <div style="font-size:1.25rem; font-weight:700;">PKR ${fmt(exit.price)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${formatShortDate(exit.date)} (Day ${exit.day})</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Potential Gain</div>
+                        <div style="font-size:1.25rem; font-weight:700; color:var(--green);">${pct(exit.potentialGainPct)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">Entry → Exit</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Current → Bottom</div>
+                        <div style="font-size:1.25rem; font-weight:700;">${pct(entry.currentToBottomPct)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">Expected decline</div>
+                    </div>
+                </div>
+                <div class="metrics-row">
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Predicted High</div>
+                        <div style="font-size:1.1rem; font-weight:700;">PKR ${fmt(m.predictedHigh.price)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${formatShortDate(m.predictedHigh.date)}</div>
+                    </div>
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Predicted Low</div>
+                        <div style="font-size:1.1rem; font-weight:700;">PKR ${fmt(m.predictedLow.price)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${formatShortDate(m.predictedLow.date)}</div>
+                    </div>
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Max Drawdown</div>
+                        <div style="font-size:1.1rem; font-weight:700;">${pct(-m.maxDrawdownPct)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">peak-to-trough</div>
+                    </div>
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Volatility</div>
+                        <div style="font-size:1.1rem; font-weight:700;">${fmt(m.volatility)}%</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">daily std dev</div>
+                    </div>
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Avg Daily Change</div>
+                        <div style="font-size:1.1rem; font-weight:700;">${pct(m.avgDailyChangePct)}</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${m.totalDays} trading days</div>
+                    </div>
+                    <div class="metric-card">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); margin-bottom:4px;">Win Rate</div>
+                        <div style="font-size:1.1rem; font-weight:700;">${fmt(m.winRatePct)}%</div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">${m.upDays} up / ${m.downDays} down</div>
+                    </div>
+                </div>
+                <div class="confidence-card" style="margin-top:20px;">
+                    <div style="font-size:0.9rem; font-weight:700; margin-bottom:8px;">Reliable zone: Days 1–${reliableEnd} | Avg: ${avgConfPct}%</div>
+                    <div class="chart-area" style="height:180px;"><canvas id="confidenceChartCanvas"></canvas></div>
+                </div>
+                <div class="prediction-table-wrapper" style="margin-top:20px;">
+                    <table class="prediction-table">
+                        <thead><tr>
+                            <th>Day</th><th>Date</th><th>Price</th><th>Daily %</th><th>Cumulative %</th><th>Confidence</th><th>Reliability</th><th>Williams</th><th>Direction</th>
+                        </tr></thead>
+                        <tbody>
+            `;
+            const daily = insights.dailyChanges;
+            const entryDay = entry.day;
+            const exitDay = exit.day;
+            daily.forEach(row => {
+                const dailyPct = row.daily_change_pct;
+                const cumPct = row.cumulative_pct;
+                const confVal = row.confidence != null ? (row.confidence * 100) : null;
+                let confClass = 'badge';
+                if (confVal != null) {
+                    if (confVal >= 80) confClass += ' badge-conf-high';
+                    else if (confVal >= 70) confClass += ' badge-conf-mid';
+                    else confClass += ' badge-conf-low';
+                }
+                const rel = (row.reliability || '').toLowerCase();
+                let relClass = 'badge';
+                if (rel === 'high') relClass += ' badge-rel-high';
+                else if (rel === 'medium') relClass += ' badge-rel-mid';
+                else relClass += ' badge-rel-low';
+                const williams = row.williams_signal != null ? String(row.williams_signal).toUpperCase() : '--';
+                const dir = row.stable_direction != null ? String(row.stable_direction) : '--';
+                const dirArrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : dir;
+                const rowClass = row.day === entryDay ? 'row-entry' : row.day === exitDay ? 'row-exit' : '';
+                const buyBadge = row.day === entryDay ? ' <span class="badge badge-buy">BUY</span>' : '';
+                const sellBadge = row.day === exitDay ? ' <span class="badge badge-sell">SELL</span>' : '';
+                const dailyColor = dailyPct >= 0 ? 'text-green' : 'text-red';
+                html += `<tr class="${rowClass}">
+                    <td>${row.day}${buyBadge}${sellBadge}</td>
+                    <td>${formatShortDate(row.date)}</td>
+                    <td>PKR ${fmt(row.predicted_price)}</td>
+                    <td class="${dailyColor}">${pct(dailyPct)}</td>
+                    <td class="${cumPct >= 0 ? 'text-green' : 'text-red'}">${pct(cumPct)}</td>
+                    <td><span class="${confClass}">${confVal != null ? confVal.toFixed(0) + '%' : '--'}</span></td>
+                    <td><span class="${relClass}">${row.reliability || '--'}</span></td>
+                    <td>${williams}</td>
+                    <td>${dirArrow}</td>
+                </tr>`;
+            });
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+            renderConfidenceChart('confidenceChartCanvas', insights);
+
+            // 2e. Monthly Forecast (if present)
+            const monthly = res.monthly_forecast;
+            if (monthly && monthly.length > 0) {
+                const best = monthly.reduce((a, b) => ((a.expected_return_pct || 0) > (b.expected_return_pct || 0)) ? a : b);
+                const worst = monthly.reduce((a, b) => ((a.expected_return_pct || 0) < (b.expected_return_pct || 0)) ? a : b);
+                let monthHtml = `
+                <div style="margin-top:24px;">
+                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:12px;">📅 Monthly Forecast</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+                        <div class="sentiment-card" style="padding:12px;">
+                            <div style="font-size:0.75rem; font-weight:700; color:var(--green);">Best month</div>
+                            <div style="font-size:1rem; font-weight:700;">${best.month_name || best.month || '--'}</div>
+                            <div style="font-size:0.85rem;">${(best.expected_return_pct != null ? (best.expected_return_pct >= 0 ? '+' : '') + Number(best.expected_return_pct).toFixed(2) + '%' : '--')}</div>
+                        </div>
+                        <div class="sentiment-card" style="padding:12px;">
+                            <div style="font-size:0.75rem; font-weight:700; color:var(--red);">Worst month</div>
+                            <div style="font-size:1rem; font-weight:700;">${worst.month_name || worst.month || '--'}</div>
+                            <div style="font-size:0.85rem;">${(worst.expected_return_pct != null ? (worst.expected_return_pct >= 0 ? '+' : '') + Number(worst.expected_return_pct).toFixed(2) + '%' : '--')}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+                `;
+                monthly.forEach(mo => {
+                    const trend = (mo.expected_return_pct || 0) >= 0 ? '📈' : '📉';
+                    const pctStr = mo.expected_return_pct != null ? (mo.expected_return_pct >= 0 ? '+' : '') + Number(mo.expected_return_pct).toFixed(2) + '%' : '--';
+                    monthHtml += `
+                        <div class="sentiment-card" style="padding:12px;">
+                            <div style="font-weight:700; margin-bottom:6px;">${trend} ${mo.month_name || mo.month || 'Month'}</div>
+                            <div style="font-size:0.85rem; color:var(--text-muted);">${pctStr} · Start: ${mo.start_price != null ? 'PKR ' + Number(mo.start_price).toFixed(2) : '--'} → End: ${mo.end_price != null ? 'PKR ' + Number(mo.end_price).toFixed(2) : '--'}</div>
+                            <div style="font-size:0.8rem; margin-top:6px;">${(mo.primary_driver || mo.reasoning || '--')}</div>
+                        </div>`;
+                });
+                monthHtml += '</div></div>';
+                container.insertAdjacentHTML('beforeend', monthHtml);
+            }
+        }
+
+        function renderBatchInsightsCompact(res, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '';
+            const insights = computeInsights(res);
+            if (!insights) return;
+            const fmt = (n) => (n == null || n === '') ? '--' : Number(n).toFixed(2);
+            const pct = (n) => n == null ? '--' : (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+            const entry = insights.entry;
+            const exit = insights.exit;
+            const m = insights.metrics;
+            const reliableEnd = insights.confidence ? insights.confidence.reliableZoneEndDay : 0;
+            container.innerHTML = `
+            <div class="batch-insights-compact">
+                <div class="batch-entry-exit">
+                    <div>
+                        <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">Buy @ Day ${entry.day}</div>
+                        <div style="font-size:1rem; font-weight:700;">PKR ${fmt(entry.price)}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${formatShortDate(entry.date)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">Sell @ Day ${exit.day}</div>
+                        <div style="font-size:1rem; font-weight:700;">PKR ${fmt(exit.price)}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">${formatShortDate(exit.date)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:0.7rem; font-weight:700; color:var(--text-muted);">Potential Gain</div>
+                        <div style="font-size:1rem; font-weight:700; color:var(--green);">${pct(exit.potentialGainPct)}</div>
+                        <div style="font-size:0.75rem; color:var(--text-muted);">Entry → Exit</div>
+                    </div>
+                </div>
+                <div class="batch-metrics-mini">
+                    Drawdown: ${pct(-m.maxDrawdownPct)} &nbsp;|&nbsp; Win Rate: ${fmt(m.winRatePct)}% &nbsp;|&nbsp; Volatility: ${fmt(m.volatility)}% &nbsp;|&nbsp; Reliable: ${reliableEnd} days
+                </div>
+            </div>`;
+        }
 
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
@@ -925,6 +1371,9 @@
                 document.getElementById('scannerView').classList.add('active');
                 document.querySelectorAll('.nav-link')[2].classList.add('active');
                 loadScanner();
+            } else if (view === 'batch') {
+                document.getElementById('batchView').classList.add('active');
+                document.querySelectorAll('.nav-link')[3].classList.add('active');
             }
         }
 
@@ -980,7 +1429,7 @@
 
                     if (data.stage === 'complete') {
                         renderResults(data.results);
-                        loadHistoryList(); // Refresh sidebar history
+                        loadDashboardHistory(); // Refresh sidebar + dashboard history
                         ws.close();
                         showLoader(false);
                     } else if (data.stage === 'error') {
@@ -1119,6 +1568,7 @@
             globalHistory = res.historical_data || [];
             globalPredictions = res.daily_predictions || [];
 
+            renderInsightsPanel(res, 'insightsPanel');
             filterChart(365); // Default 1 year
         }
 
@@ -1307,14 +1757,24 @@
 
         async function loadFromFile(filename) {
             switchView('dashboard');
-            // No spinner for instant loads - just fetch and render
+            if (!filename) return;
             try {
-                const res = await fetch(`${API_BASE}/api/history/${filename}`);
+                const res = await fetch(`${API_BASE}/api/history/${encodeURIComponent(filename)}`);
                 const data = await res.json();
+                if (!res.ok) {
+                    const msg = Array.isArray(data.detail) ? data.detail.join(' ') : (data.detail || 'File not found');
+                    alert('Could not load analysis: ' + msg);
+                    return;
+                }
+                if (!data.symbol || !Array.isArray(data.daily_predictions)) {
+                    alert('Invalid analysis data (missing symbol or predictions).');
+                    return;
+                }
                 renderResults(data);
+                document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (e) {
                 console.error('Error loading saved analysis:', e);
-                alert('Error loading saved analysis');
+                alert('Error loading saved analysis. Check console and ensure the backend is running at ' + API_BASE);
             }
         }
 
@@ -1528,7 +1988,489 @@
             });
         }
 
-        loadHistoryList();
+        // =============================================
+        // BATCH ANALYSIS - FULLY ISOLATED PER STOCK
+        // =============================================
+        const batchStocks = {};
+        let batchCompleted = 0;
+        let batchTotal = 0;
+
+        async function startBatchAnalysis() {
+            const input = document.getElementById('batchSymbolsInput').value.trim();
+            if (!input) return;
+
+            const symbols = [...new Set(
+                input.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0)
+            )];
+            if (symbols.length === 0) return;
+            if (symbols.length > 10) {
+                alert('Maximum 10 symbols per batch');
+                return;
+            }
+
+            const container = document.getElementById('batchResultsContainer');
+            container.innerHTML = '';
+
+            // Cleanup previous batch
+            Object.values(batchStocks).forEach(s => {
+                if (s.chartInstance) s.chartInstance.destroy();
+                if (s.ws && s.ws.readyState === WebSocket.OPEN) s.ws.close();
+            });
+            Object.keys(batchStocks).forEach(k => delete batchStocks[k]);
+            batchCompleted = 0;
+            batchTotal = symbols.length;
+
+            document.getElementById('batchStatus').innerText = `Analyzing ${symbols.length} stocks...`;
+
+            // Create placeholder cards (one assign to avoid reflow and ensure correct DOM)
+            symbols.forEach(symbol => {
+                batchStocks[symbol] = { chartInstance: null, ws: null, data: null, history: [], predictions: [], finished: false };
+            });
+            container.innerHTML = symbols.map(symbol => createBatchStockCard(symbol)).join('');
+
+            // Call batch endpoint
+            try {
+                const res = await fetch(`${API_BASE}/api/batch-analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbols: symbols.join(','), horizon: selectedHorizon })
+                });
+                const data = await res.json();
+                if (!res.ok || !Array.isArray(data.jobs) || data.jobs.length === 0) {
+                    const msg = data.detail || data.error || (res.ok ? 'No jobs returned' : `Request failed (${res.status})`);
+                    document.getElementById('batchStatus').innerText = `Error: ${msg}`;
+                    return;
+                }
+                // Stagger WebSocket connections so server can accept each (avoids "connection failed" when opening many at once)
+                const delayMs = 350;
+                data.jobs.forEach((job, index) => {
+                    if (!job || !job.symbol || !job.job_id || batchStocks[job.symbol] == null) return;
+                    setTimeout(() => {
+                        connectBatchWebSocket(job.symbol, job.job_id);
+                    }, index * delayMs);
+                });
+            } catch (e) {
+                document.getElementById('batchStatus').innerText = `Error: ${e.message}`;
+            }
+        }
+
+        function createBatchStockCard(symbol) {
+            const p = `batch-${symbol}`;
+            return `
+            <div id="${p}-card" class="stock-summary-card" style="display:block; margin-bottom:30px; position:relative;">
+                <div id="${p}-loader" style="text-align:center; padding:30px;">
+                    <div class="spinner" style="margin:0 auto 10px;"></div>
+                    <div style="font-weight:700; font-size:1.1rem;">${symbol}</div>
+                    <div id="${p}-progress" style="font-size:0.85rem; color:var(--text-muted); margin-top:5px;">Starting analysis...</div>
+                </div>
+                <div id="${p}-results" style="display:none;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
+                        <div style="display:flex; align-items:center; gap:15px;">
+                            <div class="stock-logo-box" id="${p}-logo">${symbol.substring(0, 2)}</div>
+                            <div>
+                                <h3 style="font-size:1.3rem; font-weight:700;">${symbol}</h3>
+                                <div style="color:var(--text-muted); font-size:0.85rem;" id="${p}-model"></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:25px; flex-wrap:wrap;">
+                            <div class="metric-group"><div class="metric-label">Current Price</div><div class="metric-val" id="${p}-price">--</div></div>
+                            <div class="metric-group"><div class="metric-label">Forecast</div><div class="metric-val" id="${p}-forecast">--</div></div>
+                            <div class="metric-group"><div class="metric-label">Upside</div><div class="metric-val" id="${p}-upside">--</div></div>
+                            <div class="metric-group"><div class="metric-label">Confidence</div><div class="metric-val" id="${p}-confidence">--</div></div>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; margin-top:15px;">
+                        <div style="height:250px;"><canvas id="${p}-chart"></canvas></div>
+                        <div>
+                            <div id="${p}-sentiment-badge" class="sentiment-badge" style="background:#eee; display:inline-block; padding:6px 14px; border-radius:20px; font-weight:600; font-size:0.85rem;">--</div>
+                            <p id="${p}-sentiment-summary" style="font-size:0.8rem; color:var(--text-muted); line-height:1.4; margin-top:10px;"></p>
+                            <div id="${p}-direction" style="margin-top:10px;"></div>
+                            <div id="${p}-monthly" style="margin-top:12px; font-size:0.8rem;"></div>
+                        </div>
+                    </div>
+                    <div id="${p}-insights"></div>
+                </div>
+                <div id="${p}-error" style="display:none; text-align:center; padding:30px; color:var(--red);">
+                    <div style="font-weight:700; margin-bottom:5px;">${symbol}</div>
+                    <div id="${p}-error-msg" style="font-size:0.85rem;">Analysis failed</div>
+                    <button onclick="retryBatchStock('${symbol}')" style="margin-top:10px; background:var(--primary); color:var(--lime); border:none; padding:8px 15px; border-radius:8px; cursor:pointer; font-family:'Outfit',sans-serif;">Retry</button>
+                </div>
+            </div>`;
+        }
+
+        function connectBatchWebSocket(symbol, jobId) {
+            const p = `batch-${symbol}`;
+            const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/progress/${jobId}`);
+            batchStocks[symbol].ws = ws;
+
+            function markBatchSymbolFinished(symbol) {
+                const rec = batchStocks[symbol];
+                if (!rec || rec.finished) return;
+                rec.finished = true;
+                batchCompleted++;
+                updateBatchStatus();
+            }
+
+            ws.onmessage = (e) => {
+                let data;
+                try {
+                    data = JSON.parse(e.data);
+                } catch (err) {
+                    console.error('Batch WS parse error for ' + symbol, err);
+                    return;
+                }
+                const progEl = document.getElementById(`${p}-progress`);
+                if (progEl) progEl.innerText = `${data.progress || 0}% - ${data.message || ''}`;
+
+                if (data.stage === 'complete') {
+                    const results = data.results;
+                    const hasValidResults = results && Array.isArray(results.daily_predictions) && results.daily_predictions.length > 0;
+                    document.getElementById(`${p}-loader`).style.display = 'none';
+                    if (hasValidResults) {
+                        document.getElementById(`${p}-results`).style.display = 'block';
+                        document.getElementById(`${p}-error`).style.display = 'none';
+                        batchStocks[symbol].data = results;
+                        try {
+                            renderBatchStockResults(symbol, results);
+                        } catch (err) {
+                            console.error('Batch render error for ' + symbol, err);
+                            document.getElementById(`${p}-results`).style.display = 'none';
+                            document.getElementById(`${p}-error`).style.display = 'block';
+                            document.getElementById(`${p}-error-msg`).innerText = 'Could not display results: ' + (err.message || 'Unknown error');
+                        }
+                    } else {
+                        document.getElementById(`${p}-error`).style.display = 'block';
+                        document.getElementById(`${p}-error-msg`).innerText = results && results.daily_predictions && results.daily_predictions.length === 0
+                            ? 'No prediction data returned'
+                            : (results ? 'Invalid or incomplete data' : 'No data returned');
+                    }
+                    ws.close();
+                    markBatchSymbolFinished(symbol);
+                } else if (data.stage === 'error') {
+                    document.getElementById(`${p}-loader`).style.display = 'none';
+                    document.getElementById(`${p}-error`).style.display = 'block';
+                    document.getElementById(`${p}-error-msg`).innerText = data.message || 'Analysis failed';
+                    batchStocks[symbol].data = 'error';
+                    ws.close();
+                    markBatchSymbolFinished(symbol);
+                }
+            };
+
+            ws.onerror = () => {
+                document.getElementById(`${p}-loader`).style.display = 'none';
+                document.getElementById(`${p}-error`).style.display = 'block';
+                document.getElementById(`${p}-error-msg`).innerText = 'WebSocket connection failed';
+                batchStocks[symbol].data = 'error';
+                ws.close();
+                markBatchSymbolFinished(symbol);
+            };
+
+            ws.onclose = (ev) => {
+                if (!batchStocks[symbol] || batchStocks[symbol].finished) return;
+                if (!ev.wasClean) {
+                    document.getElementById(`${p}-loader`).style.display = 'none';
+                    document.getElementById(`${p}-error`).style.display = 'block';
+                    document.getElementById(`${p}-error-msg`).innerText = 'Connection closed unexpectedly';
+                    batchStocks[symbol].data = 'error';
+                    markBatchSymbolFinished(symbol);
+                }
+            };
+        }
+
+        function updateBatchStatus() {
+            const errors = Object.values(batchStocks).filter(s => s.data === 'error').length;
+            let text = `${batchCompleted}/${batchTotal} complete`;
+            if (errors > 0) text += ` (${errors} failed)`;
+            document.getElementById('batchStatus').innerText = text;
+        }
+
+        function renderBatchStockResults(symbol, res) {
+            if (!res) return;
+            const p = `batch-${symbol}`;
+            const stock = batchStocks[symbol];
+            stock.history = res.historical_data || [];
+            stock.predictions = res.daily_predictions || [];
+
+            const priceEl = document.getElementById(`${p}-price`);
+            if (priceEl) priceEl.innerText = (res.current_price != null && res.current_price !== '')
+                ? `PKR ${Number(res.current_price).toFixed(2)}` : '--';
+            const modelEl = document.getElementById(`${p}-model`);
+            if (modelEl) modelEl.innerText = res.model || 'Research Model';
+
+            const preds = res.daily_predictions || [];
+            const lastPred = preds.length > 0 ? preds[preds.length - 1] : null;
+            if (lastPred) {
+                const forecastEl = document.getElementById(`${p}-forecast`);
+                if (forecastEl) forecastEl.innerText = lastPred.predicted_price != null ? `PKR ${Number(lastPred.predicted_price).toFixed(2)}` : '--';
+                const upside = lastPred.upside_potential;
+                const upEl = document.getElementById(`${p}-upside`);
+                if (upEl) {
+                    upEl.innerText = upside != null ? `${upside >= 0 ? '+' : ''}${Number(upside).toFixed(2)}%` : '--';
+                    upEl.style.color = upside != null && upside >= 0 ? 'var(--green)' : 'var(--red)';
+                    upEl.style.fontWeight = '700';
+                }
+                const confEl = document.getElementById(`${p}-confidence`);
+                if (confEl && lastPred.confidence != null) confEl.innerText = `${(lastPred.confidence * 100).toFixed(0)}%`;
+            }
+
+            // Sentiment
+            if (res.sentiment && res.sentiment.signal) {
+                const badge = document.getElementById(`${p}-sentiment-badge`);
+                badge.innerText = `${res.sentiment.signal_emoji || ''} ${res.sentiment.signal}`;
+                if (res.sentiment.signal.includes('BULL')) {
+                    badge.style.background = 'rgba(16,185,129,0.1)'; badge.style.color = '#10b981';
+                } else if (res.sentiment.signal.includes('BEAR')) {
+                    badge.style.background = 'rgba(239,68,68,0.1)'; badge.style.color = '#ef4444';
+                }
+                document.getElementById(`${p}-sentiment-summary`).innerText = res.sentiment.summary || '';
+            }
+
+            // Direction reasoning
+            if (res.prediction_reasoning && !res.prediction_reasoning.error) {
+                const r = res.prediction_reasoning;
+                document.getElementById(`${p}-direction`).innerHTML = `
+                    <span style="font-size:0.85rem; font-weight:700;">${r.emoji || ''} ${r.direction}</span>
+                    <span style="font-size:0.75rem; color:var(--text-muted); margin-left:8px;">
+                        ${r.bullish_count || 0} bullish / ${r.bearish_count || 0} bearish signals
+                    </span>`;
+            }
+
+            // Monthly forecast summary
+            if (res.monthly_forecast && res.monthly_forecast.length > 0) {
+                const monthsHtml = res.monthly_forecast.slice(0, 4).map(m =>
+                    `<span style="display:inline-block; padding:3px 8px; border-radius:6px; margin:2px; font-size:0.75rem; background:${m.trend === 'BULLISH' ? 'rgba(16,185,129,0.1)' : m.trend === 'BEARISH' ? 'rgba(239,68,68,0.1)' : '#f3f4f6'}; color:${m.trend === 'BULLISH' ? '#10b981' : m.trend === 'BEARISH' ? '#ef4444' : '#666'};">${m.month}: ${m.trend}</span>`
+                ).join('');
+                document.getElementById(`${p}-monthly`).innerHTML = `<div style="color:var(--text-muted); font-size:0.7rem; margin-bottom:4px;">MONTHLY FORECAST</div>${monthsHtml}`;
+            }
+
+            renderBatchInsightsCompact(res, `batch-${symbol}-insights`);
+            renderBatchChart(symbol);
+        }
+
+        function renderBatchChart(symbol) {
+            const p = `batch-${symbol}`;
+            const stock = batchStocks[symbol];
+            const hist = stock.history || [];
+            const preds = stock.predictions || [];
+            const histLabels = hist.map(h => h.Date);
+            const histPrices = hist.map(h => h.Close);
+            const predLabels = preds.map(pr => pr.date);
+            const predPrices = preds.map(pr => pr.predicted_price);
+
+            const canvas = document.getElementById(`${p}-chart`);
+            if (!canvas) return;
+
+            const allLabels = [...histLabels, ...predLabels];
+            const nHist = histPrices.length;
+            const nPred = predPrices.length;
+            const lastHistPrice = nHist > 0 ? histPrices[nHist - 1] : null;
+            const histNulls = Math.max(0, nHist - 1);
+            const datasetHist = [...histPrices, ...Array(nPred).fill(null)];
+            const datasetPred = [...Array(histNulls).fill(null), lastHistPrice, ...predPrices];
+
+            if (allLabels.length === 0) return;
+
+            const ctx = canvas.getContext('2d');
+            if (stock.chartInstance) stock.chartInstance.destroy();
+
+            const gradH = ctx.createLinearGradient(0, 0, 0, 250);
+            gradH.addColorStop(0, 'rgba(16,185,129,0.2)'); gradH.addColorStop(1, 'rgba(16,185,129,0.0)');
+            const gradP = ctx.createLinearGradient(0, 0, 0, 250);
+            gradP.addColorStop(0, 'rgba(193,242,54,0.4)'); gradP.addColorStop(1, 'rgba(193,242,54,0.0)');
+
+            stock.chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: allLabels,
+                    datasets: [
+                        { label: 'History', data: datasetHist, borderColor: '#10b981', backgroundColor: gradH, borderWidth: 2, fill: true, pointRadius: 0, tension: 0.1 },
+                        { label: 'Forecast', data: datasetPred, borderColor: '#C1F236', backgroundColor: gradP, borderWidth: 2, borderDash: [5, 5], fill: true, pointRadius: 0, tension: 0.4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false } },
+                    scales: { x: { display: false }, y: { position: 'right', grid: { borderDash: [5, 5], color: '#f3f4f6' } } }
+                }
+            });
+        }
+
+        function retryBatchStock(symbol) {
+            const p = `batch-${symbol}`;
+            document.getElementById(`${p}-error`).style.display = 'none';
+            document.getElementById(`${p}-loader`).style.display = 'block';
+            document.getElementById(`${p}-progress`).innerText = 'Retrying...';
+            const rec = batchStocks[symbol];
+            if (rec) {
+                rec.data = null;
+                rec.finished = false;
+            }
+            batchCompleted--;
+            updateBatchStatus();
+
+            fetch(`${API_BASE}/api/analyze-stock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbol, horizon: selectedHorizon })
+            })
+            .then(r => r.json())
+            .then(data => connectBatchWebSocket(symbol, data.job_id))
+            .catch(err => {
+                document.getElementById(`${p}-loader`).style.display = 'none';
+                document.getElementById(`${p}-error`).style.display = 'block';
+                document.getElementById(`${p}-error-msg`).innerText = err.message;
+                batchStocks[symbol].data = 'error';
+                batchCompleted++;
+                updateBatchStatus();
+            });
+        }
+
+        // =============================================
+        // ENHANCED DASHBOARD HISTORY
+        // =============================================
+        async function loadDashboardHistory() {
+            try {
+                const res = await fetch(`${API_BASE}/api/history`);
+                const data = await res.json();
+                if (!data.success) return;
+
+                // Render rich history grid on dashboard
+                const grid = document.getElementById('dashboardHistoryGrid');
+                if (grid && data.history && data.history.length > 0) {
+                    grid.innerHTML = data.history.map(h => {
+                        const retClass = h.predicted_return >= 0 ? '#10b981' : '#ef4444';
+                        const retSign = h.predicted_return >= 0 ? '+' : '';
+                        const perf = h.model_performance || {};
+                        const trendAcc = perf.trend_accuracy ? `${(perf.trend_accuracy * 100).toFixed(0)}%` : 'N/A';
+                        const r2 = perf.r2 ? perf.r2.toFixed(3) : 'N/A';
+                        const date = h.generated_at ? new Date(h.generated_at).toLocaleDateString() : '';
+                        const safeFilename = (h.filename || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+
+                        return `
+                        <div class="stock-summary-card history-card" style="display:block; padding:20px; cursor:pointer;" data-filename="${safeFilename}" role="button" tabindex="0">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div class="stock-logo-box" style="width:40px; height:40px; font-size:0.85rem;">${h.symbol.substring(0, 2)}</div>
+                                    <div>
+                                        <div style="font-weight:700; font-size:1.05rem;">${h.symbol}</div>
+                                        <div style="font-size:0.7rem; color:var(--text-muted);">${date}</div>
+                                    </div>
+                                </div>
+                                <div style="font-weight:700; font-size:1.1rem; color:${retClass};">${retSign}${h.predicted_return.toFixed(1)}%</div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; font-size:0.8rem;">
+                                <div><div style="color:var(--text-muted);">Direction</div><div style="font-weight:600;">${h.direction_emoji || ''} ${h.direction || 'N/A'}</div></div>
+                                <div><div style="color:var(--text-muted);">Sentiment</div><div style="font-weight:600;">${h.sentiment_emoji || ''} ${h.sentiment_signal || 'N/A'}</div></div>
+                                <div><div style="color:var(--text-muted);">Trend Acc.</div><div style="font-weight:600;">${trendAcc}</div></div>
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; font-size:0.8rem; margin-top:8px;">
+                                <div><div style="color:var(--text-muted);">R&sup2;</div><div style="font-weight:600;">${r2}</div></div>
+                                <div><div style="color:var(--text-muted);">Pred. Days</div><div style="font-weight:600;">${h.prediction_days || 'N/A'}</div></div>
+                                <div><div style="color:var(--text-muted);">Model</div><div style="font-weight:600; font-size:0.7rem;">${(h.model || 'Unknown').substring(0, 15)}</div></div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                } else if (grid) {
+                    grid.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem;">No saved analyses yet. Analyze a stock to see it here.</div>';
+                }
+
+                // Render prediction log table
+                if (data.prediction_log && data.prediction_log.length > 0) {
+                    renderPredictionLogTable(data.prediction_log);
+                }
+
+                // Update sidebar history (enhanced)
+                loadSidebarHistory(data.history);
+            } catch (e) {
+                console.error('Dashboard history load error:', e);
+                // Fallback: still try to load sidebar
+                loadHistoryList();
+            }
+        }
+
+        // Delegated click so Previous Predictions cards always open (avoids inline onclick issues)
+        (function attachHistoryGridClick() {
+            const grid = document.getElementById('dashboardHistoryGrid');
+            if (!grid) return;
+            grid.addEventListener('click', function(e) {
+                const card = e.target.closest('.history-card[data-filename]');
+                if (card) {
+                    const fn = card.getAttribute('data-filename');
+                    if (fn) loadFromFile(fn);
+                }
+            });
+            grid.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const card = e.target.closest('.history-card[data-filename]');
+                if (card) {
+                    e.preventDefault();
+                    const fn = card.getAttribute('data-filename');
+                    if (fn) loadFromFile(fn);
+                }
+            });
+        })();
+
+        function renderPredictionLogTable(predictions) {
+            const container = document.getElementById('predictionLogTable');
+            if (!container) return;
+
+            container.innerHTML = `
+            <table class="scanner-table">
+                <thead><tr>
+                    <th>Symbol</th><th>Date</th><th>Current</th><th>Predicted</th>
+                    <th>Direction</th><th>Confidence</th><th>Williams</th><th>Status</th>
+                </tr></thead>
+                <tbody>
+                    ${predictions.slice(0, 30).map(p => {
+                        const statusBadge = p.evaluated
+                            ? (p.direction_correct
+                                ? '<span style="color:#10b981; font-weight:600;">Correct</span>'
+                                : '<span style="color:#ef4444; font-weight:600;">Wrong</span>')
+                            : '<span style="color:#9ca3af;">Pending</span>';
+                        const dirColor = p.predicted_direction === 'BULLISH' ? '#10b981'
+                            : (p.predicted_direction === 'BEARISH' ? '#ef4444' : '#9ca3af');
+                        const date = p.prediction_date ? new Date(p.prediction_date).toLocaleDateString() : '';
+                        const changePct = p.current_price > 0
+                            ? (((p.predicted_price - p.current_price) / p.current_price) * 100).toFixed(1)
+                            : '0.0';
+                        return `
+                        <tr class="scanner-row" style="cursor:pointer;" onclick="analyzeStock('${p.symbol}')">
+                            <td style="font-weight:700;">${p.symbol}</td>
+                            <td>${date}</td>
+                            <td>PKR ${(p.current_price || 0).toFixed(2)}</td>
+                            <td>PKR ${(p.predicted_price || 0).toFixed(2)} (${changePct >= 0 ? '+' : ''}${changePct}%)</td>
+                            <td style="color:${dirColor}; font-weight:600;">${p.predicted_direction || 'N/A'}</td>
+                            <td>${p.confidence ? (p.confidence * 100).toFixed(0) + '%' : 'N/A'}</td>
+                            <td>${p.williams_signal || 'N/A'}</td>
+                            <td>${statusBadge}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>`;
+        }
+
+        function loadSidebarHistory(historyItems) {
+            const list = document.getElementById('historyList');
+            if (!historyItems || historyItems.length === 0) {
+                list.innerHTML = '<div style="color:#9ca3af; font-size:0.85rem;">No saved analyses yet</div>';
+                return;
+            }
+            list.innerHTML = historyItems.slice(0, 8).map(h => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; cursor:pointer;" onclick="loadFromFile('${h.filename}')">
+                    <div>
+                        <div style="font-weight:600; font-size:0.85rem;">${h.symbol}</div>
+                        <div style="font-size:0.65rem; color:var(--text-muted);">${h.direction_emoji || ''} ${h.sentiment_signal || ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8rem; font-weight:600; color:${h.predicted_return >= 0 ? '#10b981' : '#ef4444'};">${h.predicted_return >= 0 ? '+' : ''}${h.predicted_return.toFixed(1)}%</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        loadDashboardHistory();
     </script>
 </body>
 

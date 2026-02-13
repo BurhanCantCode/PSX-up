@@ -1,0 +1,32 @@
+{
+  "symbol": "KSE100",
+  "cached_at": "2026-02-01T17:35:53.513448",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 54.13,
+    "stochastic_k": 41.89,
+    "cci": -39.1,
+    "adx": 35.06,
+    "awesome_oscillator": 7027.77,
+    "momentum_10": -924.35,
+    "macd_level": 2980.45,
+    "stochastic_rsi": 18.36,
+    "williams_r": -65.67,
+    "bull_bear_power": -2040.69,
+    "ultimate_oscillator": 38.97,
+    "ema_10": 185856.82,
+    "sma_10": 187195.52,
+    "ema_20": 184086.46,
+    "sma_20": 185567.88,
+    "ema_30": 181725.09,
+    "sma_30": 181536.16,
+    "ema_50": 177451.27,
+    "sma_50": 175828.73,
+    "ema_100": 168518.37,
+    "sma_100": 168794.8,
+    "hma": 184696.5
+  }
+}

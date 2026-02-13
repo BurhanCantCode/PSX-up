@@ -1,0 +1,33 @@
+{
+  "symbol": "SEARL",
+  "cached_at": "2026-01-26T18:13:30.874592",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 50.74,
+    "stochastic_k": 11.42,
+    "cci": -81.47,
+    "adx": 36.73,
+    "awesome_oscillator": 6.06,
+    "momentum_10": -6.08,
+    "macd_level": 2.82,
+    "stochastic_rsi": 1.17,
+    "williams_r": -97.11,
+    "bull_bear_power": -3.28,
+    "ultimate_oscillator": 43.01,
+    "ema_10": 126.39,
+    "sma_10": 126.92,
+    "ema_20": 124.99,
+    "sma_20": 127.82,
+    "ema_30": 122.56,
+    "sma_30": 122.3,
+    "ema_50": 118.31,
+    "sma_50": 115.22,
+    "ema_100": 110.7,
+    "sma_100": 110.08,
+    "vwma": 128.28,
+    "hma": 124.78
+  }
+}
