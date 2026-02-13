@@ -2371,7 +2371,13 @@
             try {
                 const res = await fetch(`${API_BASE}/api/history`);
                 const data = await res.json();
-                if (!data.success) return;
+                if (!data.success) {
+                    const grid = document.getElementById('dashboardHistoryGrid');
+                    const log = document.getElementById('predictionLogTable');
+                    if (grid) grid.innerHTML = '<div style="color:var(--text-muted); font-size:0.9rem;">Could not load previous predictions.</div>';
+                    if (log) log.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">No prediction log available.</div>';
+                    return;
+                }
 
                 // Render rich history grid on dashboard
                 const grid = document.getElementById('dashboardHistoryGrid');
@@ -2416,6 +2422,11 @@
                 // Render prediction log table
                 if (data.prediction_log && data.prediction_log.length > 0) {
                     renderPredictionLogTable(data.prediction_log);
+                } else {
+                    const log = document.getElementById('predictionLogTable');
+                    if (log) {
+                        log.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">No prediction evaluations yet.</div>';
+                    }
                 }
 
                 // Render tuning report summary
@@ -2425,6 +2436,10 @@
                 loadSidebarHistory(data.history);
             } catch (e) {
                 console.error('Dashboard history load error:', e);
+                const grid = document.getElementById('dashboardHistoryGrid');
+                const log = document.getElementById('predictionLogTable');
+                if (grid) grid.innerHTML = '<div style="color:#ef4444; font-size:0.9rem;">Error loading previous predictions.</div>';
+                if (log) log.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading prediction log.</div>';
                 // Fallback: still try to load sidebar
                 loadHistoryList();
             }
