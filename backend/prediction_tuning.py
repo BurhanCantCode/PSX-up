@@ -49,6 +49,14 @@ def _derive_base_price(predictions: List[Dict]) -> Optional[float]:
     if not predictions:
         return None
     first = predictions[0]
+    direct_current = first.get("current_price")
+    if direct_current is not None:
+        try:
+            current_val = float(direct_current)
+            if current_val > 0:
+                return current_val
+        except (TypeError, ValueError):
+            pass
     p = float(first.get("predicted_price", 0) or 0)
     u = float(first.get("upside_potential", 0) or 0)
     denom = 1 + (u / 100.0)
@@ -62,7 +70,8 @@ def get_live_tweak_config() -> TweakConfig:
     Load tweak config from environment with safe defaults.
     Set PREDICTION_TWEAKS_ENABLED=0 for immediate rollback.
     """
-    enabled = os.getenv("PREDICTION_TWEAKS_ENABLED", "1").strip() not in {"0", "false", "False"}
+    # Default OFF to preserve raw model behavior unless explicitly enabled.
+    enabled = os.getenv("PREDICTION_TWEAKS_ENABLED", "0").strip() not in {"0", "false", "False"}
     return TweakConfig(
         enabled=enabled,
         neutral_band_pct=float(os.getenv("PRED_TWEAK_NEUTRAL_BAND_PCT", str(DEFAULT_TWEAK_CONFIG.neutral_band_pct))),
@@ -217,8 +226,11 @@ def evaluate_prediction_log(log_path: str, config: Optional[TweakConfig] = None,
 
         actual_change = (actual_price - curr) / curr * 100.0
         actual_dir = direction_from_change_pct(actual_change, neutral_band_pct=0.0)
-        # Keep logger compatibility: NEUTRAL counts as conservative/correct
-        dir_correct = pred_dir == "NEUTRAL" or pred_dir == actual_dir
+        # NEUTRAL counts as correct only if actual move was small (within neutral band)
+        if pred_dir == "NEUTRAL":
+            dir_correct = abs(actual_change) <= config.neutral_band_pct
+        else:
+            dir_correct = pred_dir == actual_dir
         err_pct = (pred_price - actual_price) / actual_price * 100.0
 
         rows.append(

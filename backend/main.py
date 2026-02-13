@@ -33,7 +33,7 @@ try:
     )
     ANALYZER_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️  Stock Analyzer Import Error: {e}")
+    print(f"WARNING: Stock Analyzer import error: {e}")
     ANALYZER_AVAILABLE = False
 
 # ============================================================================
@@ -41,7 +41,7 @@ except ImportError as e:
 # ============================================================================
 app = FastAPI(
     title="PSX Fortune Teller API",
-    description="🔮 AI-powered stock predictions for Pakistan Stock Exchange",
+    description="AI-powered stock predictions for Pakistan Stock Exchange",
     version="2.0.0"
 )
 
@@ -57,7 +57,7 @@ app.add_middleware(
 WEB_DIR = BASE_DIR / "web"
 if WEB_DIR.exists():
     app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
-    print(f"✅ Web directory mounted")
+    print("Web directory mounted")
 
 # ============================================================================
 # ROUTES
@@ -118,7 +118,7 @@ if ANALYZER_AVAILABLE:
 
         return {"jobs": jobs, "total": len(jobs)}
 
-    print("✅ Stock Analyzer routes registered")
+    print("Stock Analyzer routes registered")
 
 # ============================================================================
 # KSE100 ANALYZER
@@ -127,10 +127,10 @@ if ANALYZER_AVAILABLE:
 try:
     from backend.kse100_analyzer import analyze_kse100
     KSE100_AVAILABLE = True
-    print("✅ KSE100 Analyzer available")
+    print("KSE100 analyzer available")
 except ImportError as e:
     KSE100_AVAILABLE = False
-    print(f"⚠️  KSE100 Analyzer not available: {e}")
+    print(f"WARNING: KSE100 analyzer not available: {e}")
 
 # ============================================================================
 # UNIFIED ANALYZE ENDPOINT (Stocks + KSE100)
@@ -255,7 +255,7 @@ try:
             with open(SCREENER_CACHE_FILE, 'w') as f:
                 json.dump(cache_data, f, indent=2)
         except Exception as e:
-            print(f"⚠️ Could not save screener cache: {e}")
+            print(f"WARNING: Could not save screener cache: {e}")
 
     @app.get("/api/screener")
     async def screener(limit: int = 10, refresh: bool = False):
@@ -300,9 +300,9 @@ try:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    print("✅ Screener & Sentiment routes registered")
+    print("Screener and sentiment routes registered")
 except ImportError as e:
-    print(f"⚠️  Screener/Sentiment not available: {e}")
+    print(f"WARNING: Screener/Sentiment not available: {e}")
 
 # ============================================================================
 # COMMODITY PREDICTION (Silver & Gold)
@@ -316,10 +316,10 @@ try:
         COMMODITY_CONFIG
     )
     COMMODITY_AVAILABLE = True
-    print("✅ Commodity Predictor available")
+    print("Commodity predictor available")
 except ImportError as e:
     COMMODITY_AVAILABLE = False
-    print(f"⚠️  Commodity Predictor not available: {e}")
+    print(f"WARNING: Commodity predictor not available: {e}")
 
 if COMMODITY_AVAILABLE:
     class CommodityRequest(BaseModel):
@@ -386,7 +386,7 @@ if COMMODITY_AVAILABLE:
             await websocket.send_json({
                 'stage': 'starting',
                 'progress': 5,
-                'message': f'🔮 Starting {commodity.title()} analysis...'
+                'message': f'Starting {commodity.title()} analysis...',
             })
             
             # Check for cached analysis first
@@ -395,7 +395,7 @@ if COMMODITY_AVAILABLE:
                 await websocket.send_json({
                     'stage': 'complete',
                     'progress': 100,
-                    'message': '✅ Loaded cached analysis',
+                    'message': 'Loaded cached analysis',
                     'results': cached
                 })
                 await websocket.close()
@@ -404,7 +404,7 @@ if COMMODITY_AVAILABLE:
             await websocket.send_json({
                 'stage': 'fetching',
                 'progress': 15,
-                'message': f'📊 Fetching {commodity.title()} price data...'
+                'message': f'Fetching {commodity.title()} price data...',
             })
             
             await websocket.send_json({
@@ -422,7 +422,7 @@ if COMMODITY_AVAILABLE:
             await websocket.send_json({
                 'stage': 'training',
                 'progress': 70,
-                'message': f'🧠 Training {commodity.title()} prediction model...'
+                'message': f'Training {commodity.title()} prediction model...',
             })
             
             # Run full analysis
@@ -431,7 +431,7 @@ if COMMODITY_AVAILABLE:
             await websocket.send_json({
                 'stage': 'complete',
                 'progress': 100,
-                'message': '✅ Analysis complete!',
+                'message': 'Analysis complete.',
                 'results': result
             })
             
@@ -439,7 +439,7 @@ if COMMODITY_AVAILABLE:
             await websocket.send_json({
                 'stage': 'error',
                 'progress': 0,
-                'message': f'❌ Error: {str(e)}'
+                'message': f'Error: {str(e)}'
             })
         finally:
             await websocket.close()

@@ -561,6 +561,7 @@
             max-height: 0;
             overflow: hidden;
             transition: opacity 280ms ease, transform 280ms ease, max-height 320ms ease;
+            width: min(880px, 90vw);
         }
 
         .live-progress-panel.is-visible {
@@ -700,6 +701,19 @@
         .live-stage-chip.error .chip-title,
         .live-stage-chip.error .chip-status {
             color: #b91c1c;
+        }
+
+        #dashboardView {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #resultsArea {
+            order: 2;
+        }
+
+        #dashboardHistorySection {
+            order: 3;
         }
 
         @keyframes fadeSlideIn {
@@ -869,7 +883,7 @@
                     <div class="horizon-label">
                         <span style="font-weight: 600;">Prediction Horizon</span>
                         <span class="horizon-info"
-                            title="21-day predictions are research-validated with 80%+ accuracy. Longer predictions decrease in reliability.">ℹ️</span>
+                            title="21-day predictions are research-validated with 80%+ accuracy. Longer predictions decrease in reliability.">i</span>
                     </div>
                     <div class="horizon-buttons">
                         <button class="horizon-btn active" data-horizon="21" onclick="selectHorizon(21)">
@@ -885,50 +899,9 @@
                 </div>
             </div>
 
-            <div id="liveProgressPanel" class="live-progress-panel" aria-live="polite">
-                <div class="live-progress-header">
-                    <div class="live-progress-title">Live Generation Pipeline</div>
-                    <div class="live-progress-meta">
-                        <span id="liveProgressSymbol">Symbol: --</span>
-                        <span id="liveProgressHorizon">Horizon: --</span>
-                        <span id="liveProgressElapsed">Elapsed: 0s</span>
-                    </div>
-                </div>
-                <div class="live-progress-current">
-                    <div id="liveProgressStageLabel" class="live-progress-stage-label">Stage</div>
-                    <div id="liveProgressStageTitle" class="live-progress-stage-title">Waiting to start</div>
-                    <div id="liveProgressStageDetail" class="live-progress-stage-detail">No active run.</div>
-                </div>
-                <div class="live-progress-bar-wrap">
-                    <div id="liveProgressBar" class="live-progress-bar"></div>
-                </div>
-                <div id="liveStageTimeline" class="live-stage-timeline"></div>
-            </div>
-
-            <!-- Previous Predictions Dashboard -->
-            <div id="dashboardHistorySection" style="margin-bottom:30px;">
-                <h2 class="section-header">Previous Predictions</h2>
-                <div id="dashboardHistoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;" role="list">
-                    <div style="color:var(--text-muted); font-size:0.9rem;">Loading history...</div>
-                </div>
-
-                <div style="margin-top:30px;">
-                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Accuracy Tracker</h3>
-                    <div id="predictionLogTable" style="overflow-x:auto;">
-                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
-                    </div>
-                </div>
-
-                <div style="margin-top:24px;">
-                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Tuning Report</h3>
-                    <div id="predictionTuningSummary" class="stock-summary-card" style="display:block; padding:18px;">
-                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading tuning report...</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Results -->
+            <!-- Results (shown at top when analysis completes) -->
             <div id="resultsArea" style="display:none;">
+
                 <h2 class="section-header">Overview</h2>
                 <div class="stock-summary-card">
                     <div class="stock-main-info">
@@ -993,7 +966,7 @@
 
                     <!-- Prediction Signals Card (NEW) -->
                     <div class="sentiment-card" id="predictionSignalsCard" style="margin-top: 20px; display: none;">
-                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;">📊 Why This Prediction?
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 15px;">Why This Prediction?
                         </h3>
                         <div id="predictionDirection" class="sentiment-badge"
                             style="background: #eee; margin-bottom: 15px;">Analyzing...</div>
@@ -1002,25 +975,47 @@
                         </p>
 
                         <div id="bullishSignals" style="margin-bottom: 12px;">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: #10b981; margin-bottom: 8px;">✅
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #10b981; margin-bottom: 8px;">
                                 BULLISH SIGNALS</div>
                             <div id="bullishList" style="font-size: 0.8rem;"></div>
                         </div>
 
                         <div id="bearishSignals" style="margin-bottom: 12px;">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: #ef4444; margin-bottom: 8px;">⚠️
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #ef4444; margin-bottom: 8px;">
                                 BEARISH SIGNALS</div>
                             <div id="bearishList" style="font-size: 0.8rem;"></div>
                         </div>
 
                         <div id="neutralSignals">
-                            <div style="font-size: 0.75rem; font-weight: 700; color: #9ca3af; margin-bottom: 8px;">ℹ️
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #9ca3af; margin-bottom: 8px;">
                                 OTHER FACTORS</div>
                             <div id="neutralList" style="font-size: 0.8rem;"></div>
                         </div>
                     </div>
                 </div>
                 <div id="insightsPanel"></div>
+            </div>
+
+            <!-- Previous Predictions Dashboard -->
+            <div id="dashboardHistorySection" style="margin-bottom:30px;">
+                <h2 class="section-header">Previous Predictions</h2>
+                <div id="dashboardHistoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;" role="list">
+                    <div style="color:var(--text-muted); font-size:0.9rem;">Loading history...</div>
+                </div>
+
+                <div style="margin-top:30px;">
+                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Accuracy Tracker</h3>
+                    <div id="predictionLogTable" style="overflow-x:auto;">
+                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:24px;">
+                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Tuning Report</h3>
+                    <div id="predictionTuningSummary" class="stock-summary-card" style="display:block; padding:18px;">
+                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading tuning report...</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1181,6 +1176,25 @@
         <h2 id="loaderTitle">Analyzing Stock...</h2>
         <p id="loaderSub" style="color: #666; margin-top: 10px;">Please wait...</p>
         <p id="loaderNote" style="font-size: 0.8rem; color: #999; margin-top: 5px;"></p>
+        <div id="liveProgressPanel" class="live-progress-panel" aria-live="polite">
+            <div class="live-progress-header">
+                <div class="live-progress-title">Live Generation Pipeline</div>
+                <div class="live-progress-meta">
+                    <span id="liveProgressSymbol">Symbol: --</span>
+                    <span id="liveProgressHorizon">Horizon: --</span>
+                    <span id="liveProgressElapsed">Elapsed: 0s</span>
+                </div>
+            </div>
+            <div class="live-progress-current">
+                <div id="liveProgressStageLabel" class="live-progress-stage-label">Stage</div>
+                <div id="liveProgressStageTitle" class="live-progress-stage-title">Waiting to start</div>
+                <div id="liveProgressStageDetail" class="live-progress-stage-detail">No active run.</div>
+            </div>
+            <div class="live-progress-bar-wrap">
+                <div id="liveProgressBar" class="live-progress-bar"></div>
+            </div>
+            <div id="liveStageTimeline" class="live-stage-timeline"></div>
+        </div>
     </div>
 
     <script>
@@ -1193,7 +1207,7 @@
             : window.location.origin);
         const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-        console.log('🔮 Project: PSX-up | Backend:', API_BASE);
+        console.log('Project: PSX-up | Backend:', API_BASE);
         let chartInstance = null;
         let commodityChartInstance = null;
         let globalHistory = [];
@@ -1778,18 +1792,66 @@
             }
         }
 
+        function getDisplayUpside(predictedPrice, currentPrice, fallbackUpside) {
+            const pp = Number(predictedPrice);
+            const cp = Number(currentPrice);
+            if (Number.isFinite(pp) && Number.isFinite(cp) && cp > 0) {
+                return ((pp - cp) / cp) * 100;
+            }
+            const fu = Number(fallbackUpside);
+            return Number.isFinite(fu) ? fu : 0;
+        }
+
+        function pickDisplayPredictions(predictions, currentPrice) {
+            if (!Array.isArray(predictions) || predictions.length === 0) return [];
+            const hasRaw = predictions.some(p => p && p.raw_predicted_price != null);
+            if (!hasRaw) return predictions;
+
+            const tunedPrices = predictions.map(p => Number(p?.predicted_price)).filter(Number.isFinite);
+            const rawPrices = predictions.map(p => Number(p?.raw_predicted_price)).filter(Number.isFinite);
+            const tunedUpsides = predictions.map(p => Number(p?.upside_potential)).filter(Number.isFinite);
+
+            const tunedRange = tunedPrices.length ? (Math.max(...tunedPrices) - Math.min(...tunedPrices)) : 0;
+            const rawRange = rawPrices.length ? (Math.max(...rawPrices) - Math.min(...rawPrices)) : 0;
+            const nearZeroCount = tunedUpsides.filter(v => Math.abs(v) <= 0.05).length;
+            const mostlyFlatUpside = tunedUpsides.length > 0 && (nearZeroCount / tunedUpsides.length) >= 0.8;
+            const suspiciousFlatline = mostlyFlatUpside && rawRange > (tunedRange + 0.5);
+
+            if (!suspiciousFlatline) return predictions;
+
+            return predictions.map(p => {
+                if (!p || p.raw_predicted_price == null) return p;
+                const rawPrice = Number(p.raw_predicted_price);
+                const rawUpside = p.raw_upside_potential != null
+                    ? Number(p.raw_upside_potential)
+                    : getDisplayUpside(rawPrice, currentPrice, p.upside_potential);
+                return {
+                    ...p,
+                    predicted_price: Number.isFinite(rawPrice) ? rawPrice : p.predicted_price,
+                    upside_potential: Number.isFinite(rawUpside) ? rawUpside : p.upside_potential
+                };
+            });
+        }
+
+        function scrollToTopOfPage() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         function renderResults(res) {
+            const displayPreds = pickDisplayPredictions(res.daily_predictions || [], res.current_price);
+            const viewRes = { ...res, daily_predictions: displayPreds };
             document.getElementById('resultsArea').style.display = 'block';
+            scrollToTopOfPage();
 
             // Populate Header Stats
-            document.getElementById('resSymbol').innerText = res.symbol;
-            document.getElementById('resSymbolShort').innerText = res.symbol.substring(0, 2);
-            document.getElementById('resCompany').innerText = `${res.symbol} Corp`;
-            document.getElementById('resPrice').innerText = `PKR ${res.current_price.toFixed(2)}`;
+            document.getElementById('resSymbol').innerText = viewRes.symbol;
+            document.getElementById('resSymbolShort').innerText = viewRes.symbol.substring(0, 2);
+            document.getElementById('resCompany').innerText = `${viewRes.symbol} Corp`;
+            document.getElementById('resPrice').innerText = `PKR ${viewRes.current_price.toFixed(2)}`;
 
-            const lastPred = res.daily_predictions[res.daily_predictions.length - 1];
+            const lastPred = viewRes.daily_predictions[viewRes.daily_predictions.length - 1];
             const predictedPrice = lastPred.predicted_price;
-            const upside = lastPred.upside_potential;
+            const upside = getDisplayUpside(predictedPrice, viewRes.current_price, lastPred.upside_potential);
 
             document.getElementById('resForecast').innerText = `PKR ${predictedPrice.toFixed(2)}`;
 
@@ -1801,8 +1863,8 @@
             upEl.className = `metric-val ${colorClass}`; // Reset class
 
             // Update Sentiment Card
-            if (res.sentiment) {
-                const s = res.sentiment;
+            if (viewRes.sentiment) {
+                const s = viewRes.sentiment;
                 const badge = document.getElementById('sentimentBadge');
                 badge.innerText = `${s.signal_emoji} ${s.signal}`;
 
@@ -1833,8 +1895,8 @@
             }
 
             // Display Prediction Reasoning (Why bullish/bearish)
-            if (res.prediction_reasoning && !res.prediction_reasoning.error) {
-                const r = res.prediction_reasoning;
+            if (viewRes.prediction_reasoning && !viewRes.prediction_reasoning.error) {
+                const r = viewRes.prediction_reasoning;
                 const card = document.getElementById('predictionSignalsCard');
                 card.style.display = 'block';
 
@@ -1899,10 +1961,10 @@
             }
 
             // Prepare Chart Data
-            globalHistory = res.historical_data || [];
-            globalPredictions = res.daily_predictions || [];
+            globalHistory = viewRes.historical_data || [];
+            globalPredictions = viewRes.daily_predictions || [];
 
-            renderInsightsPanel(res, 'insightsPanel');
+            renderInsightsPanel(viewRes, 'insightsPanel');
             filterChart(365); // Default 1 year
         }
 
@@ -2075,7 +2137,7 @@
 
                 if (data.success && data.history && data.history.length > 0) {
                     list.innerHTML = data.history.slice(0, 5).map(h => `
-                        <div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; cursor:pointer;" onclick="loadFromFile('${h.filename}')">
+                        <div class="sidebar-history-item" data-fileuri="${encodeURIComponent(h.filename || '')}" style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; cursor:pointer;" role="button" tabindex="0">
                             <div style="font-weight:600; font-size:0.9rem;">${h.symbol}</div>
                             <div style="font-size:0.8rem; color:${h.predicted_return >= 0 ? '#10b981' : '#ef4444'};">${h.predicted_return >= 0 ? '+' : ''}${h.predicted_return.toFixed(1)}%</div>
                         </div>
@@ -2105,7 +2167,6 @@
                     return;
                 }
                 renderResults(data);
-                document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (e) {
                 console.error('Error loading saved analysis:', e);
                 alert('Error loading saved analysis. Check console and ensure the backend is running at ' + API_BASE);
@@ -2543,7 +2604,7 @@
             const p = `batch-${symbol}`;
             const stock = batchStocks[symbol];
             stock.history = res.historical_data || [];
-            stock.predictions = res.daily_predictions || [];
+            stock.predictions = pickDisplayPredictions(res.daily_predictions || [], res.current_price);
 
             const priceEl = document.getElementById(`${p}-price`);
             if (priceEl) priceEl.innerText = (res.current_price != null && res.current_price !== '')
@@ -2551,12 +2612,12 @@
             const modelEl = document.getElementById(`${p}-model`);
             if (modelEl) modelEl.innerText = res.model || 'Research Model';
 
-            const preds = res.daily_predictions || [];
+            const preds = stock.predictions || [];
             const lastPred = preds.length > 0 ? preds[preds.length - 1] : null;
             if (lastPred) {
                 const forecastEl = document.getElementById(`${p}-forecast`);
                 if (forecastEl) forecastEl.innerText = lastPred.predicted_price != null ? `PKR ${Number(lastPred.predicted_price).toFixed(2)}` : '--';
-                const upside = lastPred.upside_potential;
+                const upside = getDisplayUpside(lastPred.predicted_price, res.current_price, lastPred.upside_potential);
                 const upEl = document.getElementById(`${p}-upside`);
                 if (upEl) {
                     upEl.innerText = upside != null ? `${upside >= 0 ? '+' : ''}${Number(upside).toFixed(2)}%` : '--';
@@ -2716,10 +2777,10 @@
                         const trendAcc = perf.trend_accuracy ? `${(perf.trend_accuracy * 100).toFixed(0)}%` : 'N/A';
                         const r2 = perf.r2 ? perf.r2.toFixed(3) : 'N/A';
                         const date = h.generated_at ? new Date(h.generated_at).toLocaleDateString() : '';
-                        const safeFilename = (h.filename || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+                        const fileUri = encodeURIComponent(h.filename || '');
 
                         return `
-                        <div class="stock-summary-card history-card" style="display:block; padding:20px; cursor:pointer;" data-filename="${safeFilename}" role="button" tabindex="0">
+                        <div class="stock-summary-card history-card" style="display:block; padding:20px; cursor:pointer;" data-fileuri="${fileUri}" role="button" tabindex="0">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                                 <div style="display:flex; align-items:center; gap:10px;">
                                     <div class="stock-logo-box" style="width:40px; height:40px; font-size:0.85rem;">${h.symbol.substring(0, 2)}</div>
@@ -2837,19 +2898,19 @@
             const grid = document.getElementById('dashboardHistoryGrid');
             if (!grid) return;
             grid.addEventListener('click', function(e) {
-                const card = e.target.closest('.history-card[data-filename]');
+                const card = e.target.closest('.history-card[data-fileuri]');
                 if (card) {
-                    const fn = card.getAttribute('data-filename');
-                    if (fn) loadFromFile(fn);
+                    const fileUri = card.getAttribute('data-fileuri');
+                    if (fileUri) loadFromFile(decodeURIComponent(fileUri));
                 }
             });
             grid.addEventListener('keydown', function(e) {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
-                const card = e.target.closest('.history-card[data-filename]');
+                const card = e.target.closest('.history-card[data-fileuri]');
                 if (card) {
                     e.preventDefault();
-                    const fn = card.getAttribute('data-filename');
-                    if (fn) loadFromFile(fn);
+                    const fileUri = card.getAttribute('data-fileuri');
+                    if (fileUri) loadFromFile(decodeURIComponent(fileUri));
                 }
             });
         })();
@@ -2900,7 +2961,7 @@
                 return;
             }
             list.innerHTML = historyItems.slice(0, 8).map(h => `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; cursor:pointer;" onclick="loadFromFile('${h.filename}')">
+                <div class="sidebar-history-item" data-fileuri="${encodeURIComponent(h.filename || '')}" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; cursor:pointer;" role="button" tabindex="0">
                     <div>
                         <div style="font-weight:600; font-size:0.85rem;">${h.symbol}</div>
                         <div style="font-size:0.65rem; color:var(--text-muted);">${h.direction_emoji || ''} ${h.sentiment_signal || ''}</div>
@@ -2911,6 +2972,25 @@
                 </div>
             `).join('');
         }
+
+        (function attachSidebarHistoryClick() {
+            const list = document.getElementById('historyList');
+            if (!list) return;
+            list.addEventListener('click', function(e) {
+                const item = e.target.closest('.sidebar-history-item[data-fileuri]');
+                if (!item) return;
+                const fileUri = item.getAttribute('data-fileuri');
+                if (fileUri) loadFromFile(decodeURIComponent(fileUri));
+            });
+            list.addEventListener('keydown', function(e) {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                const item = e.target.closest('.sidebar-history-item[data-fileuri]');
+                if (!item) return;
+                e.preventDefault();
+                const fileUri = item.getAttribute('data-fileuri');
+                if (fileUri) loadFromFile(decodeURIComponent(fileUri));
+            });
+        })();
 
         loadDashboardHistory();
     </script>

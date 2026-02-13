@@ -186,28 +186,27 @@ class ResearchBackedEnsemble:
             print("🔬 TRAINING RESEARCH-BACKED ENSEMBLE")
             print("=" * 60)
         
-        # Scale features
-        X_scaled = self.scaler.fit_transform(X)
-        
-        # Walk-forward validation
+        # Walk-forward validation (scale per-fold for honest metrics)
         tscv = TimeSeriesSplit(n_splits=5)
         validation_scores = {name: [] for name in self.models.keys()}
-        
-        for fold, (train_idx, val_idx) in enumerate(tscv.split(X_scaled)):
-            X_train, X_val = X_scaled[train_idx], X_scaled[val_idx]
+
+        for fold, (train_idx, val_idx) in enumerate(tscv.split(X)):
+            from sklearn.base import clone
+            fold_scaler = clone(self.scaler)
+            X_train = fold_scaler.fit_transform(X[train_idx])
+            X_val = fold_scaler.transform(X[val_idx])
             y_train, y_val = y[train_idx], y[val_idx]
-            
+
             for name, model in self.models.items():
-                from sklearn.base import clone
                 model_clone = clone(model)
                 model_clone.fit(X_train, y_train)
-                
+
                 y_pred = model_clone.predict(X_val)
-                
+
                 # Trend accuracy (direction prediction)
                 acc = trend_accuracy(y_val, y_pred)
                 validation_scores[name].append(acc)
-            
+
             if verbose:
                 print(f"  Fold {fold + 1}/5 complete")
         
@@ -220,30 +219,30 @@ class ResearchBackedEnsemble:
             if verbose:
                 print(f"    {name}: {avg_scores[name]:.2%}")
         
-        # Train final models on all data
+        # Train final models on all data (scaler fitted on full training set)
         if verbose:
             print("\n🔧 Training final models...")
-        
+
+        X_scaled = self.scaler.fit_transform(X)
         for name, model in self.models.items():
             model.fit(X_scaled, y)
-        
+
         self.is_fitted = True
-        
+
         # Calculate overall accuracy
         ensemble_acc = sum(avg_scores[n] * self.weights[n] for n in self.weights.keys())
-        
-        # Calculate R² on final predictions for last fold
-        # Note: X_scaled is already scaled, so predict directly without re-scaling
-        y_pred_final = np.zeros(len(y_val))
+
+        # Note: R² here is on training data (informational only, not a validation metric)
+        y_pred_final = np.zeros(len(y))
         for name, model in self.models.items():
-            y_pred_final += self.weights[name] * model.predict(X_scaled[-len(y_val):])
-        r2_val = r2_score(y[-len(y_val):], y_pred_final)
+            y_pred_final += self.weights[name] * model.predict(X_scaled)
+        r2_train = r2_score(y, y_pred_final)
         
         return {
             'model_accuracies': avg_scores,
             'ensemble_accuracy': ensemble_acc,
             'trend_accuracy': ensemble_acc,  # Alias for compatibility
-            'r2': r2_val,
+            'r2': r2_train,  # Training R² (informational only)
             'mase': 0.0,  # Placeholder
             'mape': 0.0,  # Placeholder
             'weights': self.weights
@@ -420,7 +419,7 @@ class IteratedForecaster:
     - 60+ days: Questionable → 40% confidence
     
     v2 FIXES:
-    1. Bounded daily returns (max ±3% per day - PSX circuit breaker is 7.5%)
+    1. Bounded daily returns (max ±5% per day - PSX circuit breaker is 7.5%)
     2. AR(1) process instead of random jumps
     3. Model prediction only sets trend DIRECTION
     4. Smooth transitions with proper mean reversion
@@ -438,7 +437,7 @@ class IteratedForecaster:
     }
     
     # REALISTIC BOUNDS for PSX stocks
-    MAX_DAILY_RETURN = 0.03      # Max 3% per day (hard limit)
+    MAX_DAILY_RETURN = 0.05      # Max 5% per day (PSX circuit breaker is 7.5%)
     MAX_TOTAL_RETURN = 0.50     # Max 50% over full horizon
     TYPICAL_ANNUAL_VOL = 0.25   # 25% annualized volatility typical for PSX
     
@@ -476,7 +475,7 @@ class IteratedForecaster:
         - Confidence decay: 95% (day 1) → 60% (day 21) → 40% (day 63)
 
         Key improvements:
-        1. Bounded daily returns (max ±3% per day)
+        1. Bounded daily returns (max ±5% per day)
         2. Smooth AR(1) process instead of random jumps
         3. Model prediction only determines trend DIRECTION and magnitude
         4. Confidence decay reduces prediction range over time
@@ -558,8 +557,9 @@ class IteratedForecaster:
         current_price = base_price
         prev_return = 0
         
-        # Deterministic seed for reproducibility (based on price and data length)
-        rng = np.random.RandomState(int(base_price * 100 + len(df)) % (2**31 - 1))
+        # Deterministic seed for reproducibility (based on price history hash)
+        seed_val = int(hash((base_price, len(df), float(df['Close'].iloc[0]))) % (2**31 - 1))
+        rng = np.random.RandomState(abs(seed_val))
         
         # Progress update interval (every 50 days or 10% of horizon, whichever is smaller)
         progress_interval = max(1, min(50, horizon // 10))
@@ -596,7 +596,7 @@ class IteratedForecaster:
             # Calculate return using AR(1) process
             daily_return = daily_drift + phi * prev_return + noise
             
-            # CRITICAL: Bound daily return to realistic range (max ±3%)
+            # CRITICAL: Bound daily return to realistic range (max ±5%)
             daily_return = max(-self.MAX_DAILY_RETURN, min(self.MAX_DAILY_RETURN, daily_return))
             
             # Apply return
@@ -740,7 +740,8 @@ class IteratedForecaster:
         # Initialize
         current_price = base_price
         prev_return = 0
-        rng = np.random.RandomState(int(base_price * 100 + len(df)) % (2**31 - 1))
+        seed_val = int(hash((base_price, len(df), float(df['Close'].iloc[0]))) % (2**31 - 1))
+        rng = np.random.RandomState(abs(seed_val))
         progress_interval = max(1, min(50, horizon // 10))
         
         for day in range(1, horizon + 1):
@@ -924,26 +925,26 @@ class PSXResearchModel:
                     df['news_bias'] = news_score['news_bias']
                     df['news_volume'] = news_score['news_volume']
                     df['news_recency'] = news_score['news_recency']
-                    print(f"   ✅ Added news features: bias={news_score['news_bias']:.2f}, volume={news_score['news_volume']:.2f}")
+                    print(f"   Added news features: bias={news_score['news_bias']:.2f}, volume={news_score['news_volume']:.2f}")
                 else:
                     # Fallback: neutral values
                     df['news_bias'] = 0.0
                     df['news_volume'] = 0.5
                     df['news_recency'] = 0.5
-                    print("   ⚠️ No news data, using neutral values")
+                    print("   No news data, using neutral values")
             except Exception as e:
                 # Fallback: neutral values
                 df['news_bias'] = 0.0
                 df['news_volume'] = 0.5
                 df['news_recency'] = 0.5
-                print(f"   ⚠️ News features failed ({str(e)[:30]}), using neutral")
+                print(f"   WARNING: News features failed ({str(e)[:30]}), using neutral")
         else:
             # No news integration - add neutral features for consistency
             df['news_bias'] = 0.0
             df['news_volume'] = 0.5
             df['news_recency'] = 0.5
         
-        print(f"\n✅ Preprocessing complete: {len(df)} rows x {len(df.columns)} cols")
+        print(f"\nPreprocessing complete: {len(df)} rows x {len(df.columns)} cols")
         return df
     
     def prepare_features(self, df: pd.DataFrame, use_returns: bool = False) -> Tuple[np.ndarray, np.ndarray, List[str]]:

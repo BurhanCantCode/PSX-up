@@ -1208,9 +1208,16 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             # Calculate mathematically rigorous adjustments
             adjustment_data = get_rigorous_adjustment(sentiment_result)
             
-            # Apply adjustments to predictions
+            # Apply adjustments to predictions. Include current_price so upside_potential
+            # stays synchronized with predicted_price after sentiment transforms.
+            current_close = float(df['Close'].iloc[-1])
+            predictions_with_current = []
+            for p in predictions:
+                row = dict(p)
+                row['current_price'] = current_close
+                predictions_with_current.append(row)
             adjusted_predictions = apply_adjustments_to_predictions(
-                predictions, 
+                predictions_with_current,
                 adjustment_data['adjustments']
             )
             
@@ -1364,11 +1371,11 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                     'daily_predictions_count': len(adjusted_predictions),
                     'tuning': tuning_meta,
                 }, cf, indent=2)
-            print(f"✅ Complete analysis saved to {complete_analysis_file}")
+            print(f"Complete analysis saved to {complete_analysis_file}")
         except Exception as e:
-            print(f"⚠️ Failed to save complete analysis: {e}")
+            print(f"WARNING: Failed to save complete analysis: {e}")
 
-        # 📊 Log prediction for accuracy tracking
+        # Log prediction for accuracy tracking
         try:
             from backend.prediction_logger import get_prediction_logger
             logger = get_prediction_logger()
@@ -1396,7 +1403,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                     sector=sector
                 )
         except Exception as e:
-            print(f"⚠️ Prediction logging skipped: {e}")
+            print(f"WARNING: Prediction logging skipped: {e}")
 
         try:
             del progress_data[job_id]

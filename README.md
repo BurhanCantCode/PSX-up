@@ -1,4 +1,5 @@
-# 🔮 PSX Fortune Teller
+# PSX Fortune Teller
+
 
 <div align="center">
 
@@ -18,7 +19,15 @@
 
 ---
 
-## 🎯 Key Differentiators
+## UI Screenshots
+
+![Dashboard live pipeline](dashboard1.png)
+
+![Dashboard prediction overview](dashboard2.png)
+
+![Dashboard prediction insights](dashboard3.png)
+
+## Key Differentiators
 
 | Feature | This Project | Typical Stock Predictors |
 |---------|--------------|--------------------------|
@@ -35,7 +44,7 @@
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -80,7 +89,7 @@
 
 ---
 
-## 📊 Feature Engineering Pipeline
+## Feature Engineering Pipeline
 
 ### External Macro Features (28 total)
 
@@ -151,7 +160,7 @@ Gold and silver price correlation for hedging and safe-haven analysis:
 
 ---
 
-## 🧠 Model Architecture
+## Model Architecture
 
 ### Stacking Ensemble (v3.0 - NEW)
 
@@ -229,7 +238,7 @@ class IteratedForecaster:
 
 ---
 
-## � Backtesting Results
+## Backtesting Results
 
 Trained on 2020-2023, tested on 2024-2025:
 
@@ -240,13 +249,13 @@ Trained on 2020-2023, tested on 2024-2025:
 | **Strategy Return** | +185% | +86% | With 1% transaction costs |
 | **Buy & Hold Return** | +141% | -40% | Benchmark comparison |
 | **Alpha (Outperformance)** | +44% | +126% | Strategy minus B&H |
-| **Sharpe Ratio** | 4.97 | 5.45 | ⚠️ Likely overfit |
+| **Sharpe Ratio** | 4.97 | 5.45 | Likely overfit |
 
-> ⚠️ **Honest Assessment**: The 53% direction accuracy is marginally above random. The strategy profits primarily from bullish bias during 2024's bull market. Use predictions as one input among many.
+> **Honest Assessment**: The 53% direction accuracy is marginally above random. The strategy profits primarily from bullish bias during 2024's bull market. Use predictions as one input among many.
 
 ---
 
-## 🔍 Explainability: "Why This Prediction?"
+## Explainability: "Why This Prediction?"
 
 Every prediction includes a breakdown of supporting/contrary signals:
 
@@ -254,7 +263,7 @@ Every prediction includes a breakdown of supporting/contrary signals:
 {
   "prediction_reasoning": {
     "direction": "BULLISH",
-    "emoji": "🟢",
+    "emoji": "GREEN",
     "explanation": "Model predicts +31.2% upside. 4 supporting signals, 2 cautionary signals.",
     "bullish_signals": [
       {"category": "Model Forecast", "signal": "Strong upside predicted: +31.2%"},
@@ -273,7 +282,7 @@ Every prediction includes a breakdown of supporting/contrary signals:
 
 ---
 
-## 🤖 AI Sentiment Analysis
+## AI Sentiment Analysis
 
 ### Pipeline
 
@@ -303,7 +312,7 @@ RULES:
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -348,7 +357,7 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 psx-fortune-teller/
@@ -393,7 +402,7 @@ psx-fortune-teller/
 
 ---
 
-## 🔌 API Reference
+## API Reference
 
 ### WebSocket: Real-time Analysis
 
@@ -439,7 +448,7 @@ curl -X POST http://localhost:8000/api/analyze-stock \
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 
@@ -475,7 +484,7 @@ docker run -p 8000:8000 -e GROQ_API_KEY=your_key psx-fortune-teller
 
 ---
 
-## 📚 Research Foundation
+## Research Foundation
 
 This project is based on peer-reviewed studies of the Pakistan Stock Exchange:
 
@@ -493,7 +502,7 @@ This project is based on peer-reviewed studies of the Pakistan Stock Exchange:
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 > **This software is for educational and research purposes only.**
 > 
@@ -505,7 +514,7 @@ This project is based on peer-reviewed studies of the Pakistan Stock Exchange:
 
 ---
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
@@ -513,7 +522,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**Built with ❤️ for the Pakistan Stock Exchange community**
+**Built for the Pakistan Stock Exchange community**
 
 *Research-backed. Explainable. Honest about limitations.*
 

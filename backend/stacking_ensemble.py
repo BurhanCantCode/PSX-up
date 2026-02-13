@@ -208,6 +208,7 @@ class StackingEnsemble:
             try:
                 # Manual cross-validation for better error handling
                 oof_preds = np.zeros(len(X))
+                oof_mask = np.zeros(len(X), dtype=bool)
 
                 for train_idx, val_idx in tscv.split(X_scaled):
                     # Split data
@@ -224,15 +225,15 @@ class StackingEnsemble:
 
                     # Predict on validation fold
                     oof_preds[val_idx] = fold_model.predict(X_val_fold)
+                    oof_mask[val_idx] = True
 
                 meta_features[:, i] = oof_preds
                 meta_feature_names.append(f'{name}_pred')
 
-                # Calculate OOF R² (only on indices that were predicted)
-                predicted_indices = ~np.isclose(oof_preds, 0.0)
-                if predicted_indices.sum() > 0:
-                    y_vals = y.iloc[predicted_indices] if hasattr(y, 'iloc') else y[predicted_indices]
-                    oof_r2 = r2_score(y_vals, oof_preds[predicted_indices])
+                # Calculate OOF R² (only on indices that were actually predicted)
+                if oof_mask.sum() > 0:
+                    y_vals = y.iloc[oof_mask] if hasattr(y, 'iloc') else y[oof_mask]
+                    oof_r2 = r2_score(y_vals, oof_preds[oof_mask])
                 else:
                     oof_r2 = 0.0
 
@@ -260,15 +261,15 @@ class StackingEnsemble:
         # Scale meta-features
         meta_features_scaled = self.scaler.fit_transform(meta_features)
 
-        # Train meta-model
+        # Train meta-model on OOF predictions
         self.meta_model.fit(meta_features_scaled, y)
 
-        # Calculate meta-model R²
+        # Calculate meta-model R² (training R² — informational only)
         meta_preds = self.meta_model.predict(meta_features_scaled)
-        meta_r2 = r2_score(y, meta_preds)
+        meta_r2 = r2_score(y, meta_preds)  # Note: this is training R², will be optimistic
 
         if verbose:
-            print(f"   Meta-model R² = {meta_r2:.4f}")
+            print(f"   Meta-model R² = {meta_r2:.4f} (training, informational)")
 
         # STEP 3: Train base models on full data
         if verbose:

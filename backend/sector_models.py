@@ -211,21 +211,22 @@ class SectorModelManager:
             print(f"\n🏗️ Training {sector.capitalize()} Sector Model...")
             print("=" * 70)
 
-        # Combine all sector stocks
-        combined_df = pd.concat(df_list, ignore_index=True)
+        # Compute target per-stock BEFORE concatenation to avoid cross-stock leakage
+        prepared_dfs = []
+        for stock_df in df_list:
+            stock_df = stock_df.copy()
+            if 'Target' not in stock_df.columns:
+                stock_df['Target'] = stock_df['Close'].shift(-1)
+            stock_df = stock_df.dropna(subset=['Target'])
+            prepared_dfs.append(stock_df)
+
+        combined_df = pd.concat(prepared_dfs, ignore_index=True)
 
         if verbose:
             print(f"   Combined data: {len(combined_df)} samples from {len(df_list)} stocks")
 
         # Get sector-specific features
         sector_features = self.get_sector_features(sector, feature_cols)
-
-        # Ensure target column exists
-        if 'Target' not in combined_df.columns:
-            combined_df['Target'] = combined_df['Close'].shift(-1)
-
-        # Remove rows with missing targets
-        combined_df = combined_df.dropna(subset=['Target'])
 
         # Extract X, y
         X = combined_df[sector_features]
