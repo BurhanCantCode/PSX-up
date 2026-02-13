@@ -632,6 +632,54 @@ async def get_prediction_file(filename: str):
         "forecast_summary": forecast_summary,
     }
 
+
+@app.get("/api/prediction-tuning-report")
+async def get_prediction_tuning_report(refresh: bool = False):
+    """
+    Return latest prediction tuning A/B report and drift snapshot.
+    - refresh=false: read cached report if present, generate only if missing
+    - refresh=true: regenerate report before returning
+    """
+    try:
+        report_path = BASE_DIR / "data" / "prediction_logs" / "prediction_tuning_report.json"
+        log_path = BASE_DIR / "data" / "prediction_logs" / "prediction_log.json"
+
+        if not log_path.exists():
+            return {
+                "success": False,
+                "error": "Prediction log not found",
+                "report": None,
+                "drift": None,
+            }
+
+        from backend.prediction_tuning import write_ab_report, drift_snapshot
+
+        if refresh or not report_path.exists():
+            write_ab_report(str(log_path), str(report_path))
+
+        with open(report_path, "r") as rf:
+            report = json.load(rf)
+
+        drift = None
+        try:
+            drift = drift_snapshot(str(log_path))
+        except Exception as e:
+            drift = {"error": str(e)}
+
+        return {
+            "success": True,
+            "report": report,
+            "drift": drift,
+            "report_path": str(report_path),
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "report": None,
+            "drift": None,
+        }
+
 # ============================================================================
 # MAIN
 # ============================================================================

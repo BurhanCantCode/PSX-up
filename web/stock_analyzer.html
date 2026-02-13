@@ -732,6 +732,13 @@
                         <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
                     </div>
                 </div>
+
+                <div style="margin-top:24px;">
+                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Tuning Report</h3>
+                    <div id="predictionTuningSummary" class="stock-summary-card" style="display:block; padding:18px;">
+                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading tuning report...</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Results -->
@@ -2411,12 +2418,75 @@
                     renderPredictionLogTable(data.prediction_log);
                 }
 
+                // Render tuning report summary
+                loadPredictionTuningReport(false);
+
                 // Update sidebar history (enhanced)
                 loadSidebarHistory(data.history);
             } catch (e) {
                 console.error('Dashboard history load error:', e);
                 // Fallback: still try to load sidebar
                 loadHistoryList();
+            }
+        }
+
+        async function loadPredictionTuningReport(refresh = false) {
+            const container = document.getElementById('predictionTuningSummary');
+            if (!container) return;
+            try {
+                const url = refresh
+                    ? `${API_BASE}/api/prediction-tuning-report?refresh=true`
+                    : `${API_BASE}/api/prediction-tuning-report`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (!res.ok || !data.success || !data.report) {
+                    container.innerHTML = `<div style="color:#ef4444; font-size:0.85rem;">Could not load tuning report: ${data.error || 'unknown error'}</div>`;
+                    return;
+                }
+
+                const baseline = data.report.baseline || {};
+                const selected = data.report.selected || {};
+                const selMetrics = selected.metrics || {};
+                const drift = data.drift || {};
+                const driftBase = drift.baseline || {};
+                const driftTuned = drift.tuned || {};
+
+                const fmt = (v, d = 2) => (v == null ? 'N/A' : Number(v).toFixed(d));
+                const deltaAcc = (selMetrics.direction_accuracy_pct != null && baseline.direction_accuracy_pct != null)
+                    ? (selMetrics.direction_accuracy_pct - baseline.direction_accuracy_pct) : null;
+                const deltaMae = (selMetrics.mae_pct != null && baseline.mae_pct != null)
+                    ? (baseline.mae_pct - selMetrics.mae_pct) : null;
+
+                container.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                        <div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">SELECTED CONFIG</div>
+                            <div style="font-size:1rem; font-weight:700;">${selected.name || 'N/A'}</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+                                Generated: ${data.report.generated_at ? new Date(data.report.generated_at).toLocaleString() : 'N/A'}
+                            </div>
+                        </div>
+                        <button onclick="loadPredictionTuningReport(true)" style="background:var(--primary); color:var(--lime); border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-family:'Outfit',sans-serif; font-size:0.8rem;">
+                            Refresh report
+                        </button>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-top:12px;">
+                        <div><div style="font-size:0.7rem; color:var(--text-muted);">Baseline Accuracy</div><div style="font-weight:700;">${fmt(baseline.direction_accuracy_pct, 2)}%</div></div>
+                        <div><div style="font-size:0.7rem; color:var(--text-muted);">Selected Accuracy</div><div style="font-weight:700; color:#10b981;">${fmt(selMetrics.direction_accuracy_pct, 2)}%</div></div>
+                        <div><div style="font-size:0.7rem; color:var(--text-muted);">Accuracy Gain</div><div style="font-weight:700; color:${deltaAcc != null && deltaAcc >= 0 ? '#10b981' : '#ef4444'};">${deltaAcc == null ? 'N/A' : (deltaAcc >= 0 ? '+' : '') + fmt(deltaAcc, 2)} pp</div></div>
+                        <div><div style="font-size:0.7rem; color:var(--text-muted);">MAE Improvement</div><div style="font-weight:700; color:${deltaMae != null && deltaMae >= 0 ? '#10b981' : '#ef4444'};">${deltaMae == null ? 'N/A' : (deltaMae >= 0 ? '+' : '') + fmt(deltaMae, 3)}</div></div>
+                    </div>
+                    <div style="margin-top:12px; border-top:1px solid var(--border); padding-top:10px;">
+                        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; margin-bottom:6px;">DRIFT SNAPSHOT</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px;">
+                            <div><div style="font-size:0.7rem; color:var(--text-muted);">Baseline (all logs)</div><div style="font-weight:700;">Acc ${fmt(driftBase.direction_accuracy_pct, 2)}% · MAE ${fmt(driftBase.mae_pct, 3)}</div></div>
+                            <div><div style="font-size:0.7rem; color:var(--text-muted);">Tuned (all logs)</div><div style="font-weight:700;">Acc ${fmt(driftTuned.direction_accuracy_pct, 2)}% · MAE ${fmt(driftTuned.mae_pct, 3)}</div></div>
+                        </div>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Tuning report load error:', e);
+                container.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading tuning report</div>';
             }
         }
 
