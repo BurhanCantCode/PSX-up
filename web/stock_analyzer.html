@@ -547,6 +547,172 @@
             }
         }
 
+        /* Live technical progress panel (single-stock generation) */
+        .live-progress-panel {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 16px;
+            margin-top: 16px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            opacity: 0;
+            transform: translateY(-6px);
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 280ms ease, transform 280ms ease, max-height 320ms ease;
+        }
+
+        .live-progress-panel.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+            max-height: 540px;
+        }
+
+        .live-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .live-progress-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .live-progress-meta {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .live-progress-current {
+            margin-bottom: 10px;
+        }
+
+        .live-progress-stage-label {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .live-progress-stage-title {
+            font-size: 0.98rem;
+            font-weight: 700;
+            color: var(--text-main);
+            animation: fadeSlideIn 280ms ease;
+        }
+
+        .live-progress-stage-detail {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 4px;
+            animation: fadeSlideIn 280ms ease;
+        }
+
+        .live-progress-bar-wrap {
+            width: 100%;
+            height: 8px;
+            background: #edf2f7;
+            border-radius: 999px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .live-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #10b981 0%, #C1F236 100%);
+            border-radius: 999px;
+            transition: width 360ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        }
+
+        .live-stage-timeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+            gap: 8px;
+        }
+
+        .live-stage-chip {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px;
+            background: #fff;
+            transition: border-color 220ms ease, background-color 220ms ease, transform 220ms ease;
+        }
+
+        .live-stage-chip .chip-title {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 2px;
+        }
+
+        .live-stage-chip .chip-status {
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
+
+        .live-stage-chip.pending {
+            background: #ffffff;
+        }
+
+        .live-stage-chip.active {
+            border-color: rgba(193, 242, 54, 0.8);
+            background: rgba(193, 242, 54, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .live-stage-chip.active .chip-title {
+            color: #4b5563;
+        }
+
+        .live-stage-chip.active .chip-status {
+            color: #374151;
+        }
+
+        .live-stage-chip.complete {
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .live-stage-chip.complete .chip-title {
+            color: #047857;
+        }
+
+        .live-stage-chip.complete .chip-status {
+            color: #059669;
+        }
+
+        .live-stage-chip.error {
+            border-color: rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .live-stage-chip.error .chip-title,
+        .live-stage-chip.error .chip-status {
+            color: #b91c1c;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* ===== PREDICTION INSIGHTS ===== */
         .insights-panel { margin-top: 30px; }
         .insights-section-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
@@ -717,6 +883,26 @@
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <div id="liveProgressPanel" class="live-progress-panel" aria-live="polite">
+                <div class="live-progress-header">
+                    <div class="live-progress-title">Live Generation Pipeline</div>
+                    <div class="live-progress-meta">
+                        <span id="liveProgressSymbol">Symbol: --</span>
+                        <span id="liveProgressHorizon">Horizon: --</span>
+                        <span id="liveProgressElapsed">Elapsed: 0s</span>
+                    </div>
+                </div>
+                <div class="live-progress-current">
+                    <div id="liveProgressStageLabel" class="live-progress-stage-label">Stage</div>
+                    <div id="liveProgressStageTitle" class="live-progress-stage-title">Waiting to start</div>
+                    <div id="liveProgressStageDetail" class="live-progress-stage-detail">No active run.</div>
+                </div>
+                <div class="live-progress-bar-wrap">
+                    <div id="liveProgressBar" class="live-progress-bar"></div>
+                </div>
+                <div id="liveStageTimeline" class="live-stage-timeline"></div>
             </div>
 
             <!-- Previous Predictions Dashboard -->
@@ -1005,6 +1191,7 @@
         const API_BASE = customBackend || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:8000'
             : window.location.origin);
+        const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
         console.log('🔮 Project: PSX-up | Backend:', API_BASE);
         let chartInstance = null;
@@ -1013,6 +1200,128 @@
         let globalPredictions = [];
         let selectedCommodity = null;
         let insightsConfidenceChart = null;
+        let liveProgressTimer = null;
+        let liveProgressStartTs = null;
+        let liveProgressCurrentStage = 'checking';
+
+        const LIVE_STAGE_DEFS = [
+            { id: 'checking', title: 'Data Validation' },
+            { id: 'fetching', title: 'Data Acquisition' },
+            { id: 'loading', title: 'Data Preparation' },
+            { id: 'preprocessing', title: 'Feature Engineering' },
+            { id: 'training', title: 'Model Training' },
+            { id: 'predicting', title: 'Forecast Synthesis' },
+            { id: 'backtesting', title: 'Sentiment Integration' },
+            { id: 'forecasting', title: 'Monthly Reasoning' },
+            { id: 'finalizing', title: 'Packaging Results' }
+        ];
+
+        const LIVE_STAGE_MAP = {
+            checking: 'checking',
+            fetching: 'fetching',
+            fetch_complete: 'loading',
+            loading: 'loading',
+            preprocessing: 'preprocessing',
+            training: 'training',
+            predicting: 'predicting',
+            backtesting: 'backtesting',
+            forecasting: 'forecasting',
+            finalizing: 'finalizing',
+            complete: 'finalizing',
+            error: 'finalizing'
+        };
+
+        function renderLiveStageTimeline() {
+            const timeline = document.getElementById('liveStageTimeline');
+            if (!timeline) return;
+            timeline.innerHTML = LIVE_STAGE_DEFS.map(s => `
+                <div id="live-chip-${s.id}" class="live-stage-chip pending">
+                    <div class="chip-title">${s.title}</div>
+                    <div id="live-chip-status-${s.id}" class="chip-status">Pending</div>
+                </div>
+            `).join('');
+        }
+
+        function normalizeLiveStage(stage) {
+            return LIVE_STAGE_MAP[stage] || 'checking';
+        }
+
+        function setLiveElapsed() {
+            const el = document.getElementById('liveProgressElapsed');
+            if (!el || !liveProgressStartTs) return;
+            const seconds = Math.max(0, Math.floor((Date.now() - liveProgressStartTs) / 1000));
+            el.innerText = `Elapsed: ${seconds}s`;
+        }
+
+        function showLiveProgressPanel(symbol, horizonText) {
+            const panel = document.getElementById('liveProgressPanel');
+            if (!panel) return;
+            panel.classList.add('is-visible');
+            document.getElementById('liveProgressSymbol').innerText = `Symbol: ${symbol}`;
+            document.getElementById('liveProgressHorizon').innerText = `Horizon: ${horizonText}`;
+            document.getElementById('liveProgressStageLabel').innerText = 'Stage';
+            document.getElementById('liveProgressStageTitle').innerText = 'Initializing run';
+            document.getElementById('liveProgressStageDetail').innerText = 'Preparing websocket and pipeline timeline...';
+            document.getElementById('liveProgressBar').style.width = '2%';
+            liveProgressCurrentStage = 'checking';
+            renderLiveStageTimeline();
+            liveProgressStartTs = Date.now();
+            setLiveElapsed();
+            if (liveProgressTimer) clearInterval(liveProgressTimer);
+            liveProgressTimer = setInterval(setLiveElapsed, 1000);
+        }
+
+        function updateLiveProgressPanel(progress, stage, message, isError = false) {
+            const normStage = normalizeLiveStage(stage);
+            liveProgressCurrentStage = normStage;
+            const stageIndex = LIVE_STAGE_DEFS.findIndex(s => s.id === normStage);
+            const safeProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+            const stageLabel = stage ? String(stage).toUpperCase() : 'STAGE';
+            const stageTitle = (LIVE_STAGE_DEFS.find(s => s.id === normStage) || LIVE_STAGE_DEFS[0]).title;
+
+            const bar = document.getElementById('liveProgressBar');
+            if (bar) bar.style.width = `${safeProgress}%`;
+            const labelEl = document.getElementById('liveProgressStageLabel');
+            const titleEl = document.getElementById('liveProgressStageTitle');
+            const detailEl = document.getElementById('liveProgressStageDetail');
+            if (labelEl) labelEl.innerText = stageLabel;
+            if (titleEl) titleEl.innerText = stageTitle;
+            if (detailEl) detailEl.innerText = message || 'Processing...';
+
+            LIVE_STAGE_DEFS.forEach((s, i) => {
+                const chip = document.getElementById(`live-chip-${s.id}`);
+                const status = document.getElementById(`live-chip-status-${s.id}`);
+                if (!chip || !status) return;
+                chip.className = 'live-stage-chip';
+                if (isError && i === stageIndex) {
+                    chip.classList.add('error');
+                    status.innerText = 'Failed';
+                    return;
+                }
+                if (i < stageIndex) {
+                    chip.classList.add('complete');
+                    status.innerText = 'Done';
+                } else if (i === stageIndex) {
+                    chip.classList.add('active');
+                    status.innerText = isError ? 'Failed' : 'In progress';
+                } else {
+                    chip.classList.add('pending');
+                    status.innerText = 'Pending';
+                }
+            });
+        }
+
+        function finishLiveProgressPanel(success, message) {
+            updateLiveProgressPanel(success ? 100 : 100, liveProgressCurrentStage, message, !success);
+            if (liveProgressTimer) {
+                clearInterval(liveProgressTimer);
+                liveProgressTimer = null;
+            }
+            setTimeout(() => {
+                const panel = document.getElementById('liveProgressPanel');
+                if (panel) panel.classList.remove('is-visible');
+            }, success ? 700 : 1400);
+        }
 
         // =============================================
         // PREDICTION INSIGHTS - PURE COMPUTATION
@@ -1416,6 +1725,8 @@
 
             const horizonText = selectedHorizon === 21 ? '21-day (High Accuracy)' : 'Full Year';
             showLoader(true, `Analyzing ${symbol}...`, `(Using ${horizonText} prediction)`);
+            showLiveProgressPanel(symbol, horizonText);
+            updateLiveProgressPanel(2, 'checking', `Opening analysis channel for ${symbol}...`);
 
             try {
                 const res = await fetch(`${API_BASE}/api/analyze-stock`, {
@@ -1426,26 +1737,42 @@
                         horizon: selectedHorizon
                     })
                 });
-                const { job_id } = await res.json();
+                const payload = await res.json();
+                if (!res.ok || !payload.job_id) {
+                    const msg = payload.detail || payload.error || `Request failed (${res.status})`;
+                    finishLiveProgressPanel(false, `Failed before run start: ${msg}`);
+                    alert(msg);
+                    showLoader(false);
+                    return;
+                }
+                const { job_id } = payload;
 
-                const ws = new WebSocket(`ws://localhost:8000/ws/progress/${job_id}`);
+                const ws = new WebSocket(`${WS_PROTOCOL}//${window.location.hostname}:8000/ws/progress/${job_id}`);
 
                 ws.onmessage = (e) => {
                     const data = JSON.parse(e.data);
                     document.getElementById('loaderSub').innerText = `${data.progress}% - ${data.message}`;
+                    updateLiveProgressPanel(data.progress, data.stage, data.message);
 
                     if (data.stage === 'complete') {
                         renderResults(data.results);
                         loadDashboardHistory(); // Refresh sidebar + dashboard history
                         ws.close();
+                        finishLiveProgressPanel(true, 'Pipeline complete. Rendering results...');
                         showLoader(false);
                     } else if (data.stage === 'error') {
                         alert(data.message);
                         ws.close();
+                        finishLiveProgressPanel(false, data.message || 'Pipeline failed');
                         showLoader(false);
                     }
                 };
+                ws.onerror = () => {
+                    finishLiveProgressPanel(false, 'WebSocket transport error while streaming progress');
+                    showLoader(false);
+                };
             } catch (e) {
+                finishLiveProgressPanel(false, e.message || 'Unexpected client error');
                 alert(e.message);
                 showLoader(false);
             }
