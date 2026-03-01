@@ -1205,7 +1205,13 @@
         const API_BASE = customBackend || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? 'http://localhost:8000'
             : window.location.origin);
-        const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const API_URL = new URL(API_BASE, window.location.href);
+        const WS_BASE = `${API_URL.protocol === 'https:' ? 'wss:' : 'ws:'}//${API_URL.host}`;
+
+        function buildWsUrl(path) {
+            const normalized = path.startsWith('/') ? path : `/${path}`;
+            return `${WS_BASE}${normalized}`;
+        }
 
         console.log('Project: PSX-up | Backend:', API_BASE);
         let chartInstance = null;
@@ -1761,7 +1767,20 @@
                 }
                 const { job_id } = payload;
 
-                const ws = new WebSocket(`${WS_PROTOCOL}//${window.location.hostname}:8000/ws/progress/${job_id}`);
+                const ws = new WebSocket(buildWsUrl(`/ws/progress/${job_id}`));
+                let wsConnected = false;
+                const wsConnectTimer = setTimeout(() => {
+                    if (!wsConnected && ws.readyState === WebSocket.CONNECTING) {
+                        try { ws.close(); } catch (_) {}
+                        finishLiveProgressPanel(false, 'WebSocket connection timeout. Check backend URL/port and refresh.');
+                        showLoader(false);
+                    }
+                }, 10000);
+
+                ws.onopen = () => {
+                    wsConnected = true;
+                    clearTimeout(wsConnectTimer);
+                };
 
                 ws.onmessage = (e) => {
                     const data = JSON.parse(e.data);
@@ -1782,8 +1801,12 @@
                     }
                 };
                 ws.onerror = () => {
+                    clearTimeout(wsConnectTimer);
                     finishLiveProgressPanel(false, 'WebSocket transport error while streaming progress');
                     showLoader(false);
+                };
+                ws.onclose = () => {
+                    clearTimeout(wsConnectTimer);
                 };
             } catch (e) {
                 finishLiveProgressPanel(false, e.message || 'Unexpected client error');
@@ -2213,7 +2236,7 @@
                 const { job_id } = await res.json();
 
                 // Connect to WebSocket for progress
-                const wsUrl = `ws://${window.location.hostname}:8000/ws/commodity/${job_id}`;
+                const wsUrl = buildWsUrl(`/ws/commodity/${job_id}`);
                 const ws = new WebSocket(wsUrl);
 
                 ws.onmessage = (e) => {
@@ -2506,7 +2529,7 @@
 
         function connectBatchWebSocket(symbol, jobId) {
             const p = `batch-${symbol}`;
-            const ws = new WebSocket(`ws://${window.location.hostname}:8000/ws/progress/${jobId}`);
+            const ws = new WebSocket(buildWsUrl(`/ws/progress/${jobId}`));
             batchStocks[symbol].ws = ws;
             let finalized = false;
 

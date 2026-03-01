@@ -506,21 +506,11 @@ def merge_external_features(stock_df: pd.DataFrame,
         df[col] = kibor_df[col].values
     print(f"   ✅ Added {len(kibor_df.columns)} KIBOR features")
     
-    # 5. TradingView Technical Indicators (ALWAYS fetch fresh - no old cache)
+    # 5. TradingView Technical Indicators (uses scraper cache TTL; no forced cache eviction)
     if TRADINGVIEW_AVAILABLE and symbol:
         print(f"\n5. Fetching TradingView indicators for {symbol}...")
-        
-        # Delete old cache to force fresh fetch
-        from pathlib import Path
-        cache_file = Path(__file__).parent.parent / "data" / "tradingview_cache" / f"{symbol.upper()}_technicals.json"
-        if cache_file.exists():
-            try:
-                cache_file.unlink()
-                print(f"   🔄 Cleared old TradingView cache for fresh fetch")
-            except:
-                pass
-        
-        # Fetch from TradingView (fresh data)
+
+        # Fetch from TradingView (cache-aware in tradingview_scraper.py)
         tv_result = get_tradingview_indicators(symbol, fallback_local=None)
         tv_indicators = tv_result.get('indicators', {})
         

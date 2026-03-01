@@ -481,6 +481,21 @@ docker run -p 8000:8000 -e GROQ_API_KEY=your_key psx-fortune-teller
 |----------|----------|-------------|
 | `GROQ_API_KEY` | Optional | For AI sentiment analysis |
 | `PORT` | Optional | Server port (default: 8000) |
+| `ENABLE_INDEX_NEWS_RECALL` | Optional | Enable broader KSE100/index recall mode (default: `true`) |
+| `ENABLE_INDEX_RECALL_IN_MODEL` | Optional | Allow index recall to influence model features (default: `false`) |
+| `ENABLE_GEO_FEATURES` | Optional | Enable geopolitical risk feature extraction (default: `false`) |
+| `MODEL_VARIANT` | Optional | `baseline`, `shadow`, or `upgraded` (default: `baseline`) |
+| `LOGGED_DIRECTION_SOURCE` | Optional | Prediction logger direction source: `stable` or `raw` (default: `stable`) |
+
+### Baseline Freeze / Drift Check
+
+```bash
+# Freeze baseline snapshot from current prediction files
+python backend/prediction_regression_check.py freeze
+
+# Compare current outputs against frozen baseline (tight gate)
+python backend/prediction_regression_check.py compare --strict --drift-threshold-pct 0.5
+```
 
 ---
 

@@ -12,7 +12,7 @@ import re
 import hashlib
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from concurrent.futures import ThreadPoolExecutor
 import threading
 from dotenv import load_dotenv
@@ -34,7 +34,8 @@ try:
     from backend.enhanced_news_fetcher import (
         get_enhanced_news_for_symbol, 
         fetch_multi_source_news,
-        COMPANY_ALIASES
+        COMPANY_ALIASES,
+        determine_retrieval_mode
     )
     ENHANCED_FETCHER_AVAILABLE = True
 except ImportError:
@@ -42,12 +43,14 @@ except ImportError:
         from enhanced_news_fetcher import (
             get_enhanced_news_for_symbol,
             fetch_multi_source_news,
-            COMPANY_ALIASES
+            COMPANY_ALIASES,
+            determine_retrieval_mode
         )
         ENHANCED_FETCHER_AVAILABLE = True
     except ImportError:
         ENHANCED_FETCHER_AVAILABLE = False
         COMPANY_ALIASES = {}
+        determine_retrieval_mode = None
         print("⚠️  Enhanced news fetcher not available")
 
 # Import article scraper for enriched data
@@ -95,6 +98,16 @@ except ImportError:
 # Cache settings
 CACHE_DIR = Path(__file__).parent.parent / "data" / "news_cache"
 CACHE_DURATION_HOURS = 4  # Cache news for 4 hours
+
+INDEX_SYMBOLS = {'KSE100', 'KSE-100', 'PSX'}
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    """Read boolean env var with a safe default."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 # Stock symbol to company name mapping
 STOCK_COMPANIES = {
@@ -352,51 +365,75 @@ def scrape_psx_announcements(symbol: str) -> List[Dict]:
     return news_items[:10]
 
 
-def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
+def fetch_all_news_with_meta(symbol: str, company_names: Tuple[str, ...]) -> Dict[str, Any]:
     """
-    Fetch news from all sources.
-    Priority: Enhanced multi-source fetcher > Selenium > curl fallback
+    Fetch news from all sources with diagnostics and retrieval metadata.
+    Priority: Enhanced fetcher -> Selenium fallback -> curl fallback.
     """
-    all_news = []
-    
+    all_news: List[Dict] = []
+    symbol = symbol.upper()
+    retrieval_mode = 'symbol_mode'
+    enable_index_news_recall = _env_flag('ENABLE_INDEX_NEWS_RECALL', True)
+    if determine_retrieval_mode:
+        retrieval_mode = determine_retrieval_mode(symbol, retrieval_mode='auto')
+    if not enable_index_news_recall and symbol in INDEX_SYMBOLS:
+        retrieval_mode = 'symbol_mode'
+
+    diagnostics: Dict[str, Any] = {
+        'retrieval_mode': retrieval_mode,
+        'news_fetch_diagnostics': {},
+        'sources_attempted': 0,
+        'sources_successful': 0,
+        'filtered_count': 0,
+        'fallback_path': [],
+    }
+
     # First check PSX announcements (no Selenium needed)
     print(f"  📰 Checking PSX announcements...")
     psx_news = scrape_psx_announcements(symbol)
     all_news.extend(psx_news)
     print(f"     Found {len(psx_news)} PSX items")
-    
-    # NEW: Try enhanced multi-source fetcher (company aliases, Dawn, Pakistan Today, etc.)
+
+    # Enhanced multi-source fetcher (with mode-aware retrieval)
     if ENHANCED_FETCHER_AVAILABLE:
-        print(f"  🔍 Using enhanced multi-source fetcher with company aliases...")
+        print("  🔍 Using enhanced multi-source fetcher with company aliases...")
         try:
-            enhanced_result = get_enhanced_news_for_symbol(symbol)
+            enhanced_result = get_enhanced_news_for_symbol(symbol, retrieval_mode=retrieval_mode)
             enhanced_news = enhanced_result.get('news_items', [])
-            
+
+            diagnostics.update({
+                'retrieval_mode': enhanced_result.get('retrieval_mode', retrieval_mode),
+                'news_fetch_diagnostics': enhanced_result.get('news_fetch_diagnostics', {}),
+                'sources_attempted': enhanced_result.get('sources_attempted', 0),
+                'sources_successful': enhanced_result.get('sources_successful', 0),
+                'filtered_count': enhanced_result.get('filtered_count', 0),
+            })
+
             if enhanced_news:
                 all_news.extend(enhanced_news)
                 print(f"     ✅ Found {len(enhanced_news)} articles via enhanced fetcher")
-                
-                # Show what queries were used
                 queries = enhanced_result.get('queries_used', [])
                 parent = enhanced_result.get('parent_company')
                 if parent:
                     print(f"     📊 Parent company: {parent}")
                 if len(queries) > 1:
                     print(f"     🔎 Also searched: {', '.join(queries[1:3])}")
+            else:
+                diagnostics['fallback_path'].append('enhanced_fetcher_empty')
         except Exception as e:
+            diagnostics['fallback_path'].append('enhanced_fetcher_error')
             print(f"     ⚠️ Enhanced fetcher error: {str(e)[:50]}")
-    
-    # Selenium fallback (if we don't have many articles yet)
+
+    # Selenium fallback (if still sparse)
     if len(all_news) < 5:
         driver = get_selenium_driver()
-        
+
         if driver:
-            # Search terms: symbol + company names
             search_terms = [symbol] + list(company_names[:2])
-            
+
             for source_name, config in NEWS_SOURCES.items():
                 print(f"  🌐 Searching {source_name.replace('_', ' ').title()}...")
-                
+
                 for search_term in search_terms:
                     try:
                         items = scrape_news_selenium(
@@ -406,38 +443,53 @@ def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
                             config['selectors'],
                             search_term
                         )
-                        
-                        # Filter to only include relevant news
-                        relevant_items = []
+
+                        relevant_items: List[Dict] = []
                         for item in items:
                             title_lower = item['title'].lower()
-                            if any(term.lower() in title_lower for term in [symbol] + list(company_names)):
+                            if retrieval_mode == 'index_mode':
+                                # For index mode, accept market-level terms instead of exact symbol mentions
+                                if any(
+                                    key in title_lower for key in
+                                    ['psx', 'kse', 'stock exchange', 'market', 'pakistan stocks', 'kse-100']
+                                ):
+                                    relevant_items.append(item)
+                            elif any(term.lower() in title_lower for term in [symbol] + list(company_names)):
                                 relevant_items.append(item)
-                        
+
                         all_news.extend(relevant_items)
-                        
+
                         if relevant_items:
                             print(f"     Found {len(relevant_items)} relevant items for '{search_term}'")
-                            break  # Found news, no need to try other search terms
+                            diagnostics['fallback_path'].append(f"selenium:{source_name}")
+                            break
                     except Exception as e:
                         print(f"     ⚠️ Error: {str(e)[:40]}")
                         continue
         else:
             print("  ⚠️ Selenium not available, using curl fallback...")
-            # Fallback to curl
             for name in company_names[:2]:
                 all_news.extend(fetch_news_curl(name))
-    
+            diagnostics['fallback_path'].append('curl_fallback')
+
     # Deduplicate
     seen = set()
-    unique_news = []
+    unique_news: List[Dict] = []
     for item in all_news:
-        key = item['title'].lower()[:50]
-        if key not in seen:
+        key = item.get('title', '').lower()[:120]
+        if key and key not in seen:
             seen.add(key)
             unique_news.append(item)
-    
-    return unique_news[:25]  # Increased limit for more comprehensive coverage
+
+    return {
+        'news_items': unique_news[:25],
+        **diagnostics,
+    }
+
+
+def fetch_all_news(symbol: str, company_names: Tuple[str, ...]) -> List[Dict]:
+    """Backward-compatible wrapper returning only news list."""
+    return fetch_all_news_with_meta(symbol, company_names).get('news_items', [])
 
 
 def fetch_news_curl(search_term: str) -> List[Dict]:
@@ -699,8 +751,10 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
             return cached
     
     # 🆕 FETCH ENRICHED DATA (articles + fundamentals)
+    # For index symbols (e.g., KSE100), company-level BR research scraping is often
+    # sparse/blocked and not representative. Use multi-source market news instead.
     enriched_data = None
-    if ARTICLE_SCRAPER_AVAILABLE:
+    if ARTICLE_SCRAPER_AVAILABLE and symbol not in INDEX_SYMBOLS:
         print("📚 Fetching enriched data (articles + fundamentals)...")
         try:
             enriched_data = get_enriched_stock_data(symbol)
@@ -710,19 +764,45 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
                 print("   ⚠️ Limited enriched data available")
         except Exception as e:
             print(f"   ⚠️ Error fetching enriched data: {e}")
+    elif symbol in INDEX_SYMBOLS:
+        print("📚 Skipping company research scraper for index symbol; using market-wide news sources.")
     
+    news_meta: Dict[str, Any] = {
+        'retrieval_mode': 'symbol_mode',
+        'news_fetch_diagnostics': {},
+        'sources_attempted': 0,
+        'sources_successful': 0,
+        'filtered_count': 0,
+        'fallback_path': [],
+    }
+
     # Fetch news using PREMIUM fetcher (10+ sources!)
     if PREMIUM_FETCHER_AVAILABLE:
         print("🚀 Using PREMIUM NEWS FETCHER (10+ sources)...")
         premium_result = fetch_premium_news(symbol, use_cache=False, verbose=True)
         news_items = premium_result.get('news_items', [])
         sources_searched = premium_result.get('sources_searched', [])
+        news_meta.update({
+            'retrieval_mode': 'symbol_mode',
+            'sources_attempted': len(sources_searched),
+            'sources_successful': len([s for s in sources_searched if s]),
+            'filtered_count': 0,
+        })
         print(f"📊 Total news items found: {len(news_items)}")
     else:
         # Fallback to basic fetcher
         print("📰 Fetching news from multiple sources...")
-        news_items = fetch_all_news(symbol, company_names)
+        fetched = fetch_all_news_with_meta(symbol, company_names)
+        news_items = fetched.get('news_items', [])
         sources_searched = list(NEWS_SOURCES.keys()) + ['PSX']
+        news_meta.update({
+            'retrieval_mode': fetched.get('retrieval_mode', 'symbol_mode'),
+            'news_fetch_diagnostics': fetched.get('news_fetch_diagnostics', {}),
+            'sources_attempted': fetched.get('sources_attempted', 0),
+            'sources_successful': fetched.get('sources_successful', 0),
+            'filtered_count': fetched.get('filtered_count', 0),
+            'fallback_path': fetched.get('fallback_path', []),
+        })
         print(f"📊 Total news items found: {len(news_items)}")
     
     # Display found news
@@ -743,6 +823,12 @@ def get_stock_sentiment(symbol: str, use_cache: bool = True) -> Dict:
         'news_count': len(news_items),
         'news_items': news_items[:15],  # More news items now!
         'sources_searched': sources_searched,
+        'retrieval_mode': news_meta.get('retrieval_mode', 'symbol_mode'),
+        'news_fetch_diagnostics': news_meta.get('news_fetch_diagnostics', {}),
+        'sources_attempted': news_meta.get('sources_attempted', 0),
+        'sources_successful': news_meta.get('sources_successful', 0),
+        'filtered_count': news_meta.get('filtered_count', 0),
+        'fallback_path': news_meta.get('fallback_path', []),
         'enriched_data_available': enriched_data is not None and enriched_data.get('has_rich_data', False),
         'quality_score': enriched_data.get('quality_score', 0.5) if enriched_data else 0.5,
         'fundamentals': enriched_data.get('fundamentals', {}) if enriched_data else {},
@@ -825,10 +911,16 @@ def get_sentiment_score_for_model(symbol: str, use_cache: bool = True) -> Dict:
         'news_recency': 0.5,
         'available': False
     }
+
+    symbol_upper = symbol.upper()
+    allow_index_recall_in_model = _env_flag('ENABLE_INDEX_RECALL_IN_MODEL', False)
+    if symbol_upper in INDEX_SYMBOLS and not allow_index_recall_in_model:
+        # Keep model input behavior stable until explicit rollout.
+        return NEUTRAL_RESULT
     
     try:
         # Get sentiment (uses cache if available)
-        result = get_stock_sentiment(symbol, use_cache=use_cache)
+        result = get_stock_sentiment(symbol_upper, use_cache=use_cache)
         
         if result.get('error'):
             return NEUTRAL_RESULT

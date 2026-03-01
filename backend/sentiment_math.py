@@ -183,56 +183,56 @@ def calculate_sentiment_adjustment(
     Returns:
         List of monthly adjustments with reasoning
     """
-    adjustments = []
-    
-    # Extract key inputs
+    return _calculate_adjustments(sentiment_analysis, horizons=list(range(1, prediction_months + 1)), unit='month')
+
+
+def calculate_sentiment_adjustment_daily(
+    sentiment_analysis: Dict,
+    prediction_days: int = 30
+) -> List[Dict]:
+    """
+    Calculate day-indexed adjustments for daily prediction series.
+    """
+    return _calculate_adjustments(sentiment_analysis, horizons=list(range(1, prediction_days + 1)), unit='day')
+
+
+def _calculate_adjustments(sentiment_analysis: Dict, horizons: List[int], unit: str) -> List[Dict]:
+    """
+    Generic adjustment engine for monthly/day-wise horizons.
+    """
+    adjustments: List[Dict] = []
+
     sentiment_score = sentiment_analysis.get('sentiment_score', 0)
     confidence = sentiment_analysis.get('confidence', 0.5)
     news_items = sentiment_analysis.get('news_items', [])
-    
-    # Detect specific events
     events = detect_events(news_items)
-    
-    # Calculate base sentiment weight
     base_weight = confidence_weight(confidence)
-    
-    for month in range(1, prediction_months + 1):
-        days_from_now = month * 30
-        
-        # 1. Calculate event-based adjustments
-        event_adjustment = 0
-        event_reasons = []
-        
+
+    for point in horizons:
+        days_from_now = point * (30 if unit == 'month' else 1)
+
+        event_adjustment = 0.0
+        event_reasons: List[str] = []
         for event in events:
-            # Calculate decayed impact
             total_days = event['days_elapsed'] + days_from_now
             decayed_impact = exponential_decay(
                 event['mean_impact'],
                 total_days,
                 event['half_life']
             )
-            
-            if abs(decayed_impact) > 0.001:  # Only include meaningful impacts
+            if abs(decayed_impact) > 0.001:
                 event_adjustment += decayed_impact
-                event_reasons.append(f"{event['type']}: {decayed_impact*100:.2f}%")
-        
-        # 2. Calculate sentiment-based base adjustment
-        # This is for general sentiment not captured by specific events
-        # Decay the sentiment impact over time
+                event_reasons.append(f"{event['type']}: {decayed_impact * 100:.2f}%")
+
         sentiment_decay = exponential_decay(
-            sentiment_score * 0.05,  # Max 5% from pure sentiment
+            sentiment_score * 0.05,
             days_from_now,
-            45  # Sentiment half-life: 45 days
+            45
         )
-        
-        # 3. Combine adjustments with confidence weighting
         total_raw_adjustment = (event_adjustment + sentiment_decay) * base_weight
-        
-        # 4. Apply soft cap to prevent extreme predictions
-        capped_adjustment = sigmoid_cap(total_raw_adjustment, max_val=0.15)  # ±15% max
-        
-        adjustments.append({
-            'month': month,
+        capped_adjustment = sigmoid_cap(total_raw_adjustment, max_val=0.15)
+
+        row = {
             'days_from_now': days_from_now,
             'raw_adjustment': total_raw_adjustment,
             'capped_adjustment': capped_adjustment,
@@ -240,8 +240,13 @@ def calculate_sentiment_adjustment(
             'event_impacts': event_reasons,
             'sentiment_component': round(sentiment_decay * base_weight * 100, 2),
             'confidence_weight': round(base_weight, 3)
-        })
-    
+        }
+        if unit == 'month':
+            row['month'] = point
+        else:
+            row['day'] = point
+        adjustments.append(row)
+
     return adjustments
 
 
@@ -256,13 +261,23 @@ def apply_adjustments_to_predictions(
         return base_predictions
     
     adjusted = []
-    
+
+    # Build lookup maps for explicit matching without position-based month leakage.
+    by_day = {int(a['day']): a for a in adjustments if isinstance(a, dict) and 'day' in a}
+    by_month = {int(a['month']): a for a in adjustments if isinstance(a, dict) and 'month' in a}
+
     for i, pred in enumerate(base_predictions):
-        month_idx = i + 1
-        
-        # Find matching adjustment
-        adj = next((a for a in adjustments if a['month'] == month_idx), None)
-        
+        adj = None
+        if 'day' in pred:
+            try:
+                adj = by_day.get(int(pred['day']))
+            except Exception:
+                adj = None
+        if adj is None:
+            # Legacy fallback: month-index behavior for monthly prediction arrays
+            month_idx = i + 1
+            adj = by_month.get(month_idx)
+
         if adj:
             adjustment_factor = adj['capped_adjustment']
             
@@ -282,7 +297,7 @@ def apply_adjustments_to_predictions(
             adjusted.append(new_pred)
         else:
             adjusted.append(pred)
-    
+
     return adjusted
 
 
@@ -313,9 +328,14 @@ def generate_adjustment_report(sentiment_analysis: Dict, adjustments: List[Dict]
         "Monthly Adjustments:",
     ])
     
-    for adj in adjustments[:6]:  # First 6 months
+    for adj in adjustments[:6]:  # First 6 points
+        label = "Month"
+        point = adj.get('month')
+        if point is None:
+            label = "Day"
+            point = adj.get('day', '?')
         lines.append(
-            f"  Month {adj['month']}: {adj['percentage']:+.2f}% "
+            f"  {label} {point}: {adj['percentage']:+.2f}% "
             f"(raw: {adj['raw_adjustment']*100:+.2f}%, capped)"
         )
     
@@ -336,7 +356,11 @@ def generate_adjustment_report(sentiment_analysis: Dict, adjustments: List[Dict]
 # WRAPPER FUNCTION FOR INTEGRATION
 # ============================================================================
 
-def get_rigorous_adjustment(sentiment_result: Dict) -> Dict:
+def get_rigorous_adjustment(
+    sentiment_result: Dict,
+    prediction_length: int = 24,
+    frequency: str = 'monthly'
+) -> Dict:
     """
     Main function: Get mathematically rigorous price adjustment.
     
@@ -347,7 +371,16 @@ def get_rigorous_adjustment(sentiment_result: Dict) -> Dict:
         Dictionary with adjustments and metadata
     """
     # Calculate adjustments
-    adjustments = calculate_sentiment_adjustment(sentiment_result, prediction_months=24)
+    if frequency == 'daily':
+        adjustments = calculate_sentiment_adjustment_daily(
+            sentiment_result,
+            prediction_days=max(1, int(prediction_length))
+        )
+    else:
+        adjustments = calculate_sentiment_adjustment(
+            sentiment_result,
+            prediction_months=max(1, int(prediction_length))
+        )
     
     # Generate report
     report = generate_adjustment_report(sentiment_result, adjustments)
@@ -369,7 +402,8 @@ def get_rigorous_adjustment(sentiment_result: Dict) -> Dict:
             'events_detected': len(detected_events),
             'event_types': list(set(e['type'] for e in detected_events)),
             'confidence_weight': confidence_weight(sentiment_result.get('confidence', 0.5)),
-            'methodology': 'Research-backed event study with exponential decay and confidence weighting'
+            'methodology': 'Research-backed event study with exponential decay and confidence weighting',
+            'frequency': frequency
         }
     }
 

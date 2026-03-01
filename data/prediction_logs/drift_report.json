@@ -1,0 +1,144 @@
+{
+  "compared_at": "2026-03-02T01:54:47.586639",
+  "baseline_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/prediction_logs/baseline_snapshot.json",
+  "drift_threshold_pct": 0.5,
+  "strict": false,
+  "symbols": {
+    "KSE100": {
+      "status": "ok",
+      "points": {
+        "day_1": {
+          "old_price": 166647.34,
+          "new_price": 166646.81,
+          "drift_pct": -0.0003,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_7": {
+          "old_price": 163007.77,
+          "new_price": 163003.66,
+          "drift_pct": -0.0025,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_21": {
+          "old_price": 160724.1,
+          "new_price": 160711.76,
+          "drift_pct": -0.0077,
+          "direction_match": true,
+          "stable_direction_match": true
+        }
+      }
+    },
+    "OGDC": {
+      "status": "ok",
+      "points": {
+        "day_1": {
+          "old_price": 326.49,
+          "new_price": 326.49,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_7": {
+          "old_price": 324.65,
+          "new_price": 324.65,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_21": {
+          "old_price": 298.26,
+          "new_price": 298.26,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        }
+      }
+    },
+    "PPL": {
+      "status": "ok",
+      "points": {
+        "day_1": {
+          "old_price": 238.16,
+          "new_price": 238.16,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_7": {
+          "old_price": 234.96,
+          "new_price": 234.96,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_21": {
+          "old_price": 215.64,
+          "new_price": 215.64,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        }
+      }
+    },
+    "LUCK": {
+      "status": "ok",
+      "points": {
+        "day_1": {
+          "old_price": 500.57,
+          "new_price": 500.57,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_7": {
+          "old_price": 459.84,
+          "new_price": 459.84,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_21": {
+          "old_price": 467.01,
+          "new_price": 467.01,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        }
+      }
+    },
+    "HBL": {
+      "status": "missing"
+    },
+    "SYS": {
+      "status": "ok",
+      "points": {
+        "day_1": {
+          "old_price": 156.24,
+          "new_price": 156.24,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_7": {
+          "old_price": 150.02,
+          "new_price": 150.02,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        },
+        "day_21": {
+          "old_price": 139.13,
+          "new_price": 139.13,
+          "drift_pct": 0.0,
+          "direction_match": true,
+          "stable_direction_match": true
+        }
+      }
+    }
+  },
+  "failures": [
+    "HBL"
+  ]
+}

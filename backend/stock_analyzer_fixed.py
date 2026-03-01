@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import json
+import os
 import subprocess
 import re
 import pandas as pd
@@ -69,6 +70,7 @@ class StockRequest(BaseModel):
     horizon: Union[int, str] = 21  # Default to 21 days (research-validated), can be int or 'full'
 
 progress_data = {}
+INDEX_SYMBOLS = {'KSE100', 'KSE-100', 'PSX'}
 
 
 async def safe_send(websocket: WebSocket, data: dict) -> bool:
@@ -1205,21 +1207,39 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             # Fetch and analyze news with Groq (anti-hallucination prompt)
             sentiment_result = get_stock_sentiment(symbol, use_cache=False)
             
+            enable_index_recall_in_model = os.getenv('ENABLE_INDEX_RECALL_IN_MODEL', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
+            apply_sentiment_to_predictions = not (symbol in INDEX_SYMBOLS and not enable_index_recall_in_model)
+
             # Calculate mathematically rigorous adjustments
-            adjustment_data = get_rigorous_adjustment(sentiment_result)
-            
-            # Apply adjustments to predictions. Include current_price so upside_potential
-            # stays synchronized with predicted_price after sentiment transforms.
-            current_close = float(df['Close'].iloc[-1])
-            predictions_with_current = []
-            for p in predictions:
-                row = dict(p)
-                row['current_price'] = current_close
-                predictions_with_current.append(row)
-            adjusted_predictions = apply_adjustments_to_predictions(
-                predictions_with_current,
-                adjustment_data['adjustments']
-            )
+            if apply_sentiment_to_predictions:
+                adjustment_data = get_rigorous_adjustment(
+                    sentiment_result,
+                    prediction_length=len(predictions),
+                    frequency='daily'
+                )
+
+                # Apply adjustments to predictions. Include current_price so upside_potential
+                # stays synchronized with predicted_price after sentiment transforms.
+                current_close = float(df['Close'].iloc[-1])
+                predictions_with_current = []
+                for p in predictions:
+                    row = dict(p)
+                    row['current_price'] = current_close
+                    predictions_with_current.append(row)
+                adjusted_predictions = apply_adjustments_to_predictions(
+                    predictions_with_current,
+                    adjustment_data['adjustments']
+                )
+            else:
+                adjustment_data = {
+                    'adjustments': [],
+                    'summary': {
+                        'events_detected': 0,
+                        'max_positive_adjustment': 0.0,
+                        'methodology': 'Index recall model-impact disabled by flag'
+                    }
+                }
+                adjusted_predictions = predictions
             
             sentiment_summary = {
                 'signal': sentiment_result.get('signal', 'NEUTRAL'),
@@ -1227,9 +1247,15 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'sentiment_score': sentiment_result.get('sentiment_score', 0),
                 'confidence': sentiment_result.get('confidence', 0),
                 'news_count': sentiment_result.get('news_count', 0),
+                'retrieval_mode': sentiment_result.get('retrieval_mode', 'symbol_mode'),
+                'news_fetch_diagnostics': sentiment_result.get('news_fetch_diagnostics', {}),
+                'sources_attempted': sentiment_result.get('sources_attempted', 0),
+                'sources_successful': sentiment_result.get('sources_successful', 0),
+                'filtered_count': sentiment_result.get('filtered_count', 0),
                 'events_detected': adjustment_data['summary']['events_detected'],
                 'max_adjustment': adjustment_data['summary']['max_positive_adjustment'],
                 'methodology': 'Research-backed event study with exponential decay',
+                'model_impact_enabled': apply_sentiment_to_predictions,
                 # Claude's analysis text
                 'summary': sentiment_result.get('summary', ''),
                 'key_events': sentiment_result.get('key_events', []),
@@ -1320,6 +1346,46 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         trend_acc = metrics.get('trend_accuracy', metrics.get('ensemble_accuracy', 0))
         mase_val = metrics.get('mase', 0)
         mape_val = metrics.get('mape', 0)
+
+        model_variant = os.getenv('MODEL_VARIANT', 'baseline').strip().lower()
+        if model_variant not in {'baseline', 'shadow', 'upgraded'}:
+            model_variant = 'baseline'
+
+        direction_meta = {}
+        if adjusted_predictions:
+            # Use day-7 as canonical logged horizon (same as logger)
+            pivot_idx = 6 if len(adjusted_predictions) >= 7 else len(adjusted_predictions) - 1
+            pivot_pred = adjusted_predictions[pivot_idx]
+            raw_direction = direction_from_change_pct(
+                float(pivot_pred.get('upside_potential', 0) or 0),
+                neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
+            )
+            stable_direction = pivot_pred.get('stable_direction', raw_direction)
+            logged_direction_source = os.getenv('LOGGED_DIRECTION_SOURCE', 'stable').strip().lower()
+            if logged_direction_source not in {'stable', 'raw'}:
+                logged_direction_source = 'stable'
+            logged_direction = stable_direction if logged_direction_source == 'stable' else raw_direction
+            direction_meta = {
+                'raw_direction': raw_direction,
+                'stable_direction': stable_direction,
+                'logged_direction': logged_direction,
+                'logged_direction_source': logged_direction_source,
+            }
+        else:
+            direction_meta = {
+                'raw_direction': 'NEUTRAL',
+                'stable_direction': 'NEUTRAL',
+                'logged_direction': 'NEUTRAL',
+                'logged_direction_source': 'stable',
+            }
+
+        shadow_comparison = {}
+        if model_variant == 'shadow':
+            shadow_comparison = {
+                'enabled': True,
+                'status': 'not_implemented',
+                'note': 'Shadow comparison scaffolding present; baseline output remains user-facing.'
+            }
         
         await websocket.send_json({
             'stage': 'complete',
@@ -1328,12 +1394,14 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             'results': {
                 'symbol': symbol,
                 'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble + AI Sentiment',
+                'model_variant': model_variant,
                 'model_performance': {
                     'r2': float(r2_val),
                     'trend_accuracy': float(trend_acc),
                     'mase': float(mase_val),
                     'mape': float(mape_val)
                 },
+                'direction_meta': direction_meta,
                 'sentiment': sentiment_summary,
                 'monthly_predictions': adjusted_predictions[:12],  # First 12 months
                 'daily_predictions': adjusted_predictions, # Full daily predictions
@@ -1351,6 +1419,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'external_features_used': USE_RESEARCH_MODEL,
                 'prediction_reasoning': reasoning,
                 'tuning': tuning_meta,
+                'shadow_comparison': shadow_comparison,
             }
         })
         
@@ -1363,13 +1432,16 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                     'symbol': symbol,
                     'generated_at': datetime.now().isoformat(),
                     'model': 'Research Model (SVM + MLP + External Features)' if USE_RESEARCH_MODEL else 'SOTA Ensemble',
+                    'model_variant': model_variant,
                     'current_price': float(df['Close'].iloc[-1]),
+                    'direction_meta': direction_meta,
                     'sentiment': sentiment_summary,
                     'monthly_forecast': monthly_forecast,  # Detailed monthly analysis
                     'forecast_summary': forecast_summary,  # Overall outlook
                     'prediction_reasoning': reasoning,
                     'daily_predictions_count': len(adjusted_predictions),
                     'tuning': tuning_meta,
+                    'shadow_comparison': shadow_comparison,
                 }, cf, indent=2)
             print(f"Complete analysis saved to {complete_analysis_file}")
         except Exception as e:
@@ -1389,14 +1461,21 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 williams_signal = pred_7d.get('williams_signal')
                 sector = pred_7d.get('sector')
 
+                raw_direction = direction_from_change_pct(
+                    float(pred_7d.get('upside_potential', 0) or 0),
+                    neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
+                )
+                stable_direction = pred_7d.get('stable_direction', raw_direction)
+                logged_direction_source = os.getenv('LOGGED_DIRECTION_SOURCE', 'stable').strip().lower()
+                if logged_direction_source not in {'stable', 'raw'}:
+                    logged_direction_source = 'stable'
+                logged_direction = stable_direction if logged_direction_source == 'stable' else raw_direction
+
                 logger.log_prediction(
                     symbol=symbol,
                     current_price=current_price,
                     predicted_price=pred_7d['predicted_price'],
-                    predicted_direction=direction_from_change_pct(
-                        float(pred_7d.get('upside_potential', 0) or 0),
-                        neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
-                    ),
+                    predicted_direction=logged_direction,
                     confidence=pred_7d.get('confidence', 0.5),
                     horizon_days=7,
                     williams_signal=williams_signal,
@@ -1424,4 +1503,3 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             pass
 
 # This module is imported by main.py, not run standalone
-

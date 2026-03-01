@@ -30,6 +30,20 @@ except ImportError:
 # STOCK TO COMPANY MAPPING (for search)
 # ============================================================================
 
+INDEX_SYMBOLS = {'KSE100', 'KSE-100', 'PSX'}
+INDEX_SEARCH_TERMS = ['PSX market', 'KSE-100 index', 'Pakistan stocks', 'stock exchange']
+
+# Terms for index-level market relevance checks
+INDEX_CORE_TERMS = [
+    'psx', 'kse', 'kse-100', 'kse100', 'stock exchange', 'index',
+    'stocks', 'shares', 'equity market', 'pakistan stocks'
+]
+INDEX_MACRO_TERMS = [
+    'sbp', 'policy rate', 'kibor', 'imf', 'inflation', 'forex',
+    'usd pkr', 'rupee', 'oil prices', 'market capitalization'
+]
+NOISE_TERMS = ['sports', 'cricket', 'tennis', 'celebrity', 'lifestyle', 'entertainment']
+
 STOCK_SEARCH_TERMS = {
     'BWHL': ['Baluchistan Wheel', 'BWHL', 'Balochistan Wheel'],
     'PSO': ['Pakistan State Oil', 'PSO'],
@@ -60,7 +74,12 @@ def fetch_br_research_articles(symbol: str, max_articles: int = 3) -> List[Dict]
     Search Business Recorder for research articles about a stock.
     Returns a list of articles with full content.
     """
-    search_terms = STOCK_SEARCH_TERMS.get(symbol.upper(), [symbol])
+    symbol_upper = symbol.upper()
+    is_index_mode = symbol_upper in INDEX_SYMBOLS
+    if is_index_mode:
+        search_terms = INDEX_SEARCH_TERMS
+    else:
+        search_terms = STOCK_SEARCH_TERMS.get(symbol_upper, [symbol])
     articles = []
     
     for term in search_terms[:2]:  # Try up to 2 search terms
@@ -97,7 +116,12 @@ def fetch_br_research_articles(symbol: str, max_articles: int = 3) -> List[Dict]
                 for url in all_urls[:max_articles]:
                     if url not in [a.get('url') for a in articles]:
                         article = fetch_article_content(url)
-                        if article and is_relevant_article(article, symbol, search_terms):
+                        if article and is_relevant_article(
+                            article,
+                            symbol_upper,
+                            search_terms,
+                            index_mode=is_index_mode
+                        ):
                             articles.append(article)
                             
                             if len(articles) >= max_articles:
@@ -197,18 +221,36 @@ def fetch_article_content(url: str) -> Optional[Dict]:
         return None
 
 
-def is_relevant_article(article: Dict, symbol: str, search_terms: List[str]) -> bool:
+def is_relevant_article(
+    article: Dict,
+    symbol: str,
+    search_terms: List[str],
+    index_mode: bool = False
+) -> bool:
     """
     Check if an article is actually relevant to the stock.
     """
     title_lower = article.get('title', '').lower()
     content_lower = article.get('content', '').lower()
     
-    # Check for symbol or company name in title or content
+    if index_mode:
+        text = f"{title_lower} {content_lower}"
+        score = 0.0
+        for term in INDEX_CORE_TERMS:
+            if term in text:
+                score += 1.0
+        for term in INDEX_MACRO_TERMS:
+            if term in text:
+                score += 0.5
+        if any(term in text for term in NOISE_TERMS) and score < 2.0:
+            return False
+        return score >= 1.0
+
+    # Symbol mode: strict company matching
     for term in [symbol.lower()] + [t.lower() for t in search_terms]:
         if term in title_lower or term in content_lower:
             return True
-    
+
     return False
 
 

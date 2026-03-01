@@ -1,0 +1,178 @@
+{
+  "frozen_at": "2026-03-02T01:58:39.833258",
+  "symbols_requested": [
+    "KSE100",
+    "OGDC",
+    "PPL",
+    "LUCK",
+    "HBL",
+    "SYS"
+  ],
+  "symbols_frozen": [
+    "KSE100",
+    "LUCK",
+    "OGDC",
+    "PPL",
+    "SYS"
+  ],
+  "symbols_missing": [
+    "HBL"
+  ],
+  "snapshots": {
+    "KSE100": {
+      "symbol": "KSE100",
+      "current_price": null,
+      "model": "\ud83d\udd2c Research Model (SVM + MLP + External Features)",
+      "generated_at": "2026-03-02T01:09:50.769409",
+      "day_1": {
+        "date": "2026-03-03",
+        "predicted_price": 166646.81,
+        "upside_potential": -0.52,
+        "confidence": 0.95,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "day_7": {
+        "date": "2026-03-11",
+        "predicted_price": 163003.66,
+        "upside_potential": -2.69,
+        "confidence": 0.8,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "day_21": {
+        "date": "2026-03-31",
+        "predicted_price": 160711.76,
+        "upside_potential": -4.06,
+        "confidence": 0.6,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "source_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/KSE100_research_predictions_2026.json"
+    },
+    "OGDC": {
+      "symbol": "OGDC",
+      "current_price": null,
+      "model": "\ud83d\udd2c Research Model (SVM + MLP + External Features)",
+      "generated_at": "2026-02-01T18:54:30.363093",
+      "day_1": {
+        "date": "2026-02-02",
+        "predicted_price": 326.49,
+        "upside_potential": -0.12,
+        "confidence": 0.9771740021930424,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "day_7": {
+        "date": "2026-02-10",
+        "predicted_price": 324.65,
+        "upside_potential": -0.68,
+        "confidence": 0.8271740021930425,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "day_21": {
+        "date": "2026-03-02",
+        "predicted_price": 298.26,
+        "upside_potential": -8.75,
+        "confidence": 0.6271740021930424,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BULLISH"
+      },
+      "source_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/OGDC_research_predictions_2026.json"
+    },
+    "PPL": {
+      "symbol": "PPL",
+      "current_price": null,
+      "model": "\ud83d\udd2c Research Model (SVM + MLP + External Features)",
+      "generated_at": "2026-02-13T19:21:47.415948",
+      "day_1": {
+        "date": "2026-02-16",
+        "predicted_price": 238.16,
+        "upside_potential": -0.16,
+        "confidence": 0.9880382953510486,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_7": {
+        "date": "2026-02-24",
+        "predicted_price": 234.96,
+        "upside_potential": -1.5,
+        "confidence": 0.8380382953510487,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_21": {
+        "date": "2026-03-16",
+        "predicted_price": 215.64,
+        "upside_potential": -9.6,
+        "confidence": 0.6380382953510486,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "source_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/PPL_research_predictions_2026.json"
+    },
+    "LUCK": {
+      "symbol": "LUCK",
+      "current_price": null,
+      "model": "\ud83d\udd2c Research Model (SVM + MLP + External Features)",
+      "generated_at": "2026-01-09T00:12:25.016694",
+      "day_1": {
+        "date": "2026-01-09",
+        "predicted_price": 500.57,
+        "upside_potential": -0.85,
+        "confidence": 0.95,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_7": {
+        "date": "2026-01-15",
+        "predicted_price": 459.84,
+        "upside_potential": -8.91,
+        "confidence": 0.8,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_21": {
+        "date": "2026-01-29",
+        "predicted_price": 467.01,
+        "upside_potential": -7.49,
+        "confidence": 0.6,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "source_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/LUCK_research_predictions_2026.json"
+    },
+    "SYS": {
+      "symbol": "SYS",
+      "current_price": null,
+      "model": "\ud83d\udd2c Research Model (SVM + MLP + External Features)",
+      "generated_at": "2026-01-20T02:04:17.920222",
+      "day_1": {
+        "date": "2026-01-20",
+        "predicted_price": 156.24,
+        "upside_potential": -2.62,
+        "confidence": 0.95,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_7": {
+        "date": "2026-01-26",
+        "predicted_price": 150.02,
+        "upside_potential": -6.5,
+        "confidence": 0.8,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "day_21": {
+        "date": "2026-02-09",
+        "predicted_price": 139.13,
+        "upside_potential": -13.28,
+        "confidence": 0.6,
+        "raw_direction": "BEARISH",
+        "stable_direction": "BEARISH"
+      },
+      "source_file": "/Users/burhankhatri/Downloads/folder/temp/psx-prediction-app/data/SYS_research_predictions_2026.json"
+    }
+  }
+}

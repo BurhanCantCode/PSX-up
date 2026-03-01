@@ -19,6 +19,7 @@ Papers referenced:
 
 import numpy as np
 import pandas as pd
+import os
 from typing import Tuple, List, Dict, Optional
 from pathlib import Path
 import json
@@ -63,6 +64,18 @@ except ImportError:
     except ImportError:
         NEWS_SENTIMENT_AVAILABLE = False
         get_sentiment_score_for_model = None
+
+# Geopolitical features integration (flagged rollout)
+try:
+    from backend.geopolitical_features import get_geopolitical_features_for_symbol
+    GEO_FEATURES_AVAILABLE = True
+except ImportError:
+    try:
+        from geopolitical_features import get_geopolitical_features_for_symbol
+        GEO_FEATURES_AVAILABLE = True
+    except ImportError:
+        GEO_FEATURES_AVAILABLE = False
+        get_geopolitical_features_for_symbol = None
 
 # Williams %R Classifier integration (research-backed 85% accuracy)
 try:
@@ -868,6 +881,8 @@ class PSXResearchModel:
         self.feature_cols = []
         self.is_fitted = False
         self.metrics = {}
+        self._preprocess_cache_key = None
+        self._preprocess_cache_df = None
     
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -879,6 +894,25 @@ class PSXResearchModel:
         5. PSX seasonal features
         """
         df = df.copy()
+
+        cache_key = None
+        try:
+            if 'Date' in df.columns and 'Close' in df.columns and len(df) > 0:
+                date_series = pd.to_datetime(df['Date'], errors='coerce')
+                cache_key = (
+                    self.symbol,
+                    self.use_wavelet,
+                    len(df),
+                    str(date_series.min()),
+                    str(date_series.max()),
+                    float(pd.to_numeric(df['Close'], errors='coerce').iloc[-1])
+                )
+        except Exception:
+            cache_key = None
+
+        if cache_key and self._preprocess_cache_key == cache_key and self._preprocess_cache_df is not None:
+            print("\n🔬 PREPROCESSING PIPELINE (cache hit)")
+            return self._preprocess_cache_df.copy()
         
         print("\n🔬 PREPROCESSING PIPELINE")
         print("=" * 50)
@@ -943,8 +977,40 @@ class PSXResearchModel:
             df['news_bias'] = 0.0
             df['news_volume'] = 0.5
             df['news_recency'] = 0.5
-        
+
+        # 7. Geopolitical features (flagged shadow rollout only)
+        enable_geo_features = os.getenv('ENABLE_GEO_FEATURES', 'false').strip().lower() in {'1', 'true', 'yes', 'on'}
+        if enable_geo_features and GEO_FEATURES_AVAILABLE and self.symbol:
+            print("7. Adding geopolitical risk features...")
+            try:
+                geo = get_geopolitical_features_for_symbol(self.symbol, use_cache=True)
+                for k, v in geo.items():
+                    df[k] = float(v)
+                print(
+                    "   Added geo features: "
+                    f"conflict={geo.get('geo_conflict_risk', 0):.2f}, "
+                    f"energy={geo.get('geo_energy_supply_risk', 0):.2f}, "
+                    f"regional={geo.get('geo_regional_tension', 0):.2f}"
+                )
+            except Exception as e:
+                print(f"   WARNING: Geo features failed ({str(e)[:30]}), using neutral")
+                df['geo_conflict_risk'] = 0.0
+                df['geo_energy_supply_risk'] = 0.0
+                df['geo_regional_tension'] = 0.0
+                df['geo_global_risk_off'] = 0.0
+                df['geo_news_volume'] = 0.0
+        else:
+            # Keep columns stable across training/inference paths.
+            df['geo_conflict_risk'] = 0.0
+            df['geo_energy_supply_risk'] = 0.0
+            df['geo_regional_tension'] = 0.0
+            df['geo_global_risk_off'] = 0.0
+            df['geo_news_volume'] = 0.0
+
         print(f"\nPreprocessing complete: {len(df)} rows x {len(df.columns)} cols")
+        if cache_key:
+            self._preprocess_cache_key = cache_key
+            self._preprocess_cache_df = df.copy()
         return df
     
     def prepare_features(self, df: pd.DataFrame, use_returns: bool = False) -> Tuple[np.ndarray, np.ndarray, List[str]]:
@@ -989,7 +1055,8 @@ class PSXResearchModel:
                 'beta' in col.lower() or
                 'seasonal' in col.lower() or
                 ('denoised' in col.lower() and not use_returns) or
-                'news_' in col.lower()):  # Include news_bias, news_volume, news_recency
+                'news_' in col.lower() or
+                'geo_' in col.lower()):  # Include news/geopolitical features
                 feature_cols.append(col)
         
         self.feature_cols = feature_cols

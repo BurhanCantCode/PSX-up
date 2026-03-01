@@ -8,9 +8,11 @@ UAE investments, IMF loans, policy changes that affect stock groups.
 import re
 import subprocess
 import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Optional, Union
+from urllib.parse import urlparse
 import math
 
 # ============================================================================
@@ -178,6 +180,35 @@ MACRO_CATEGORIES = [
     'PSX market today',
 ]
 
+# Index symbols that require market-wide retrieval strategy
+INDEX_SYMBOLS = {'KSE100', 'KSE-100', 'PSX'}
+
+# Expanded query pack for index/news-mode recall
+INDEX_QUERY_PACK = [
+    'PSX market today',
+    'KSE-100 index',
+    'Pakistan stocks',
+    'PSX trading session',
+    'market capitalization PSX',
+    'Pakistan stock exchange',
+    'PSX top gainers',
+    'PSX top losers',
+]
+
+# Terms used to score index-level relevance
+INDEX_RELEVANCE_TERMS = {
+    'core': [
+        'psx', 'kse', 'kse-100', 'kse100', 'stock exchange',
+        'pakistan stocks', 'market capitalization'
+    ],
+    'macro': [
+        'sbp', 'policy rate', 'kibor', 'imf', 'usd pkr',
+        'forex reserves', 'budget', 'inflation', 'geopolitical',
+        'conflict', 'war', 'sanctions', 'oil prices'
+    ],
+    'business_hints': ['business', 'markets', 'stocks', 'economy'],
+}
+
 
 # ============================================================================
 # MULTI-SOURCE NEWS SCRAPING
@@ -216,177 +247,528 @@ NEWS_SOURCES = {
     },
 }
 
+SOURCE_BASE_URLS = {
+    'business recorder': 'https://www.brecorder.com',
+    'dawn': 'https://www.dawn.com',
+    'pakistan today': 'https://www.pakistantoday.com.pk',
+    'express tribune': 'https://tribune.com.pk',
+    'geo news': 'https://www.geo.tv',
+    'minute mirror': 'https://minutemirror.com.pk',
+}
 
-def fetch_news_curl(url: str, timeout: int = 10) -> str:
-    """Fetch URL content using curl"""
+
+def _env_flag(name: str, default: bool) -> bool:
+    """Read boolean environment flag safely."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def determine_retrieval_mode(symbol: str, retrieval_mode: str = 'auto') -> str:
+    """
+    Decide whether to run strict symbol-mode or broader index-mode retrieval.
+    """
+    mode = (retrieval_mode or 'auto').strip().lower()
+    if mode in {'symbol_mode', 'index_mode'}:
+        return mode
+    return 'index_mode' if symbol.upper() in INDEX_SYMBOLS else 'symbol_mode'
+
+
+def normalize_news_key(item: Dict) -> str:
+    """Build a stable dedupe key from normalized title + URL path suffix."""
+    title = re.sub(r'\s+', ' ', item.get('title', '').strip().lower())
+    url = (item.get('url') or '').strip().lower()
+    if url.startswith('http'):
+        url = re.sub(r'^https?://', '', url).split('?', 1)[0].rstrip('/')
+    return f"{title[:180]}::{url[-120:]}"
+
+
+def _safe_date_score(date_str: str) -> float:
+    """
+    Convert article date into a 0..1 recency score with a 14-day half-life.
+    """
+    try:
+        d = datetime.strptime((date_str or '')[:10], '%Y-%m-%d')
+        days_old = max(0, (datetime.now() - d).days)
+    except Exception:
+        days_old = 7
+    return float(math.exp(-days_old / 14))
+
+
+def score_index_relevance(title: str, url: str = '') -> float:
+    """
+    Weighted relevance score for index-level market articles.
+    """
+    text = f"{title} {url}".lower()
+    score = 0.0
+
+    for term in INDEX_RELEVANCE_TERMS['core']:
+        if term in text:
+            score += 1.0
+
+    for term in INDEX_RELEVANCE_TERMS['macro']:
+        if term in text:
+            score += 0.6
+
+    for hint in INDEX_RELEVANCE_TERMS['business_hints']:
+        if hint in text:
+            score += 0.3
+
+    # Penalize clearly irrelevant verticals
+    if any(x in text for x in ['sports', 'entertainment', 'lifestyle', 'opinion']):
+        score -= 0.8
+
+    return max(0.0, round(score, 3))
+
+
+def _contains_market_term(title: str, url: str = '') -> bool:
+    text = f"{title} {url}".lower()
+    return any(
+        x in text for x in [
+            'psx', 'kse-100', 'kse100', 'stock exchange', 'market today', 'pakistan stocks'
+        ]
+    )
+
+
+def dedupe_and_rank_news(news_items: List[Dict], retrieval_mode: str) -> List[Dict]:
+    """
+    Dedupe and rank results by relevance + source credibility + recency.
+    """
+    unique: Dict[str, Dict] = {}
+    for item in news_items:
+        key = normalize_news_key(item)
+        existing = unique.get(key)
+        if existing is None:
+            unique[key] = item
+            continue
+        # Keep the richer/better-scoring record
+        cur_score = float(item.get('relevance_score', 0))
+        old_score = float(existing.get('relevance_score', 0))
+        if cur_score > old_score:
+            unique[key] = item
+
+    ranked = []
+    for item in unique.values():
+        source = (item.get('source') or '').lower()
+        source_cred = SOURCE_CREDIBILITY.get(source, 0.6) if 'SOURCE_CREDIBILITY' in globals() else 0.6
+        recency = _safe_date_score(item.get('date', ''))
+        if retrieval_mode == 'index_mode':
+            relevance = float(item.get('relevance_score', 0.0))
+            rank_score = 0.5 * relevance + 0.3 * source_cred + 0.2 * recency
+        else:
+            direct_bonus = 1.0 if item.get('is_direct') else 0.5
+            rank_score = 0.5 * direct_bonus + 0.3 * source_cred + 0.2 * recency
+        item['rank_score'] = round(rank_score, 4)
+        ranked.append(item)
+
+    ranked.sort(key=lambda x: (x.get('rank_score', 0), x.get('date', '')), reverse=True)
+    return ranked
+
+
+def fetch_news_curl_with_status(url: str, timeout: int = 10) -> Dict:
+    """
+    Fetch URL content with an explicit status for diagnostics.
+    """
     try:
         result = subprocess.run(
-            ['curl', '-s', '-L', '--max-time', str(timeout), 
+            ['curl', '-s', '-L', '--max-time', str(timeout),
              '-H', 'User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
              url],
             capture_output=True, text=True, timeout=timeout + 5
         )
-        return result.stdout if result.returncode == 0 else ""
-    except:
-        return ""
+        if result.returncode != 0:
+            return {'html': '', 'status': 'blocked'}
+        if not result.stdout:
+            return {'html': '', 'status': 'empty'}
+        return {'html': result.stdout, 'status': 'ok'}
+    except subprocess.TimeoutExpired:
+        return {'html': '', 'status': 'timeout'}
+    except Exception:
+        return {'html': '', 'status': 'error'}
+
+
+def fetch_news_curl(url: str, timeout: int = 10) -> str:
+    """Fetch URL content using curl"""
+    return fetch_news_curl_with_status(url, timeout=timeout).get('html', '')
+
+
+def _normalize_href(source: str, href: str) -> str:
+    """Normalize relative links to absolute for better scoring/dedupe."""
+    href = (href or '').strip()
+    if href.startswith('http://') or href.startswith('https://'):
+        return href
+    if href.startswith('//'):
+        return f"https:{href}"
+    base = SOURCE_BASE_URLS.get(source.lower(), '')
+    if href.startswith('/') and base:
+        return f"{base}{href}"
+    return href
+
+
+def _clean_anchor_text(text: str) -> str:
+    text = re.sub(r'<script.*?</script>', ' ', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<style.*?</style>', ' ', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'&nbsp;|&#160;', ' ', text, flags=re.IGNORECASE)
+    text = re.sub(r'&amp;', '&', text, flags=re.IGNORECASE)
+    text = re.sub(r'&quot;', '"', text, flags=re.IGNORECASE)
+    text = re.sub(r'&#39;', "'", text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _is_likely_article_link(source: str, href: str, title: str) -> bool:
+    """Source-aware guardrails to avoid nav/widgets while keeping article links."""
+    href_l = (href or '').lower()
+    title_l = (title or '').lower()
+    path = urlparse(href_l).path
+
+    if not href or href.startswith('#'):
+        return False
+    if any(x in href_l for x in ['javascript:', 'mailto:']):
+        return False
+    if any(x in href_l for x in ['/contact', '/privacy', '/about', '/profile', '/advertise']):
+        return False
+    if any(
+        x in title_l for x in [
+            'ramazan calendar', 'weather forecast', 'satellite parameters',
+            'live tv', 'newsletter', 'careers', 'obituaries'
+        ]
+    ):
+        return False
+
+    source_l = source.lower()
+    if source_l == 'dawn':
+        return '/news/' in path
+    if source_l == 'express tribune':
+        return '/story/' in path or '/business/' in path
+    if source_l == 'geo news':
+        return '/latest/' in path or '/category/business' in path
+    if source_l == 'business recorder':
+        return '/news/' in path or '/markets/' in path or '/trends/psx' in path
+    if source_l == 'minute mirror':
+        return bool(re.search(r'-\d+/?$', path)) or '/business/' in path
+    if source_l == 'pakistan today':
+        return bool(re.search(r'/\d{4}/\d{2}/\d{2}/', path)) or '/category/business' in path
+
+    # Generic fallback
+    return len(path) > 8
 
 
 def extract_articles_from_html(html: str, source: str) -> List[Dict]:
     """Extract article titles and links from HTML"""
     articles = []
-    
-    # Common patterns for article headlines
-    patterns = [
-        r'<a[^>]+href="([^"]+)"[^>]*>([^<]{20,200})</a>',  # Standard links
-        r'<h[123][^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>([^<]{20,200})</a>',  # Headlines
-        r'class="[^"]*title[^"]*"[^>]*>.*?<a[^>]+href="([^"]+)"[^>]*>([^<]{20,200})</a>',
-    ]
-    
+
     seen = set()
-    for pattern in patterns:
-        matches = re.findall(pattern, html, re.IGNORECASE | re.DOTALL)
-        for url, title in matches:
-            title = re.sub(r'\s+', ' ', title).strip()
-            title_lower = title.lower()
-            
-            # Filter out navigation/junk
-            if len(title) < 25:
-                continue
-            if any(x in title_lower for x in ['menu', 'category', 'privacy', 'contact', 'about us']):
-                continue
-            if title_lower in seen:
-                continue
-            
-            seen.add(title_lower)
-            articles.append({
-                'title': title[:300],
-                'url': url if url.startswith('http') else '',
-                'source': source,
-                'date': datetime.now().strftime('%Y-%m-%d'),
-            })
-            
-            if len(articles) >= 10:
-                break
-        
-        if len(articles) >= 10:
+    # Parse complete anchor tags so we can use title=/alt= fallbacks when inner text is empty.
+    for m in re.finditer(r'<a[^>]+href="([^"]+)"[^>]*>.*?</a>', html, re.IGNORECASE | re.DOTALL):
+        whole = m.group(0)
+        href = _normalize_href(source, m.group(1))
+
+        # Primary title source: inner text
+        inner = re.sub(r'^<a[^>]*>|</a>$', '', whole, flags=re.IGNORECASE | re.DOTALL)
+        title = _clean_anchor_text(inner)
+
+        # Fallbacks for image-based cards
+        if not title:
+            m_title = re.search(r'\btitle="([^"]+)"', whole, flags=re.IGNORECASE | re.DOTALL)
+            if m_title:
+                title = _clean_anchor_text(m_title.group(1))
+        if not title:
+            m_alt = re.search(r'\balt="([^"]+)"', whole, flags=re.IGNORECASE | re.DOTALL)
+            if m_alt:
+                title = _clean_anchor_text(m_alt.group(1))
+
+        title_l = title.lower()
+        if len(title) < 25 or len(title) > 220:
+            continue
+        if title_l in seen:
+            continue
+        if not _is_likely_article_link(source, href, title):
+            continue
+
+        seen.add(title_l)
+        articles.append({
+            'title': title[:300],
+            'url': href,
+            'source': source,
+            'date': datetime.now().strftime('%Y-%m-%d'),
+        })
+
+        if len(articles) >= 20:
             break
     
     return articles
 
 
-def get_search_queries(symbol: str) -> List[str]:
-    """Get all search queries for a symbol (expanded with aliases + PSX context)"""
-    queries = []
-    
+def get_search_queries(symbol: str, retrieval_mode: str = 'auto') -> List[str]:
+    """Get search queries tailored for symbol mode vs index mode."""
+    mode = determine_retrieval_mode(symbol, retrieval_mode=retrieval_mode)
+    symbol = symbol.upper()
+    queries: List[str] = []
+
+    if mode == 'index_mode':
+        queries.extend(INDEX_QUERY_PACK)
+        queries.extend(MACRO_CATEGORIES)
+        return list(dict.fromkeys(queries))
+
     if symbol in COMPANY_ALIASES:
         info = COMPANY_ALIASES[symbol]
-        
-        # Add company names WITH PSX context for better relevance
+
         for name in info['names'][:2]:
-            queries.append(f"{name} PSX")  # e.g., "Lucky Cement PSX"
-        
-        # Also add full company name without PSX (for general business news)
-        if len(info['names']) > 0:
-            queries.append(info['names'][0])  # e.g., "Lucky Cement" 
-        
-        # Add parent company if exists (important for group news like Fauji)
+            queries.append(f"{name} PSX")
+
+        if info['names']:
+            queries.append(info['names'][0])
+
         if info.get('parent'):
-            queries.append(info['parent'])  # e.g., "Fauji Foundation"
+            queries.append(info['parent'])
     else:
-        # Unknown symbol - use symbol + PSX context
         queries.append(f"{symbol} PSX")
         queries.append(f"{symbol} Pakistan stock")
-    
-    return list(dict.fromkeys(queries))  # Dedupe while preserving order
+
+    return list(dict.fromkeys(queries))
 
 
-def fetch_multi_source_news(symbol: str, max_per_source: int = 5) -> List[Dict]:
+def _is_symbol_relevant(title: str, queries: List[str]) -> bool:
+    title_lower = title.lower()
+    return any(q.lower() in title_lower for q in queries)
+
+
+def _is_index_relevant(article: Dict) -> bool:
+    score = score_index_relevance(article.get('title', ''), article.get('url', ''))
+    article['relevance_score'] = score
+    # Keep market-direct titles even if macro score is modest.
+    if _contains_market_term(article.get('title', ''), article.get('url', '')):
+        return score >= 0.6
+    return score >= 1.0
+
+
+def fetch_business_fallback(source_name: str, source_config: Dict, retrieval_mode: str,
+                            queries: List[str], max_items: int = 3) -> List[Dict]:
     """
-    Fetch news from multiple sources with expanded queries.
-    Only keeps articles that actually mention the search terms.
+    Fetch from source business pages when search endpoints are sparse/noisy.
     """
-    all_news = []
-    seen_titles = set()
-    queries = get_search_queries(symbol)
-    
+    fallback_url = source_config.get('fallback_url')
+    if not fallback_url:
+        return []
+    if '{}' in fallback_url:
+        q = (queries[0] if queries else 'PSX market today').replace(' ', '+')
+        fallback_url = fallback_url.format(q)
+
+    result = fetch_news_curl_with_status(fallback_url, timeout=6)
+    html = result.get('html', '')
+    if not html:
+        return []
+
+    articles = extract_articles_from_html(html, source_name.replace('_', ' ').title())
+    kept: List[Dict] = []
+    for article in articles:
+        if retrieval_mode == 'index_mode':
+            if _is_index_relevant(article):
+                article['is_direct'] = False
+                article['is_macro'] = True
+                kept.append(article)
+        else:
+            if _is_symbol_relevant(article.get('title', ''), queries):
+                article['is_direct'] = True
+                kept.append(article)
+        if len(kept) >= max_items:
+            break
+    return kept
+
+
+def fetch_psx_notice_fallback(max_items: int = 5) -> List[Dict]:
+    """Fetch index-relevant items from Business Recorder PSX notices page."""
+    url = "https://www.brecorder.com/trends/psx-notice"
+    result = fetch_news_curl_with_status(url, timeout=8)
+    html = result.get('html', '')
+    if not html:
+        return []
+
+    articles = extract_articles_from_html(html, 'Business Recorder')
+    kept: List[Dict] = []
+    for article in articles:
+        article['is_direct'] = False
+        article['is_macro'] = True
+        article['relevance_score'] = score_index_relevance(article.get('title', ''), article.get('url', ''))
+        if article['relevance_score'] >= 0.8:
+            kept.append(article)
+        if len(kept) >= max_items:
+            break
+    return kept
+
+
+def fetch_multi_source_news(
+    symbol: str,
+    max_per_source: int = 5,
+    retrieval_mode: str = 'auto',
+    include_diagnostics: bool = False
+) -> Union[Dict, List[Dict]]:
+    """
+    Fetch news from multiple sources with mode-aware relevance scoring and diagnostics.
+    """
+    mode = determine_retrieval_mode(symbol, retrieval_mode=retrieval_mode)
+    queries = get_search_queries(symbol, retrieval_mode=mode)
+    diagnostics = {
+        'retrieval_mode': mode,
+        'per_source': {},
+        'fallback_chain': [],
+        'filtered_count': 0,
+        'kept_count': 0,
+    }
+
+    all_news: List[Dict] = []
+
     print(f"\n📰 ENHANCED NEWS FETCH: {symbol}")
-    print(f"   Queries: {queries[:4]}...")
-    
-    # Fetch from each source
+    print(f"   Mode: {mode} | Queries: {queries[:5]}...")
+
+    # 1) Primary multi-source query pass
     for source_name, source_config in NEWS_SOURCES.items():
+        source_stats = {
+            'fetched': 0,
+            'parsed': 0,
+            'filtered_out': 0,
+            'kept': 0,
+            'status': 'ok',
+        }
         try:
-            source_news = []
-            
-            # Try each query
-            for query in queries[:3]:  # Limit to top 3 queries
+            source_news: List[Dict] = []
+            for query in queries[:4]:
                 search_url = source_config['search_url'].format(query.replace(' ', '+'))
-                html = fetch_news_curl(search_url)
-                
-                if html:
-                    articles = extract_articles_from_html(html, source_name.replace('_', ' ').title())
-                    
-                    for article in articles:
-                        title_lower = article['title'].lower()
-                        if title_lower not in seen_titles:
-                            # STRICT RELEVANCE CHECK: Only keep if title mentions ANY search term
-                            is_relevant = any(
-                                q.lower() in title_lower 
-                                for q in queries
-                            )
-                            
-                            # ONLY add if relevant
-                            if is_relevant:
-                                seen_titles.add(title_lower)
-                                article['is_direct'] = True
-                                source_news.append(article)
-                
+                fetched = fetch_news_curl_with_status(search_url)
+                status = fetched.get('status', 'error')
+                if status != 'ok':
+                    source_stats['status'] = status
+                    continue
+
+                source_stats['fetched'] += 1
+                articles = extract_articles_from_html(
+                    fetched.get('html', ''),
+                    source_name.replace('_', ' ').title()
+                )
+                source_stats['parsed'] += len(articles)
+
+                for article in articles:
+                    is_relevant = (
+                        _is_index_relevant(article)
+                        if mode == 'index_mode'
+                        else _is_symbol_relevant(article.get('title', ''), queries)
+                    )
+                    if not is_relevant:
+                        source_stats['filtered_out'] += 1
+                        continue
+
+                    article['is_direct'] = (mode == 'symbol_mode')
+                    article['is_macro'] = (mode == 'index_mode')
+                    source_news.append(article)
+                    source_stats['kept'] += 1
+
                 if len(source_news) >= max_per_source:
                     break
-            
+
             if source_news:
                 print(f"   ✅ {source_name}: {len(source_news)} relevant articles")
                 all_news.extend(source_news[:max_per_source])
-            
+            diagnostics['per_source'][source_name] = source_stats
         except Exception as e:
-            print(f"   ⚠️ {source_name}: Error - {str(e)[:30]}")
-    
-    # Also fetch macro news that could affect the stock (these are labeled differently)
-    macro_news = fetch_macro_news()
-    for item in macro_news:
-        item['is_direct'] = False
-        item['is_macro'] = True
-    all_news.extend(macro_news)
-    
-    # Sort by relevance (direct mentions first) and date
-    all_news.sort(key=lambda x: (not x.get('is_direct', False), x.get('date', '')), reverse=True)
-    
-    print(f"   📊 Total: {len(all_news)} relevant articles")
-    return all_news
+            source_stats['status'] = 'error'
+            diagnostics['per_source'][source_name] = source_stats
+            print(f"   ⚠️ {source_name}: Error - {str(e)[:40]}")
+
+    # 2) Fallback: business section pages
+    # For index mode, always run this pass (search pages can be noisy/empty).
+    if len(all_news) < 5 or mode == 'index_mode':
+        for source_name, source_config in NEWS_SOURCES.items():
+            fallback_items = fetch_business_fallback(
+                source_name=source_name,
+                source_config=source_config,
+                retrieval_mode=mode,
+                queries=queries,
+                max_items=3
+            )
+            if fallback_items:
+                all_news.extend(fallback_items)
+                diagnostics['fallback_chain'].append(
+                    {'stage': 'business_fallback', 'source': source_name, 'added': len(fallback_items)}
+                )
+
+    # 3) Fallback: PSX notices (index mode only)
+    if mode == 'index_mode' and len(all_news) < 5:
+        notice_items = fetch_psx_notice_fallback(max_items=5)
+        if notice_items:
+            all_news.extend(notice_items)
+            diagnostics['fallback_chain'].append(
+                {'stage': 'psx_notice_fallback', 'source': 'business_recorder', 'added': len(notice_items)}
+            )
+
+    # 4) Broad macro fallback (always available; deeper for index mode)
+    macro_news = fetch_macro_news(
+        retrieval_mode=mode,
+        max_topics=8 if mode == 'index_mode' else 3
+    )
+    if macro_news:
+        all_news.extend(macro_news)
+        diagnostics['fallback_chain'].append(
+            {'stage': 'macro_fallback', 'source': 'multi', 'added': len(macro_news)}
+        )
+
+    # Final dedupe/rank
+    ranked_news = dedupe_and_rank_news(all_news, retrieval_mode=mode)
+    diagnostics['filtered_count'] = sum(v.get('filtered_out', 0) for v in diagnostics['per_source'].values())
+    diagnostics['kept_count'] = len(ranked_news)
+    diagnostics['sources_attempted'] = len(NEWS_SOURCES)
+    diagnostics['sources_successful'] = sum(1 for v in diagnostics['per_source'].values() if v.get('kept', 0) > 0)
+
+    print(f"   📊 Total: {len(ranked_news)} relevant articles")
+
+    response = {
+        'news_items': ranked_news,
+        'queries_used': queries,
+        'retrieval_mode': mode,
+        'news_fetch_diagnostics': diagnostics,
+        'sources_attempted': diagnostics['sources_attempted'],
+        'sources_successful': diagnostics['sources_successful'],
+        'filtered_count': diagnostics['filtered_count'],
+    }
+    if include_diagnostics:
+        return response
+    return ranked_news
 
 
-def fetch_macro_news() -> List[Dict]:
-    """Fetch macro economic news that affects all PSX stocks"""
-    macro_articles = []
-    seen = set()
-    
-    # Quick search for key macro topics
-    for topic in MACRO_CATEGORIES[:3]:  # Limit to avoid slow down
+def fetch_macro_news(retrieval_mode: str = 'symbol_mode', max_topics: int = 3) -> List[Dict]:
+    """Fetch macro economic news that affects PSX; broader in index mode."""
+    macro_articles: List[Dict] = []
+    seen: Set[str] = set()
+    topics = MACRO_CATEGORIES[:max_topics]
+
+    if retrieval_mode == 'index_mode':
+        topics = list(dict.fromkeys(INDEX_QUERY_PACK + MACRO_CATEGORIES))[:max_topics]
+
+    for topic in topics:
         try:
             search_url = f"https://www.brecorder.com/?s={topic.replace(' ', '+')}"
-            html = fetch_news_curl(search_url, timeout=5)
-            
-            if html:
-                articles = extract_articles_from_html(html, 'Business Recorder')
-                for article in articles[:2]:
-                    if article['title'].lower() not in seen:
-                        seen.add(article['title'].lower())
-                        article['is_macro'] = True
-                        article['is_direct'] = False
-                        macro_articles.append(article)
-        except:
+            fetched = fetch_news_curl_with_status(search_url, timeout=5)
+            if fetched.get('status') != 'ok':
+                continue
+
+            articles = extract_articles_from_html(fetched.get('html', ''), 'Business Recorder')
+            for article in articles[:3]:
+                key = normalize_news_key(article)
+                if key in seen:
+                    continue
+                if retrieval_mode == 'index_mode':
+                    if not _is_index_relevant(article):
+                        continue
+                seen.add(key)
+                article['is_macro'] = True
+                article['is_direct'] = False
+                macro_articles.append(article)
+        except Exception:
             continue
-    
-    return macro_articles[:5]  # Max 5 macro articles
+
+    return macro_articles[:8 if retrieval_mode == 'index_mode' else 5]
 
 
 # ============================================================================
@@ -474,7 +856,7 @@ def calculate_news_bias(
 # MAIN FUNCTION
 # ============================================================================
 
-def get_enhanced_news_for_symbol(symbol: str) -> Dict:
+def get_enhanced_news_for_symbol(symbol: str, retrieval_mode: str = 'auto') -> Dict:
     """
     Main function: Get comprehensive news for a symbol.
     
@@ -490,14 +872,24 @@ def get_enhanced_news_for_symbol(symbol: str) -> Dict:
     """
     symbol = symbol.upper()
     
-    news_items = fetch_multi_source_news(symbol)
-    queries = get_search_queries(symbol)
+    fetch_result = fetch_multi_source_news(
+        symbol=symbol,
+        retrieval_mode=retrieval_mode,
+        include_diagnostics=True
+    )
+    news_items = fetch_result.get('news_items', [])
+    queries = fetch_result.get('queries_used', [])
     
     company_info = COMPANY_ALIASES.get(symbol, {})
     
     return {
         'news_items': news_items,
         'queries_used': queries,
+        'retrieval_mode': fetch_result.get('retrieval_mode', determine_retrieval_mode(symbol)),
+        'news_fetch_diagnostics': fetch_result.get('news_fetch_diagnostics', {}),
+        'sources_attempted': fetch_result.get('sources_attempted', len(NEWS_SOURCES)),
+        'sources_successful': fetch_result.get('sources_successful', 0),
+        'filtered_count': fetch_result.get('filtered_count', 0),
         'sources_checked': list(NEWS_SOURCES.keys()),
         'parent_company': company_info.get('parent'),
         'sector': company_info.get('sector', 'unknown'),
