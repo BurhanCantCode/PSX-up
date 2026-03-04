@@ -1796,26 +1796,41 @@
                 return { ...p, daily_change_pct: dailyChangePct, cumulative_pct: cumulativePct };
             });
 
-            // Entry: predicted bottom (min price)
-            let minIdx = 0;
+            // Find best chronological buy-sell pair (maximizes gain)
+            let bestBuyIdx = 0, bestSellIdx = 1;
+            let bestProfit = -Infinity;
+            let minSoFarIdx = 0;
             for (let i = 1; i < preds.length; i++) {
-                if ((Number(preds[i].predicted_price) || 0) < (Number(preds[minIdx].predicted_price) || 0)) minIdx = i;
+                const curPrice = Number(preds[i].predicted_price) || 0;
+                const minSoFarPrice = Number(preds[minSoFarIdx].predicted_price) || 0;
+                const profit = curPrice - minSoFarPrice;
+                if (profit > bestProfit) {
+                    bestProfit = profit;
+                    bestBuyIdx = minSoFarIdx;
+                    bestSellIdx = i;
+                }
+                if (curPrice < minSoFarPrice) {
+                    minSoFarIdx = i;
+                }
             }
-            // Exit: predicted peak AFTER bottom
-            let maxAfterMinIdx = minIdx;
-            for (let i = minIdx + 1; i < preds.length; i++) {
-                if ((Number(preds[i].predicted_price) || 0) > (Number(preds[maxAfterMinIdx].predicted_price) || 0)) maxAfterMinIdx = i;
+            // Fallback: if only 1 prediction or all same price
+            if (preds.length < 2) {
+                bestBuyIdx = 0;
+                bestSellIdx = 0;
             }
-            // Overall high
-            let maxIdx = 0;
+            const minIdx = bestBuyIdx;
+            const maxAfterMinIdx = bestSellIdx;
+            // Overall high and low
+            let maxIdx = 0, overallMinIdx = 0;
             for (let i = 1; i < preds.length; i++) {
                 if ((Number(preds[i].predicted_price) || 0) > (Number(preds[maxIdx].predicted_price) || 0)) maxIdx = i;
+                if ((Number(preds[i].predicted_price) || 0) < (Number(preds[overallMinIdx].predicted_price) || 0)) overallMinIdx = i;
             }
 
             const entryPrice = Number(preds[minIdx].predicted_price) || 0;
             const exitPrice = Number(preds[maxAfterMinIdx].predicted_price) || 0;
             const predictedHigh = Number(preds[maxIdx].predicted_price) || 0;
-            const predictedLow = Number(preds[minIdx].predicted_price) || 0;
+            const predictedLow = Number(preds[overallMinIdx].predicted_price) || 0;
             const tradeSetupValid = (maxAfterMinIdx > minIdx) && (exitPrice > entryPrice);
             const tradeSetupGainPct = (tradeSetupValid && entryPrice > 0)
                 ? ((exitPrice - entryPrice) / entryPrice) * 100
@@ -1860,7 +1875,7 @@
                 tradeSetupValid,
                 metrics: {
                     predictedHigh: { price: predictedHigh, date: preds[maxIdx].date, day: preds[maxIdx].day },
-                    predictedLow: { price: predictedLow, date: preds[minIdx].date, day: preds[minIdx].day },
+                    predictedLow: { price: predictedLow, date: preds[overallMinIdx].date, day: preds[overallMinIdx].day },
                     bestCaseRangePct,
                     maxDrawdownPct: maxDrawdown,
                     volatility: Math.sqrt(variance),

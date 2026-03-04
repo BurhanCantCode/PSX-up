@@ -1,0 +1,33 @@
+{
+  "symbol": "SAZEW",
+  "cached_at": "2026-03-03T19:55:02.874843",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 44.85,
+    "stochastic_k": 19.59,
+    "cci": -153.59,
+    "adx": 29.26,
+    "awesome_oscillator": -39.13,
+    "momentum_10": -185.65,
+    "macd_level": 6.52,
+    "stochastic_rsi": 15.6,
+    "williams_r": -81.41,
+    "bull_bear_power": -265.7,
+    "ultimate_oscillator": 48.46,
+    "ema_10": 2139.92,
+    "sma_10": 2156.6,
+    "ema_20": 2159.0,
+    "sma_20": 2241.2,
+    "ema_30": 2130.89,
+    "sma_30": 2187.46,
+    "ema_50": 2058.34,
+    "sma_50": 2016.84,
+    "ema_100": 1916.88,
+    "sma_100": 1891.16,
+    "vwma": 2276.4,
+    "hma": 2064.85
+  }
+}
