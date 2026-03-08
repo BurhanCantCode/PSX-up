@@ -15,6 +15,17 @@ from typing import List, Dict, Set, Optional, Union
 from urllib.parse import urlparse
 import math
 
+try:
+    from backend.energy_shock_features import (
+        ENERGY_SHOCK_SECTORS,
+        ENERGY_SHOCK_SYMBOLS,
+    )
+except ImportError:
+    from energy_shock_features import (  # type: ignore
+        ENERGY_SHOCK_SECTORS,
+        ENERGY_SHOCK_SYMBOLS,
+    )
+
 # ============================================================================
 # COMPANY ALIASES & PARENT COMPANIES
 # Maps stock symbols to all related search terms
@@ -65,6 +76,12 @@ COMPANY_ALIASES = {
         'parent': 'Attock Group',
         'sector': 'exploration_production',
         'sector_peers': ['OGDC', 'PPL', 'MARI'],
+    },
+    'MARI': {
+        'names': ['Mari Petroleum', 'MARI', 'Mari Gas'],
+        'parent': None,
+        'sector': 'exploration_production',
+        'sector_peers': ['OGDC', 'PPL', 'POL'],
     },
     
     # Cement
@@ -164,6 +181,62 @@ SECTOR_KEYWORDS = {
     'power': ['power sector Pakistan', 'circular debt', 'electricity tariff', 'NEPRA'],
     'conglomerate': [],
 }
+
+ENERGY_SCOPE_QUERIES = {
+    'oil_marketing': [
+        'fuel prices Pakistan',
+        'petroleum levy',
+        'circular debt',
+        'petrol prices Pakistan',
+        'diesel prices Pakistan',
+    ],
+    'exploration_production': [
+        'fuel prices Pakistan',
+        'circular debt',
+        'OGRA Pakistan',
+        'petrol prices Pakistan',
+        'diesel prices Pakistan',
+    ],
+}
+
+ENERGY_MACRO_QUERIES = [
+    'Middle East war pushes energy prices higher',
+    'Strait of Hormuz blockade',
+    'blocked shipping lane oil',
+    'shipping disruption oil',
+    'Pakistan petrol diesel hiked',
+]
+
+ENERGY_SCOPE_HINTS = frozenset([
+    'fuel prices',
+    'petrol',
+    'diesel',
+    'petroleum levy',
+    'circular debt',
+    'ogra',
+    'oil discovery',
+    'oil and gas',
+    'exploration',
+])
+
+ENERGY_MACRO_HINTS = frozenset([
+    'middle east war',
+    'energy prices higher',
+    'strait of hormuz',
+    'hormuz',
+    'shipping disruption',
+    'blocked shipping lane',
+    'blockade',
+    'petrol',
+    'diesel',
+    'fuel prices',
+    'petroleum levy',
+    'circular debt',
+    'oil prices',
+    'iran',
+    'israel',
+    'gulf',
+])
 
 # Macro news categories that affect all stocks
 MACRO_CATEGORIES = [
@@ -288,12 +361,13 @@ def determine_retrieval_mode(symbol: str, retrieval_mode: str = 'auto') -> str:
 
 
 def normalize_news_key(item: Dict) -> str:
-    """Build a stable dedupe key from normalized title + URL path suffix."""
+    """Build a stable dedupe key from normalized title + date + URL path suffix."""
     title = re.sub(r'\s+', ' ', item.get('title', '').strip().lower())
     url = (item.get('url') or '').strip().lower()
+    date_part = str(item.get('date') or '')[:10].strip().lower()
     if url.startswith('http'):
         url = re.sub(r'^https?://', '', url).split('?', 1)[0].rstrip('/')
-    return f"{title[:180]}::{url[-120:]}"
+    return f"{title[:180]}::{date_part}::{url[-120:]}"
 
 
 def _safe_date_score(date_str: str) -> float:
@@ -357,7 +431,12 @@ def dedupe_and_rank_news(news_items: List[Dict], retrieval_mode: str) -> List[Di
         # Keep the richer/better-scoring record
         cur_score = float(item.get('relevance_score', 0))
         old_score = float(existing.get('relevance_score', 0))
-        if cur_score > old_score:
+        cur_scope = item.get('scope', 'macro')
+        old_scope = existing.get('scope', 'macro')
+        scope_weight = {'symbol': 3, 'sector': 2, 'macro': 1}
+        if cur_score > old_score or (
+            cur_score == old_score and scope_weight.get(cur_scope, 0) > scope_weight.get(old_scope, 0)
+        ):
             unique[key] = item
 
     ranked = []
@@ -369,8 +448,12 @@ def dedupe_and_rank_news(news_items: List[Dict], retrieval_mode: str) -> List[Di
             relevance = float(item.get('relevance_score', 0.0))
             rank_score = 0.5 * relevance + 0.3 * source_cred + 0.2 * recency
         else:
-            direct_bonus = 1.0 if item.get('is_direct') else 0.5
-            rank_score = 0.5 * direct_bonus + 0.3 * source_cred + 0.2 * recency
+            scope_bonus = {
+                'symbol': 1.0,
+                'sector': 0.75,
+                'macro': 0.6,
+            }.get(item.get('scope', 'macro'), 0.5)
+            rank_score = 0.5 * scope_bonus + 0.3 * source_cred + 0.2 * recency
         item['rank_score'] = round(rank_score, 4)
         ranked.append(item)
 
@@ -514,38 +597,109 @@ def extract_articles_from_html(html: str, source: str) -> List[Dict]:
     return articles
 
 
-def get_search_queries(symbol: str, retrieval_mode: str = 'auto') -> List[str]:
-    """Get search queries tailored for symbol mode vs index mode."""
+def _symbol_alias_terms(symbol: str) -> Set[str]:
+    info = COMPANY_ALIASES.get(symbol.upper(), {})
+    terms = {symbol.lower()}
+    for name in info.get('names', []):
+        terms.add(name.lower())
+    if info.get('parent'):
+        terms.add(str(info['parent']).lower())
+    return {t for t in terms if t}
+
+
+def _sector_relevance_terms(symbol: str) -> Set[str]:
+    symbol = symbol.upper()
+    info = COMPANY_ALIASES.get(symbol, {})
+    sector = info.get('sector', '')
+    terms = {term.lower() for term in SECTOR_KEYWORDS.get(sector, [])}
+    for peer in info.get('sector_peers', []):
+        peer_info = COMPANY_ALIASES.get(peer, {})
+        peer_names = peer_info.get('names', [peer])
+        terms.update(name.lower() for name in peer_names[:1])
+    if sector in ENERGY_SHOCK_SECTORS or symbol in ENERGY_SHOCK_SYMBOLS:
+        terms.update(ENERGY_SCOPE_HINTS)
+    return {t for t in terms if t}
+
+
+def _macro_relevance_terms(symbol: str) -> Set[str]:
+    symbol = symbol.upper()
+    terms = {term.lower() for term in MACRO_CATEGORIES}
+    if symbol in ENERGY_SHOCK_SYMBOLS:
+        terms.update(ENERGY_MACRO_HINTS)
+    return {t for t in terms if t}
+
+
+def get_search_query_specs(symbol: str, retrieval_mode: str = 'auto') -> List[Dict[str, str]]:
+    """Get scoped search queries tailored for symbol mode vs index mode."""
     mode = determine_retrieval_mode(symbol, retrieval_mode=retrieval_mode)
     symbol = symbol.upper()
-    queries: List[str] = []
+    specs: List[Dict[str, str]] = []
 
     if mode == 'index_mode':
-        queries.extend(INDEX_QUERY_PACK)
-        queries.extend(MACRO_CATEGORIES)
-        return list(dict.fromkeys(queries))
+        for query in INDEX_QUERY_PACK + MACRO_CATEGORIES:
+            specs.append({'query': query, 'scope': 'macro'})
+        unique = []
+        seen = set()
+        for spec in specs:
+            key = (spec['query'], spec['scope'])
+            if key not in seen:
+                seen.add(key)
+                unique.append(spec)
+        return unique
 
     if symbol in COMPANY_ALIASES:
         info = COMPANY_ALIASES[symbol]
 
         for name in info['names'][:2]:
-            queries.append(f"{name} PSX")
+            specs.append({'query': f"{name} PSX", 'scope': 'symbol'})
 
         if info['names']:
-            queries.append(info['names'][0])
+            specs.append({'query': info['names'][0], 'scope': 'symbol'})
 
         if info.get('parent'):
-            queries.append(info['parent'])
-    else:
-        queries.append(f"{symbol} PSX")
-        queries.append(f"{symbol} Pakistan stock")
+            specs.append({'query': info['parent'], 'scope': 'sector'})
 
-    return list(dict.fromkeys(queries))
+        sector = info.get('sector')
+        if symbol in ENERGY_SHOCK_SYMBOLS and sector in ENERGY_SCOPE_QUERIES:
+            for query in ENERGY_SCOPE_QUERIES[sector]:
+                specs.append({'query': query, 'scope': 'sector'})
+            for query in ENERGY_MACRO_QUERIES:
+                specs.append({'query': query, 'scope': 'macro'})
+    else:
+        specs.append({'query': f"{symbol} PSX", 'scope': 'symbol'})
+        specs.append({'query': f"{symbol} Pakistan stock", 'scope': 'symbol'})
+
+    unique = []
+    seen = set()
+    for spec in specs:
+        key = (spec['query'], spec['scope'])
+        if key not in seen:
+            seen.add(key)
+            unique.append(spec)
+    return unique
+
+
+def get_search_queries(symbol: str, retrieval_mode: str = 'auto') -> List[str]:
+    return [spec['query'] for spec in get_search_query_specs(symbol, retrieval_mode=retrieval_mode)]
 
 
 def _is_symbol_relevant(title: str, queries: List[str]) -> bool:
     title_lower = title.lower()
     return any(q.lower() in title_lower for q in queries)
+
+
+def _is_scope_relevant(article: Dict, symbol: str, scope: str, query: str) -> bool:
+    text = f"{article.get('title', '')} {article.get('url', '')}".lower()
+    if scope == 'symbol':
+        alias_terms = _symbol_alias_terms(symbol)
+        if any(term in text for term in alias_terms):
+            return True
+        return query.lower() in text
+    if scope == 'sector':
+        return any(term in text for term in _sector_relevance_terms(symbol))
+    if scope == 'macro':
+        return any(term in text for term in _macro_relevance_terms(symbol))
+    return False
 
 
 _GEO_CONFLICT_HINTS = frozenset([
@@ -570,7 +724,7 @@ def _is_index_relevant(article: Dict) -> bool:
 
 
 def fetch_business_fallback(source_name: str, source_config: Dict, retrieval_mode: str,
-                            queries: List[str], max_items: int = 3) -> List[Dict]:
+                            symbol: str, query_specs: List[Dict[str, str]], max_items: int = 3) -> List[Dict]:
     """
     Fetch from source business pages when search endpoints are sparse/noisy.
     """
@@ -578,7 +732,8 @@ def fetch_business_fallback(source_name: str, source_config: Dict, retrieval_mod
     if not fallback_url:
         return []
     if '{}' in fallback_url:
-        q = (queries[0] if queries else 'PSX market today').replace(' ', '+')
+        query = query_specs[0]['query'] if query_specs else 'PSX market today'
+        q = query.replace(' ', '+')
         fallback_url = fallback_url.format(q)
 
     result = fetch_news_curl_with_status(fallback_url, timeout=6)
@@ -593,10 +748,18 @@ def fetch_business_fallback(source_name: str, source_config: Dict, retrieval_mod
             if _is_index_relevant(article):
                 article['is_direct'] = False
                 article['is_macro'] = True
+                article['scope'] = 'macro'
                 kept.append(article)
         else:
-            if _is_symbol_relevant(article.get('title', ''), queries):
-                article['is_direct'] = True
+            matched_scope = None
+            for spec in query_specs:
+                if _is_scope_relevant(article, symbol, spec['scope'], spec['query']):
+                    matched_scope = spec['scope']
+                    break
+            if matched_scope:
+                article['is_direct'] = matched_scope == 'symbol'
+                article['is_macro'] = matched_scope == 'macro'
+                article['scope'] = matched_scope
                 kept.append(article)
         if len(kept) >= max_items:
             break
@@ -616,6 +779,7 @@ def fetch_psx_notice_fallback(max_items: int = 5) -> List[Dict]:
     for article in articles:
         article['is_direct'] = False
         article['is_macro'] = True
+        article['scope'] = 'macro'
         article['relevance_score'] = score_index_relevance(article.get('title', ''), article.get('url', ''))
         if article['relevance_score'] >= 0.8:
             kept.append(article)
@@ -634,7 +798,8 @@ def fetch_multi_source_news(
     Fetch news from multiple sources with mode-aware relevance scoring and diagnostics.
     """
     mode = determine_retrieval_mode(symbol, retrieval_mode=retrieval_mode)
-    queries = get_search_queries(symbol, retrieval_mode=mode)
+    query_specs = get_search_query_specs(symbol, retrieval_mode=mode)
+    queries = [spec['query'] for spec in query_specs]
     diagnostics = {
         'retrieval_mode': mode,
         'per_source': {},
@@ -659,7 +824,9 @@ def fetch_multi_source_news(
         }
         try:
             source_news: List[Dict] = []
-            for query in queries[:4]:
+            for spec in query_specs:
+                query = spec['query']
+                scope = spec['scope']
                 search_url = source_config['search_url'].format(query.replace(' ', '+'))
                 fetched = fetch_news_curl_with_status(search_url)
                 status = fetched.get('status', 'error')
@@ -678,14 +845,16 @@ def fetch_multi_source_news(
                     is_relevant = (
                         _is_index_relevant(article)
                         if mode == 'index_mode'
-                        else _is_symbol_relevant(article.get('title', ''), queries)
+                        else _is_scope_relevant(article, symbol, scope, query)
                     )
                     if not is_relevant:
                         source_stats['filtered_out'] += 1
                         continue
 
-                    article['is_direct'] = (mode == 'symbol_mode')
-                    article['is_macro'] = (mode == 'index_mode')
+                    article['scope'] = 'macro' if mode == 'index_mode' else scope
+                    article['is_direct'] = article['scope'] == 'symbol'
+                    article['is_macro'] = article['scope'] == 'macro'
+                    article['matched_query'] = query
                     source_news.append(article)
                     source_stats['kept'] += 1
 
@@ -709,7 +878,8 @@ def fetch_multi_source_news(
                 source_name=source_name,
                 source_config=source_config,
                 retrieval_mode=mode,
-                queries=queries,
+                symbol=symbol,
+                query_specs=query_specs,
                 max_items=3
             )
             if fallback_items:
@@ -729,6 +899,7 @@ def fetch_multi_source_news(
 
     # 4) Broad macro fallback (always available; deeper for index mode)
     macro_news = fetch_macro_news(
+        symbol=symbol,
         retrieval_mode=mode,
         max_topics=8 if mode == 'index_mode' else 3
     )
@@ -785,7 +956,7 @@ _MACRO_PRIORITY_QUERIES = [
 ]
 
 
-def fetch_macro_news(retrieval_mode: str = 'symbol_mode', max_topics: int = 3) -> List[Dict]:
+def fetch_macro_news(symbol: Optional[str] = None, retrieval_mode: str = 'symbol_mode', max_topics: int = 3) -> List[Dict]:
     """Fetch macro economic news that affects PSX; broader in index mode.
 
     Uses prioritised PSX-specific queries across multiple sources to improve
@@ -802,7 +973,13 @@ def fetch_macro_news(retrieval_mode: str = 'symbol_mode', max_topics: int = 3) -
             _MACRO_PRIORITY_QUERIES + INDEX_QUERY_PACK + MACRO_CATEGORIES
         ))[:max_topics]
     else:
-        topics = MACRO_CATEGORIES[:max_topics]
+        symbol_upper = (symbol or '').upper()
+        if symbol_upper in ENERGY_SHOCK_SYMBOLS:
+            topics = list(dict.fromkeys(
+                ENERGY_MACRO_QUERIES + MACRO_CATEGORIES
+            ))[:max_topics + 3]
+        else:
+            topics = MACRO_CATEGORIES[:max_topics]
 
     target = 8 if retrieval_mode == 'index_mode' else 5
 
@@ -833,6 +1010,7 @@ def fetch_macro_news(retrieval_mode: str = 'symbol_mode', max_topics: int = 3) -
                     seen.add(key)
                     article['is_macro'] = True
                     article['is_direct'] = False
+                    article['scope'] = 'macro'
                     macro_articles.append(article)
                     added_from_source += 1
                     if added_from_source >= 3:

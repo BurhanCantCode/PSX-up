@@ -24,6 +24,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+try:
+    from backend.energy_shock_features import (
+        ENERGY_SHOCK_SYMBOLS,
+        has_regional_war_terms,
+        is_energy_supply_shock_text,
+    )
+except ImportError:
+    from energy_shock_features import (  # type: ignore
+        ENERGY_SHOCK_SYMBOLS,
+        has_regional_war_terms,
+        is_energy_supply_shock_text,
+    )
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -121,6 +134,11 @@ SHOCK_EVENT_PATTERNS: Dict[str, Dict] = {
     "airstrikes on": {"severity": 3.0, "category": "conflict"},
     "strait of hormuz closed": {"severity": 3.0, "category": "energy"},
     "strait of hormuz shut": {"severity": 3.0, "category": "energy"},
+    "hormuz closure": {"severity": 3.0, "category": "energy"},
+    "hormuz closure threat": {"severity": 3.0, "category": "energy"},
+    "blockade": {"severity": 2.5, "category": "energy"},
+    "blocked shipping lane": {"severity": 2.5, "category": "energy"},
+    "middle east war pushes energy prices higher": {"severity": 2.5, "category": "energy"},
     # CRITICAL – PSX-specific market crash language
     "record single-day": {"severity": 3.0, "category": "market"},
     "record single day": {"severity": 3.0, "category": "market"},
@@ -147,6 +165,7 @@ SHOCK_EVENT_PATTERNS: Dict[str, Dict] = {
     "military buildup": {"severity": 2.0, "category": "conflict"},
     "strait closed": {"severity": 2.0, "category": "energy"},
     "shipping disrupted": {"severity": 2.0, "category": "energy"},
+    "shipping disruption": {"severity": 2.0, "category": "energy"},
     "oil embargo": {"severity": 2.0, "category": "energy"},
     "record crash": {"severity": 2.0, "category": "market"},
     "record drop": {"severity": 2.0, "category": "market"},
@@ -570,6 +589,8 @@ def detect_geopolitical_shocks(
             "shock_events": [],
             "emergency_multiplier": 1.0,
             "shock_half_life": 14,
+            "matched_patterns": [],
+            "shock_reason": "No geopolitical shock detected",
         }
 
     shock_events: List[Dict] = []
@@ -597,6 +618,8 @@ def detect_geopolitical_shocks(
             "shock_events": [],
             "emergency_multiplier": 1.0,
             "shock_half_life": 14,
+            "matched_patterns": [],
+            "shock_reason": "No geopolitical shock detected",
         }
 
     max_severity = max(e["severity"] for e in shock_events)
@@ -647,6 +670,10 @@ def detect_geopolitical_shocks(
         "emergency_multiplier": round(emergency_multiplier, 2),
         "shock_half_life": shock_half_life,
         "trajectory": trajectory,
+        "matched_patterns": sorted({e["pattern"] for e in shock_events}),
+        "shock_reason": "Matched shock patterns: " + ", ".join(
+            sorted({e["pattern"] for e in shock_events})[:3]
+        ),
     }
 
 
@@ -667,6 +694,24 @@ def _term_score(text: str, terms: List[str], amplifier: float = 1.0) -> float:
     return _clamp01(raw * amplifier)
 
 
+def _compute_energy_war_overlap(news_items: List[Dict]) -> float:
+    has_energy = False
+    has_regional = False
+
+    for item in news_items[:40]:
+        title = (item.get("title") or "").lower()
+        desc = (item.get("description") or item.get("summary") or "").lower()
+        text = f"{title} {desc}"
+        energy_hit = is_energy_supply_shock_text(text) or any(term in text for term in GEO_TERMS["energy_supply"])
+        regional_hit = has_regional_war_terms(text) or any(term in text for term in GEO_TERMS["regional"])
+        if energy_hit and regional_hit:
+            return 1.0
+        has_energy = has_energy or energy_hit
+        has_regional = has_regional or regional_hit
+
+    return 1.0 if has_energy and has_regional else 0.0
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -679,6 +724,7 @@ def neutral_geopolitical_features() -> Dict[str, float]:
         "geo_regional_tension": 0.0,
         "geo_global_risk_off": 0.0,
         "geo_news_volume": 0.0,
+        "geo_energy_war_overlap": 0.0,
     }
 
 
@@ -710,7 +756,20 @@ def get_geopolitical_features_from_news(
             text, GEO_TERMS["risk_off"], amplifiers.get("risk_off", 1.0)
         ),
         "geo_news_volume": volume,
+        "geo_energy_war_overlap": _compute_energy_war_overlap(news_items),
     }
+
+    symbol_upper = (symbol or "").upper()
+    if symbol_upper in ENERGY_SHOCK_SYMBOLS and features["geo_energy_war_overlap"] > 0:
+        features["geo_conflict_risk"] = max(
+            features["geo_conflict_risk"],
+            min(
+                1.0,
+                0.25
+                + (0.55 * features["geo_energy_supply_risk"])
+                + (0.35 * features["geo_regional_tension"]),
+            ),
+        )
     return features
 
 
@@ -776,6 +835,8 @@ def build_geopolitical_daily_adjustments(
                 "risk_score": 0.0,
                 "volume_multiplier": 0.5,
                 "shock_detected": False,
+                "matched_patterns": [],
+                "shock_reason": "No geopolitical shock detected",
                 "methodology": "Deterministic geo risk post-processing (empty horizon)",
             },
         }
@@ -786,6 +847,7 @@ def build_geopolitical_daily_adjustments(
     regional = _clamp01(geo.get("geo_regional_tension", 0.0))
     risk_off = _clamp01(geo.get("geo_global_risk_off", 0.0))
     volume = _clamp01(geo.get("geo_news_volume", 0.0))
+    energy_war_overlap = _clamp01(geo.get("geo_energy_war_overlap", 0.0))
 
     risk_score = (
         (0.35 * conflict)
@@ -794,18 +856,21 @@ def build_geopolitical_daily_adjustments(
         + (0.15 * energy)
     )
 
-    sector = SYMBOL_SECTOR.get((symbol or "").upper(), "")
-    if sector == "energy":
-        risk_score -= (0.20 * energy)
-
-    risk_score = max(-1.0, min(1.0, risk_score))
-    volume_multiplier = 0.5 + (0.5 * volume)
-
     # Shock-adjusted parameters
     shock = shock_data or {}
     shock_detected = shock.get("shock_detected", False)
     emergency_multiplier = shock.get("emergency_multiplier", 1.0)
     half_life = float(shock.get("shock_half_life", 14))
+
+    sector = SYMBOL_SECTOR.get((symbol or "").upper(), "")
+    energy_shock_mode = bool(shock_detected) or energy_war_overlap > 0 or (
+        sector == "energy" and conflict > 0.0 and energy > 0.3
+    )
+    if sector == "energy" and not energy_shock_mode:
+        risk_score -= (0.20 * energy)
+
+    risk_score = max(-1.0, min(1.0, risk_score))
+    volume_multiplier = 0.5 + (0.5 * volume)
 
     # Widen caps during shocks: e.g. -0.05 * 2.5 = -0.125 (12.5% max single-day drop)
     lower_cap = -0.05 * emergency_multiplier
@@ -855,6 +920,8 @@ def build_geopolitical_daily_adjustments(
             "shock_detected": shock_detected,
             "emergency_multiplier": emergency_multiplier if shock_detected else 1.0,
             "shock_events": shock.get("shock_events", []) if shock_detected else [],
+            "matched_patterns": shock.get("matched_patterns", []),
+            "shock_reason": shock.get("shock_reason", "No geopolitical shock detected"),
             "methodology": methodology,
         },
     }

@@ -32,6 +32,26 @@ try:
 except ImportError:
     TRADINGVIEW_AVAILABLE = False
 
+try:
+    from backend.energy_shock_features import build_energy_event_feature_frame
+    ENERGY_SHOCK_FEATURES_AVAILABLE = True
+except ImportError:
+    try:
+        from energy_shock_features import build_energy_event_feature_frame
+        ENERGY_SHOCK_FEATURES_AVAILABLE = True
+    except ImportError:
+        ENERGY_SHOCK_FEATURES_AVAILABLE = False
+
+try:
+    from backend.enhanced_news_fetcher import get_enhanced_news_for_symbol
+    ENHANCED_NEWS_AVAILABLE = True
+except ImportError:
+    try:
+        from enhanced_news_fetcher import get_enhanced_news_for_symbol
+        ENHANCED_NEWS_AVAILABLE = True
+    except ImportError:
+        ENHANCED_NEWS_AVAILABLE = False
+
 # Try yfinance import
 try:
     import yfinance as yf
@@ -47,10 +67,53 @@ except ImportError:
 
 # Cache settings
 CACHE_DIR = Path(__file__).parent.parent / "data" / "external_cache"
+NEWS_CACHE_DIR = Path(__file__).parent.parent / "data" / "news_cache"
 
 # Current KIBOR/SBP Policy Rate (update periodically from SBP website)
 # Source: https://www.sbp.org.pk/ecodata/kibor_index.asp
 KIBOR_RATE = 0.13  # 13% as of Dec 2024 (policy rate cut from 15%)
+
+ENERGY_SHOCK_FEATURE_COLUMNS = [
+    'local_fuel_price_delta_rs',
+    'local_fuel_price_shock',
+    'circular_debt_signal',
+    'geo_shock_signal',
+    'energy_shock_regime',
+    'kse_oil_interaction',
+    'kse_energy_shock_interaction',
+]
+
+
+def _load_energy_news_items(symbol: Optional[str]) -> List[Dict]:
+    symbol_upper = (symbol or '').upper()
+    if not symbol_upper:
+        return []
+
+    cache_file = NEWS_CACHE_DIR / f"{symbol_upper}_news.json"
+    if cache_file.exists():
+        try:
+            with open(cache_file, 'r') as f:
+                cached = json.load(f)
+            items = cached.get('news_items', [])
+            if items:
+                return items
+        except Exception:
+            pass
+
+    if ENHANCED_NEWS_AVAILABLE:
+        try:
+            fetched = get_enhanced_news_for_symbol(symbol_upper, retrieval_mode='symbol_mode')
+            return fetched.get('news_items', [])
+        except Exception:
+            return []
+    return []
+
+
+def _ensure_energy_shock_columns(df: pd.DataFrame) -> pd.DataFrame:
+    for col in ENERGY_SHOCK_FEATURE_COLUMNS:
+        if col not in df.columns:
+            df[col] = 0.0 if col in {'local_fuel_price_delta_rs', 'circular_debt_signal', 'kse_oil_interaction', 'kse_energy_shock_interaction'} else 0
+    return df
 
 
 # ============================================================================
@@ -500,15 +563,67 @@ def merge_external_features(stock_df: pd.DataFrame,
         print(f"   ✅ Added {len([c for c in df.columns if 'oil' in c.lower() or 'gold' in c.lower()])} commodity features")
     
     # 4. KIBOR
-    print("\n4. Adding KIBOR features...")
+    print("\n4. Adding energy-shock features...")
+    df = _ensure_energy_shock_columns(df)
+    if ENERGY_SHOCK_FEATURES_AVAILABLE:
+        try:
+            news_items = _load_energy_news_items(symbol)
+            energy_features = build_energy_event_feature_frame(df, news_items, symbol=symbol)
+            if not energy_features.empty:
+                for col in ENERGY_SHOCK_FEATURE_COLUMNS:
+                    if col in energy_features.columns:
+                        df[col] = energy_features[col].values
+                print(
+                    "   ✅ Added energy-shock features: "
+                    f"fuel_delta={float(pd.to_numeric(df['local_fuel_price_delta_rs'], errors='coerce').fillna(0).iloc[-1]):+.2f}, "
+                    f"circular_debt={float(pd.to_numeric(df['circular_debt_signal'], errors='coerce').fillna(0).iloc[-1]):+.1f}, "
+                    f"regime={int(pd.to_numeric(df['energy_shock_regime'], errors='coerce').fillna(0).iloc[-1])}"
+                )
+            else:
+                print("   ⚠️ No energy-shock feature frame available, using defaults")
+        except Exception as e:
+            print(f"   ⚠️ Energy-shock feature build failed: {e}")
+
+    kse_return_series = pd.to_numeric(
+        df['kse100_return'] if 'kse100_return' in df.columns else pd.Series(0.0, index=df.index),
+        errors='coerce'
+    ).fillna(0.0)
+    oil_change_series = pd.to_numeric(
+        df['oil_change'] if 'oil_change' in df.columns else pd.Series(0.0, index=df.index),
+        errors='coerce'
+    ).fillna(0.0)
+    geo_shock_series = pd.to_numeric(
+        df['geo_shock_signal'] if 'geo_shock_signal' in df.columns else pd.Series(0, index=df.index),
+        errors='coerce'
+    ).fillna(0)
+    fuel_shock_series = pd.to_numeric(
+        df['local_fuel_price_shock'] if 'local_fuel_price_shock' in df.columns else pd.Series(0, index=df.index),
+        errors='coerce'
+    ).fillna(0)
+
+    if 'kse_oil_interaction' in df.columns:
+        df['kse_oil_interaction'] = kse_return_series * oil_change_series
+    if 'energy_shock_regime' in df.columns:
+        oil_abs = oil_change_series.abs()
+        df['energy_shock_regime'] = (
+            (geo_shock_series > 0)
+            | (fuel_shock_series > 0)
+            | (oil_abs >= 0.05)
+        ).astype(int)
+        df['kse_energy_shock_interaction'] = kse_return_series * pd.to_numeric(
+            df['energy_shock_regime'], errors='coerce'
+        ).fillna(0.0)
+
+    # 5. KIBOR
+    print("\n5. Adding KIBOR features...")
     kibor_df = get_kibor_features(len(df))
     for col in kibor_df.columns:
         df[col] = kibor_df[col].values
     print(f"   ✅ Added {len(kibor_df.columns)} KIBOR features")
-    
-    # 5. TradingView Technical Indicators (uses scraper cache TTL; no forced cache eviction)
+
+    # 6. TradingView Technical Indicators (uses scraper cache TTL; no forced cache eviction)
     if TRADINGVIEW_AVAILABLE and symbol:
-        print(f"\n5. Fetching TradingView indicators for {symbol}...")
+        print(f"\n6. Fetching TradingView indicators for {symbol}...")
 
         # Fetch from TradingView (cache-aware in tradingview_scraper.py)
         tv_result = get_tradingview_indicators(symbol, fallback_local=None)

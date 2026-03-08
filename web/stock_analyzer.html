@@ -2407,6 +2407,7 @@
             const maxAdj = Number(summary.max_abs_adjustment_pct);
             const avgAdjText = Number.isFinite(avgAdj) ? `${avgAdj >= 0 ? '+' : ''}${avgAdj.toFixed(2)}%` : 'N/A';
             const maxAdjText = Number.isFinite(maxAdj) ? `${maxAdj.toFixed(2)}%` : 'N/A';
+            const shockReason = geoMeta.shock_reason || summary.shock_reason || '';
 
             const chips = [
                 { key: 'geo_conflict_risk', label: 'Conflict Risk' },
@@ -2456,6 +2457,7 @@
                 <div class="geo-overlay-status">
                     Status: Enabled and applied.<br>
                     Net impact: Avg shift ${avgAdjText} | Max absolute shift ${maxAdjText}
+                    ${shockReason ? `<br>Shock reason: ${shockReason}` : ''}
                 </div>
                 <div class="geo-chip-grid">${chipsHtml}</div>
                 ${driftHtml}
@@ -3071,8 +3073,10 @@
                     dirBadge.style.background = 'rgba(156, 163, 175, 0.15)';
                     dirBadge.style.color = '#9ca3af';
                 }
-
-                document.getElementById('predictionExplanation').innerText = r.explanation || '';
+                const stabilityNote = viewRes.direction_meta && viewRes.direction_meta.stability_note
+                    ? ` ${viewRes.direction_meta.stability_note}`
+                    : '';
+                document.getElementById('predictionExplanation').innerText = `${r.explanation || ''}${stabilityNote}`.trim();
 
                 // Bullish signals
                 const bullishList = document.getElementById('bullishList');
@@ -5848,7 +5852,9 @@
             const curPrice = Number(normalized.current_price) || 0;
             const lastPred = preds[preds.length - 1];
             const finalPrice = Number(lastPred.predicted_price) || curPrice;
-            const direction = lastPred.stable_direction || (finalPrice >= curPrice ? 'BULLISH' : 'BEARISH');
+            const direction = (normalized.direction_meta && normalized.direction_meta.display_direction)
+                || lastPred.stable_direction
+                || (finalPrice >= curPrice ? 'BULLISH' : 'BEARISH');
             const isUp = finalPrice >= curPrice;
             const modeLabel = activeMode === 'geo' ? 'Geo' : 'Baseline';
 

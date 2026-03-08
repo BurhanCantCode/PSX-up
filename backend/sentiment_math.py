@@ -21,6 +21,21 @@ import os
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
+try:
+    from backend.energy_shock_features import (
+        ENERGY_SHOCK_SYMBOLS,
+        is_energy_supply_shock_text,
+        parse_local_fuel_price_delta,
+        score_circular_debt_signal,
+    )
+except ImportError:
+    from energy_shock_features import (  # type: ignore
+        ENERGY_SHOCK_SYMBOLS,
+        is_energy_supply_shock_text,
+        parse_local_fuel_price_delta,
+        score_circular_debt_signal,
+    )
+
 
 # ============================================================================
 # RESEARCH-BACKED EVENT IMPACT FACTORS
@@ -64,6 +79,30 @@ EVENT_IMPACTS = {
         'std': 0.02,
         'half_life': 10,
         'keywords': ['arif habib', 'js global', 'foreign investor', 'institutional', 'stake increase']
+    },
+    'fuel_price_hike': {
+        'mean_impact': 0.045,
+        'std': 0.025,
+        'half_life': 10,
+        'keywords': ['petrol', 'diesel', 'fuel prices', 'petroleum products']
+    },
+    'fuel_price_cut': {
+        'mean_impact': -0.04,
+        'std': 0.025,
+        'half_life': 10,
+        'keywords': ['petrol', 'diesel', 'fuel prices', 'petroleum products']
+    },
+    'circular_debt_relief': {
+        'mean_impact': 0.05,
+        'std': 0.03,
+        'half_life': 21,
+        'keywords': ['circular debt', 'settlement', 'payment release', 'equity swap']
+    },
+    'energy_supply_shock': {
+        'mean_impact': 0.035,
+        'std': 0.03,
+        'half_life': 14,
+        'keywords': ['middle east war', 'strait of hormuz', 'shipping disruption', 'blockade']
     },
     
     # Negative Events
@@ -133,40 +172,70 @@ def sigmoid_cap(x: float, max_val: float = 0.20) -> float:
     return max_val * (2 / (1 + math.exp(-3 * x / max_val)) - 1)
 
 
-def detect_events(news_items: List[Dict]) -> List[Dict]:
+def detect_events(news_items: List[Dict], symbol: Optional[str] = None) -> List[Dict]:
     """
     Detect specific events from news items using keyword matching.
     Returns list of detected events with their impact factors.
     """
     detected_events = []
-    
+    symbol_upper = (symbol or '').upper()
+    is_energy_symbol = symbol_upper in ENERGY_SHOCK_SYMBOLS
+    seen_pairs = set()
+
+    def append_event(event_type: str, news: Dict):
+        key = (event_type, news.get('title', '')[:120])
+        if key in seen_pairs:
+            return
+        seen_pairs.add(key)
+
+        config = EVENT_IMPACTS[event_type]
+        date_str = news.get('date', '')
+        try:
+            if '-' in date_str and len(date_str) >= 10:
+                news_date = datetime.strptime(date_str[:10], '%Y-%m-%d')
+            else:
+                news_date = datetime.now()
+            days_elapsed = (datetime.now() - news_date).days
+        except Exception:
+            days_elapsed = 0
+
+        detected_events.append({
+            'type': event_type,
+            'mean_impact': config['mean_impact'],
+            'std': config['std'],
+            'half_life': config['half_life'],
+            'days_elapsed': max(0, days_elapsed),
+            'source': news.get('source', 'Unknown'),
+            'title': news.get('title', '')[:100]
+        })
+
     for news in news_items:
-        title = news.get('title', '').lower()
-        
+        title = news.get('title', '')
+        text = " ".join([
+            title,
+            news.get('description', ''),
+            news.get('summary', ''),
+        ]).lower()
+
+        if is_energy_symbol:
+            fuel_delta = parse_local_fuel_price_delta(text)
+            if fuel_delta is not None:
+                append_event('fuel_price_hike' if fuel_delta > 0 else 'fuel_price_cut', news)
+
+            circular_signal = score_circular_debt_signal(text)
+            if circular_signal > 0:
+                append_event('circular_debt_relief', news)
+
+            if is_energy_supply_shock_text(text):
+                append_event('energy_supply_shock', news)
+
         for event_type, config in EVENT_IMPACTS.items():
-            if any(keyword in title for keyword in config['keywords']):
-                # Calculate days since news (if date available)
-                date_str = news.get('date', '')
-                try:
-                    if '-' in date_str and len(date_str) >= 10:
-                        news_date = datetime.strptime(date_str[:10], '%Y-%m-%d')
-                    else:
-                        news_date = datetime.now()
-                    days_elapsed = (datetime.now() - news_date).days
-                except:
-                    days_elapsed = 0
-                
-                detected_events.append({
-                    'type': event_type,
-                    'mean_impact': config['mean_impact'],
-                    'std': config['std'],
-                    'half_life': config['half_life'],
-                    'days_elapsed': max(0, days_elapsed),
-                    'source': news.get('source', 'Unknown'),
-                    'title': news.get('title', '')[:100]
-                })
-                break  # Only one event type per news item
-    
+            if event_type in {'fuel_price_hike', 'fuel_price_cut', 'circular_debt_relief', 'energy_supply_shock'}:
+                continue
+            if any(keyword in text for keyword in config['keywords']):
+                append_event(event_type, news)
+                break  # Only one generic event type per news item
+
     return detected_events
 
 
@@ -206,7 +275,7 @@ def _calculate_adjustments(sentiment_analysis: Dict, horizons: List[int], unit: 
     sentiment_score = sentiment_analysis.get('sentiment_score', 0)
     confidence = sentiment_analysis.get('confidence', 0.5)
     news_items = sentiment_analysis.get('news_items', [])
-    events = detect_events(news_items)
+    events = detect_events(news_items, symbol=sentiment_analysis.get('symbol'))
     base_weight = confidence_weight(confidence)
 
     for point in horizons:
@@ -317,7 +386,7 @@ def generate_adjustment_report(sentiment_analysis: Dict, adjustments: List[Dict]
         "Detected Events:",
     ]
     
-    events = detect_events(sentiment_analysis.get('news_items', []))
+    events = detect_events(sentiment_analysis.get('news_items', []), symbol=sentiment_analysis.get('symbol'))
     if events:
         for event in events[:5]:
             lines.append(f"  • {event['type'].replace('_', ' ').title()}: {event['mean_impact']*100:+.1f}% base impact")
@@ -418,7 +487,7 @@ def get_rigorous_adjustment(
     max_negative = min(adj['percentage'] for adj in adjustments)
     avg_adjustment = sum(adj['percentage'] for adj in adjustments) / len(adjustments)
     
-    detected_events = detect_events(sentiment_result.get('news_items', []))
+    detected_events = detect_events(sentiment_result.get('news_items', []), symbol=sentiment_result.get('symbol'))
     
     return {
         'adjustments': adjustments,

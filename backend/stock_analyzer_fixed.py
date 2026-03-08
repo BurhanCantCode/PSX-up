@@ -1076,7 +1076,8 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             })
 
         # Try to use RESEARCH MODEL (NEW: Based on peer-reviewed PSX studies)
-        reasoning = None  # Will be populated if research model is used
+        reasoning = None  # Will be recomputed from adjusted day-7 output
+        research_model = None
         try:
             from backend.research_model import PSXResearchModel, get_realistic_benchmarks
             USE_RESEARCH_MODEL = True
@@ -1318,6 +1319,15 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         sentiment_result = None
         adjusted_predictions = predictions
         sentiment_summary = {}
+        adjustment_data = {
+            'adjustments': [],
+            'summary': {
+                'events_detected': 0,
+                'event_types': [],
+                'max_positive_adjustment': 0.0,
+                'methodology': 'No sentiment adjustment applied'
+            }
+        }
         
         try:
             from backend.sentiment_analyzer import get_stock_sentiment
@@ -1374,6 +1384,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'sources_successful': sentiment_result.get('sources_successful', 0),
                 'filtered_count': sentiment_result.get('filtered_count', 0),
                 'events_detected': adjustment_data['summary']['events_detected'],
+                'detected_event_types': adjustment_data['summary'].get('event_types', []),
                 'max_adjustment': adjustment_data['summary']['max_positive_adjustment'],
                 'methodology': 'Research-backed event study with exponential decay',
                 'model_impact_enabled': apply_sentiment_to_predictions,
@@ -1396,7 +1407,12 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         except Exception as e:
             print(f"Sentiment analysis error (non-fatal): {e}")
             adjusted_predictions = predictions
-            sentiment_summary = {'signal': 'NEUTRAL', 'signal_emoji': '🟡', 'error': str(e)}
+            sentiment_summary = {
+                'signal': 'NEUTRAL',
+                'signal_emoji': '🟡',
+                'error': str(e),
+                'detected_event_types': [],
+            }
 
         # Apply lightweight, globally-configurable prediction quality tweaks
         live_tweak_config = get_live_tweak_config()
@@ -1433,6 +1449,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         geo_comparison = {
             "enabled": geo_enabled,
             "applied": False,
+            "shock_reason": "No geopolitical shock detected" if geo_enabled else "Geo overlay disabled for this run.",
             "labels": {
                 "baseline": "Without Geo Features",
                 "geo": "With Geo Features",
@@ -1472,6 +1489,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                         "geo_features": geo_features,
                         "adjustment_summary": geo_adjustment_data.get("summary", {}),
                         "shock_data": shock_data,
+                        "shock_reason": shock_data.get("shock_reason", "No geopolitical shock detected"),
                     }
                 )
 
@@ -1555,11 +1573,20 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
         if model_variant not in {'baseline', 'shadow', 'upgraded'}:
             model_variant = 'baseline'
 
+        display_predictions = (
+            predictions_with_geo
+            if geo_comparison.get("enabled") and geo_comparison.get("applied") and predictions_with_geo
+            else predictions_without_geo
+        )
         direction_meta = {}
-        if predictions_without_geo:
-            # Use day-7 as canonical logged horizon (same as logger)
-            pivot_idx = 6 if len(predictions_without_geo) >= 7 else len(predictions_without_geo) - 1
-            pivot_pred = predictions_without_geo[pivot_idx]
+        if display_predictions:
+            pivot_idx = 6 if len(display_predictions) >= 7 else len(display_predictions) - 1
+            pivot_pred = display_predictions[pivot_idx]
+            display_upside_pct = float(pivot_pred.get('upside_potential', 0) or 0)
+            display_direction = direction_from_change_pct(
+                display_upside_pct,
+                neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
+            )
             raw_direction = direction_from_change_pct(
                 float(pivot_pred.get('upside_potential', 0) or 0),
                 neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
@@ -1569,11 +1596,20 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             if logged_direction_source not in {'stable', 'raw'}:
                 logged_direction_source = 'stable'
             logged_direction = stable_direction if logged_direction_source == 'stable' else raw_direction
+            stability_note = (
+                f"Display direction follows adjusted day-7 upside of {display_upside_pct:+.2f}%, "
+                f"while stability state remains {stable_direction} for continuity logging."
+                if display_direction != stable_direction
+                else ""
+            )
             direction_meta = {
                 'raw_direction': raw_direction,
                 'stable_direction': stable_direction,
                 'logged_direction': logged_direction,
                 'logged_direction_source': logged_direction_source,
+                'display_direction': display_direction,
+                'display_upside_pct': round(display_upside_pct, 2),
+                'stability_note': stability_note,
             }
         else:
             direction_meta = {
@@ -1581,7 +1617,31 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
                 'stable_direction': 'NEUTRAL',
                 'logged_direction': 'NEUTRAL',
                 'logged_direction_source': 'stable',
+                'display_direction': 'NEUTRAL',
+                'display_upside_pct': 0.0,
+                'stability_note': '',
             }
+
+        try:
+            from backend.prediction_reasoning import generate_prediction_reasoning
+            if USE_RESEARCH_MODEL and research_model is not None:
+                reasoning_df = research_model.preprocess(df)
+            else:
+                from backend.external_features import merge_external_features
+                reasoning_df = merge_external_features(df.copy(), symbol=symbol)
+
+            reasoning = generate_prediction_reasoning(
+                reasoning_df,
+                symbol=symbol,
+                predicted_upside=direction_meta.get('display_upside_pct', 0.0),
+                direction_override=direction_meta.get('display_direction', 'NEUTRAL'),
+                apply_stability=False,
+                neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0)),
+                horizon_label='Day 7',
+            )
+        except Exception as e:
+            print(f"⚠️ Adjusted reasoning generation failed: {e}")
+            reasoning = {'error': str(e)}
 
         shadow_comparison = {}
         if model_variant == 'shadow':
@@ -1677,29 +1737,19 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             logger = get_prediction_logger()
 
             # Log the 7-day prediction for tracking
-            if len(predictions_without_geo) >= 7:
-                pred_7d = predictions_without_geo[6]  # Day 7 (index 6)
+            if len(display_predictions) >= 7:
+                pred_7d = display_predictions[6]  # Day 7 (index 6)
                 current_price = float(df['Close'].iloc[-1])
 
                 # Extract Williams signal and sector if available
                 williams_signal = pred_7d.get('williams_signal')
                 sector = pred_7d.get('sector')
 
-                raw_direction = direction_from_change_pct(
-                    float(pred_7d.get('upside_potential', 0) or 0),
-                    neutral_band_pct=float(getattr(live_tweak_config, "neutral_band_pct", 0.0))
-                )
-                stable_direction = pred_7d.get('stable_direction', raw_direction)
-                logged_direction_source = os.getenv('LOGGED_DIRECTION_SOURCE', 'stable').strip().lower()
-                if logged_direction_source not in {'stable', 'raw'}:
-                    logged_direction_source = 'stable'
-                logged_direction = stable_direction if logged_direction_source == 'stable' else raw_direction
-
                 logger.log_prediction(
                     symbol=symbol,
                     current_price=current_price,
                     predicted_price=pred_7d['predicted_price'],
-                    predicted_direction=logged_direction,
+                    predicted_direction=direction_meta.get('logged_direction', 'NEUTRAL'),
                     confidence=pred_7d.get('confidence', 0.5),
                     horizon_days=7,
                     williams_signal=williams_signal,

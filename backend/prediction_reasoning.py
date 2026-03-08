@@ -10,8 +10,24 @@ import pandas as pd
 from typing import Dict, List, Tuple
 from backend.prediction_stability import PredictionStabilizer
 
+try:
+    from backend.prediction_tuning import direction_from_change_pct
+except Exception:
+    def direction_from_change_pct(change_pct: float, neutral_band_pct: float = 0.0) -> str:
+        if abs(change_pct) <= neutral_band_pct:
+            return "NEUTRAL"
+        return "BULLISH" if change_pct > 0 else "BEARISH"
 
-def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicted_upside: float = None) -> Dict:
+
+def generate_prediction_reasoning(
+    df: pd.DataFrame,
+    symbol: str = None,
+    predicted_upside: float = None,
+    direction_override: str = None,
+    apply_stability: bool = True,
+    neutral_band_pct: float = 0.0,
+    horizon_label: str = "Day 7",
+) -> Dict:
     """
     Analyze current indicators and generate reasons for prediction direction.
     
@@ -33,6 +49,9 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
     # Get latest values
     latest = df.iloc[-1]
     close = float(latest.get('Close', 0))
+    symbol_upper = (symbol or '').upper()
+    is_energy_symbol = symbol_upper in {'OGDC', 'PPL', 'POL', 'MARI', 'PSO'}
+    energy_shock_regime = float(latest.get('energy_shock_regime', 0) or 0) > 0.5
     
     # =====================================================
     # 0. MODEL PREDICTION (PRIMARY SIGNAL)
@@ -180,7 +199,13 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
     # KSE-100 correlation
     kse_return = latest.get('kse100_return', 0)
     if pd.notna(kse_return) and kse_return != 0:
-        if kse_return > 0.01:
+        if is_energy_symbol and energy_shock_regime and kse_return < -0.01:
+            bullish.append({
+                'category': 'Regime',
+                'signal': 'Energy shock regime: sector may diverge from a falling KSE-100',
+                'strength': 0.45
+            })
+        elif kse_return > 0.01:
             bullish.append({
                 'category': 'Market',
                 'signal': f'KSE-100 rising (+{kse_return*100:.1f}%)',
@@ -218,6 +243,36 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
                 'category': 'Commodities',
                 'signal': f'Oil prices falling ({oil_change*100:.1f}%)',
                 'strength': min(abs(oil_change) * 10, 1.0) * 0.5
+            })
+
+    fuel_delta = latest.get('local_fuel_price_delta_rs', 0)
+    if pd.notna(fuel_delta) and symbol and symbol_upper in {'OGDC', 'PPL', 'POL', 'MARI', 'PSO'} and abs(float(fuel_delta)) > 0:
+        if fuel_delta > 0:
+            bullish.append({
+                'category': 'Policy',
+                'signal': f'Domestic fuel prices hiked by Rs{abs(float(fuel_delta)):.0f}',
+                'strength': min(abs(float(fuel_delta)) / 50.0, 1.0) * 0.8
+            })
+        else:
+            bearish.append({
+                'category': 'Policy',
+                'signal': f'Domestic fuel prices cut by Rs{abs(float(fuel_delta)):.0f}',
+                'strength': min(abs(float(fuel_delta)) / 50.0, 1.0) * 0.8
+            })
+
+    circular_debt_signal = latest.get('circular_debt_signal', 0)
+    if pd.notna(circular_debt_signal) and abs(float(circular_debt_signal)) > 0:
+        if circular_debt_signal > 0:
+            bullish.append({
+                'category': 'Balance Sheet',
+                'signal': 'Circular-debt relief/payment signal detected',
+                'strength': min(abs(float(circular_debt_signal)), 1.0) * 0.7
+            })
+        else:
+            bearish.append({
+                'category': 'Balance Sheet',
+                'signal': 'Circular-debt stress signal detected',
+                'strength': min(abs(float(circular_debt_signal)), 1.0) * 0.7
             })
     
     # =====================================================
@@ -326,42 +381,38 @@ def generate_prediction_reasoning(df: pd.DataFrame, symbol: str = None, predicte
     
     # If we have a prediction, use it as primary direction
     if predicted_upside is not None:
-        # Apply stability logic to prevent flip-flop
-        stabilizer = PredictionStabilizer()
-        
-        # Determine raw direction based on threshold
-        if predicted_upside > 5:
-            raw_direction = 'BULLISH'
-        elif predicted_upside < -5:
-            raw_direction = 'BEARISH'
+        raw_direction = direction_from_change_pct(predicted_upside, neutral_band_pct=neutral_band_pct)
+        stability_result = None
+
+        if direction_override:
+            direction = direction_override
+            smoothed_upside = predicted_upside
+        elif apply_stability:
+            stabilizer = PredictionStabilizer()
+            stability_result = stabilizer.apply_stability(
+                symbol or 'UNKNOWN',
+                predicted_upside,
+                raw_direction
+            )
+            direction = stability_result['stable_direction']
+            smoothed_upside = stability_result['smoothed_prediction']
         else:
-            raw_direction = 'NEUTRAL'
-        
-        # Apply stability (hysteresis + smoothing)
-        stability_result = stabilizer.apply_stability(
-            symbol or 'UNKNOWN',
-            predicted_upside,
-            raw_direction
-        )
-        
-        # Use stable direction and smoothed prediction
-        direction = stability_result['stable_direction']
-        smoothed_upside = stability_result['smoothed_prediction']
-        
-        # Generate explanation with stability info
+            direction = raw_direction
+            smoothed_upside = predicted_upside
+
         if direction == 'BULLISH':
             emoji = '🟢'
-            explanation = f"Model predicts +{smoothed_upside:.1f}% upside (raw: {predicted_upside:+.1f}%). {len(bullish)} supporting signals, {len(bearish)} cautionary signals."
-            if stability_result['changed_direction']:
+            explanation = f"{horizon_label} adjusted forecast points +{smoothed_upside:.1f}% higher. {len(bullish)} supporting signals, {len(bearish)} cautionary signals."
+            if stability_result and stability_result['changed_direction']:
                 explanation += " ⚠️ Direction changed from previous prediction."
         elif direction == 'BEARISH':
             emoji = '🔴'
-            explanation = f"Model predicts {smoothed_upside:.1f}% downside (raw: {predicted_upside:+.1f}%). {len(bearish)} supporting signals, {len(bullish)} contrary signals."
-            if stability_result['changed_direction']:
+            explanation = f"{horizon_label} adjusted forecast points {smoothed_upside:.1f}% lower. {len(bearish)} supporting signals, {len(bullish)} contrary signals."
+            if stability_result and stability_result['changed_direction']:
                 explanation += " ⚠️ Direction changed from previous prediction."
         else:
             emoji = '🟡'
-            explanation = f"Model predicts {smoothed_upside:+.1f}% (raw: {predicted_upside:+.1f}%, marginal). Mixed signals: {len(bullish)} bullish, {len(bearish)} bearish."
+            explanation = f"{horizon_label} adjusted forecast is {smoothed_upside:+.1f}% with mixed signals: {len(bullish)} bullish, {len(bearish)} bearish."
         
         # Update predicted_upside to smoothed value for consistency
         predicted_upside = smoothed_upside

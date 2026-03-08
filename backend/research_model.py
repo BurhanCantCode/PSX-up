@@ -1070,7 +1070,15 @@ class PSXResearchModel:
                 'seasonal' in col.lower() or
                 ('denoised' in col.lower() and not use_returns) or
                 'news_' in col.lower() or
-                'geo_' in col.lower()):  # Include news/geopolitical features
+                'geo_' in col.lower() or
+                col in {
+                    'local_fuel_price_delta_rs',
+                    'local_fuel_price_shock',
+                    'circular_debt_signal',
+                    'energy_shock_regime',
+                    'kse_oil_interaction',
+                    'kse_energy_shock_interaction',
+                }):  # Include news/geopolitical/energy-shock features
                 feature_cols.append(col)
         
         self.feature_cols = feature_cols
