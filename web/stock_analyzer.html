@@ -1089,10 +1089,6 @@
             order: 2;
         }
 
-        #dashboardHistorySection {
-            order: 3;
-        }
-
         @keyframes fadeSlideIn {
             from {
                 opacity: 0;
@@ -1154,6 +1150,313 @@
         .batch-metrics-mini .bm-value { font-weight: 700; }
         @media (max-width: 1200px) { .entry-exit-card { grid-template-columns: 1fr 1fr; } .metrics-row { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 768px) { .entry-exit-card { grid-template-columns: 1fr; } .metrics-row { grid-template-columns: repeat(2, 1fr); } }
+
+        /* ===== PORTFOLIO TRACKER ===== */
+        .portfolio-summary-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .portfolio-summary-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px 22px;
+            box-shadow: var(--shadow);
+        }
+        .portfolio-summary-card .ps-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .portfolio-summary-card .ps-value {
+            font-size: 1.45rem;
+            font-weight: 700;
+        }
+        .portfolio-summary-card .ps-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .portfolio-add-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+            margin-bottom: 30px;
+            max-width: 700px;
+        }
+        .portfolio-add-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .portfolio-add-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .portfolio-add-field label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .portfolio-add-field input {
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+            background: var(--bg-body);
+            min-width: 120px;
+        }
+        .portfolio-add-field input:focus { border-color: var(--lime); }
+        .portfolio-add-btn {
+            background: var(--primary);
+            color: var(--lime);
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .portfolio-add-btn:hover { background: #1f2937; }
+        .portfolio-table-wrap {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .portfolio-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .portfolio-table th {
+            text-align: left;
+            padding: 14px 18px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border);
+            background: #fafafa;
+        }
+        .portfolio-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #f3f4f6;
+            vertical-align: middle;
+        }
+        .portfolio-table tr:last-child td { border-bottom: none; }
+        .portfolio-table .sym-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: var(--lime);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.82rem;
+        }
+        .portfolio-table .pnl-pos { color: var(--green); font-weight: 600; }
+        .portfolio-table .pnl-neg { color: var(--red); font-weight: 600; }
+        .portfolio-table .pnl-na { color: var(--text-muted); }
+        .portfolio-remove-btn {
+            background: none;
+            border: 1.5px solid var(--border);
+            border-radius: 8px;
+            padding: 5px 12px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.15s;
+        }
+        .portfolio-remove-btn:hover { border-color: var(--red); color: var(--red); }
+        .portfolio-empty {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+        }
+        .portfolio-refresh-btn {
+            background: var(--bg-card);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 18px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.15s;
+        }
+        .portfolio-refresh-btn:hover { border-color: var(--lime); }
+        .portfolio-price-loading { color: var(--text-muted); font-size: 0.82rem; }
+        .portfolio-error-msg { color: var(--red); font-size: 0.8rem; margin-top: 6px; }
+
+        /* Portfolio Forecast */
+        .pt-forecast-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            padding: 22px;
+            margin-bottom: 20px;
+        }
+        .pt-forecast-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .pt-forecast-header .sym-badge { font-size: 0.9rem; }
+        .pt-forecast-direction {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .pt-forecast-stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            font-size: 0.85rem;
+        }
+        .pt-forecast-stats .ptfs-item { display: flex; flex-direction: column; gap: 2px; }
+        .pt-forecast-stats .ptfs-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.04em; }
+        .pt-forecast-stats .ptfs-value { font-weight: 700; font-size: 0.95rem; }
+        .pt-forecast-chart-wrap { height: 200px; position: relative; }
+        .pt-forecast-mode-toggle { display: flex; gap: 6px; align-items: center; }
+        .pt-forecast-mode-btn {
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            line-height: 1.2;
+        }
+        .pt-forecast-mode-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: var(--lime);
+        }
+        .pt-forecast-mode-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .pt-forecast-mode-note {
+            margin-top: 6px;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+        .pt-forecast-loading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+        }
+        .pt-forecast-loading .spinner { width: 22px; height: 22px; border-width: 2.5px; }
+        .pt-forecast-notice {
+            border: 1px solid var(--border);
+            border-left-width: 4px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.82rem;
+            background: #fff;
+        }
+        .pt-forecast-notice.warning { border-left-color: #f59e0b; background: #fffbeb; }
+        .pt-forecast-notice.info { border-left-color: #3b82f6; background: #eff6ff; }
+        .pt-forecast-notice .title { font-weight: 700; color: var(--primary); margin-right: 6px; }
+        .pt-forecast-notice .meta { color: var(--text-muted); }
+        .pt-forecast-notice .action {
+            border: 1px solid var(--primary);
+            background: var(--primary);
+            color: var(--lime);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .pt-aggregate-card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            padding: 16px 18px;
+        }
+        .pt-aggregate-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .pt-aggregate-title {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .pt-aggregate-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .pt-aggregate-stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .pt-aggregate-stat .label {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .pt-aggregate-stat .value {
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        .pt-aggregate-chart-wrap {
+            position: relative;
+            height: 180px;
+        }
+        .pt-aggregate-note {
+            margin-top: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        @media (max-width: 900px) {
+            .pt-aggregate-stats {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
+            }
+        }
     </style>
 </head>
 
@@ -1177,7 +1480,7 @@
 
         <ul class="nav-menu">
             <li class="nav-item">
-                <a class="nav-link active" onclick="switchView('dashboard')">
+                <a class="nav-link active" data-view="dashboard" onclick="switchView('dashboard')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="7"></rect>
                         <rect x="14" y="3" width="7" height="7"></rect>
@@ -1188,7 +1491,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" onclick="switchView('commodities')">
+                <a class="nav-link" data-view="commodities" onclick="switchView('commodities')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="8" cy="8" r="6"></circle>
                         <circle cx="16" cy="16" r="6"></circle>
@@ -1197,7 +1500,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" onclick="switchView('scanner')">
+                <a class="nav-link" data-view="scanner" onclick="switchView('scanner')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
@@ -1205,7 +1508,7 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" onclick="switchView('batch')">
+                <a class="nav-link" data-view="batch" onclick="switchView('batch')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="7" height="9"></rect>
                         <rect x="14" y="3" width="7" height="5"></rect>
@@ -1215,14 +1518,27 @@
                     Batch Analysis
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" data-view="portfolio" onclick="switchView('portfolio')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="7" width="20" height="14" rx="2"></rect>
+                        <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path>
+                        <line x1="12" y1="12" x2="12" y2="16"></line>
+                        <line x1="10" y1="14" x2="14" y2="14"></line>
+                    </svg>
+                    My Portfolio
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-view="previousPredictions" onclick="switchView('previousPredictions')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    Previous Predictions
+                </a>
+            </li>
         </ul>
-
-        <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
-            <div class="input-label" style="margin-bottom: 15px;">RECENT ANALYSES</div>
-            <div id="historyList">
-                <!-- Populated via JS -->
-            </div>
-        </div>
     </aside>
 
     <!-- CONTENT -->
@@ -1430,27 +1746,6 @@
                 <div id="insightsPanel"></div>
             </div>
 
-            <!-- Previous Predictions Dashboard -->
-            <div id="dashboardHistorySection" style="margin-bottom:30px;">
-                <h2 class="section-header">Previous Predictions</h2>
-                <div id="dashboardHistoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;" role="list">
-                    <div style="color:var(--text-muted); font-size:0.9rem;">Loading history...</div>
-                </div>
-
-                <div style="margin-top:30px;">
-                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Accuracy Tracker</h3>
-                    <div id="predictionLogTable" style="overflow-x:auto;">
-                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
-                    </div>
-                </div>
-
-                <div style="margin-top:24px;">
-                    <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Tuning Report</h3>
-                    <div id="predictionTuningSummary" class="stock-summary-card" style="display:block; padding:18px;">
-                        <div style="color:var(--text-muted); font-size:0.85rem;">Loading tuning report...</div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- SCANNER VIEW -->
@@ -1600,6 +1895,118 @@
             </div>
 
             <div id="batchResultsContainer" style="margin-top: 30px;"></div>
+        </div>
+
+        <!-- PORTFOLIO VIEW -->
+        <div id="portfolioView" class="view-section">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:30px;">
+                <h2 class="section-header" style="margin-bottom:0;">My Portfolio</h2>
+                <button class="portfolio-refresh-btn" onclick="loadPortfolio()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                    Refresh Prices
+                </button>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="portfolio-summary-bar">
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Total Invested</div>
+                    <div class="ps-value" id="ptInvested">PKR 0</div>
+                    <div class="ps-sub">Cost basis</div>
+                </div>
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Current Value</div>
+                    <div class="ps-value" id="ptValue">PKR 0</div>
+                    <div class="ps-sub">Market value</div>
+                </div>
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Total P&amp;L</div>
+                    <div class="ps-value" id="ptPnl">PKR 0</div>
+                    <div class="ps-sub" id="ptPnlSub">—</div>
+                </div>
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Total Return</div>
+                    <div class="ps-value" id="ptReturn">0.00%</div>
+                    <div class="ps-sub" id="ptReturnSub">—</div>
+                </div>
+            </div>
+
+            <!-- Add Holding Form -->
+            <div class="portfolio-add-card">
+                <div class="input-label" style="margin-bottom:16px;">ADD HOLDING</div>
+                <div class="portfolio-add-row">
+                    <div class="portfolio-add-field">
+                        <label>Symbol</label>
+                        <input type="text" id="ptSymbol" placeholder="e.g. OGDC" style="text-transform:uppercase; width:110px;"
+                            onkeypress="if(event.key==='Enter') addHolding()">
+                    </div>
+                    <div class="portfolio-add-field">
+                        <label>Quantity</label>
+                        <input type="number" id="ptQty" placeholder="500" min="1" style="width:120px;"
+                            onkeypress="if(event.key==='Enter') addHolding()">
+                    </div>
+                    <div class="portfolio-add-field">
+                        <label>Avg Buy Price (PKR)</label>
+                        <input type="number" id="ptAvgBuy" placeholder="142.50" min="0" step="0.01" style="width:160px;"
+                            onkeypress="if(event.key==='Enter') addHolding()">
+                    </div>
+                    <button type="button" class="portfolio-add-btn" onclick="addHolding()">Add</button>
+                </div>
+                <div id="ptAddError" class="portfolio-error-msg" style="display:none;"></div>
+            </div>
+
+            <!-- Holdings Table -->
+            <div class="portfolio-table-wrap">
+                <div id="ptTableContainer">
+                    <div class="portfolio-empty">
+                        <div style="font-size:2rem; margin-bottom:12px;">📊</div>
+                        <div style="font-weight:600; margin-bottom:6px;">No holdings yet</div>
+                        <div style="font-size:0.85rem;">Add your first holding above to start tracking your portfolio.</div>
+                    </div>
+                </div>
+            </div>
+            <div id="ptLastUpdated" style="font-size:0.75rem; color:var(--text-muted); margin-top:12px; text-align:right;"></div>
+            <div id="ptPriceSource" style="font-size:0.72rem; color:var(--text-muted); margin-top:4px; text-align:right;"></div>
+
+            <!-- 21-Day Forecast -->
+            <div style="margin-top:24px; display:flex; align-items:center; gap:12px;">
+                <button id="ptForecastBtn" class="portfolio-add-btn" onclick="runPortfolioForecast()" disabled
+                    style="display:flex; align-items:center; gap:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Run 21-Day Forecast
+                </button>
+                <span id="ptForecastStatus" style="font-size:0.85rem; color:var(--text-muted);"></span>
+            </div>
+            <div id="ptForecastNotice" style="margin-top:12px;"></div>
+            <div id="ptForecastAggregate" style="margin-top:14px;"></div>
+            <div id="ptForecastContainer" style="margin-top:24px;"></div>
+        </div>
+
+        <!-- PREVIOUS PREDICTIONS VIEW -->
+        <div id="previousPredictionsView" class="view-section">
+            <h2 class="section-header">Previous Predictions</h2>
+            <div id="dashboardHistoryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px;" role="list">
+                <div style="color:var(--text-muted); font-size:0.9rem;">Loading history...</div>
+            </div>
+
+            <div style="margin-top:30px;">
+                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Accuracy Tracker</h3>
+                <div id="predictionLogTable" style="overflow-x:auto;">
+                    <div style="color:var(--text-muted); font-size:0.85rem;">Loading prediction log...</div>
+                </div>
+            </div>
+
+            <div style="margin-top:24px;">
+                <h3 style="font-size:1.1rem; font-weight:700; margin-bottom:15px;">Prediction Tuning Report</h3>
+                <div id="predictionTuningSummary" class="stock-summary-card" style="display:block; padding:18px;">
+                    <div style="color:var(--text-muted); font-size:0.85rem;">Loading tuning report...</div>
+                </div>
+            </div>
         </div>
 
     </main>
@@ -2353,23 +2760,40 @@
             </div>`;
         }
 
+        let portfolioRefreshTimer = null;
+        const viewToSectionId = {
+            dashboard: 'dashboardView',
+            commodities: 'commoditiesView',
+            scanner: 'scannerView',
+            batch: 'batchView',
+            portfolio: 'portfolioView',
+            previousPredictions: 'previousPredictionsView'
+        };
+
         function switchView(view) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
 
-            if (view === 'dashboard') {
-                document.getElementById('dashboardView').classList.add('active');
-                document.querySelectorAll('.nav-link')[0].classList.add('active');
-            } else if (view === 'commodities') {
-                document.getElementById('commoditiesView').classList.add('active');
-                document.querySelectorAll('.nav-link')[1].classList.add('active');
-            } else if (view === 'scanner') {
-                document.getElementById('scannerView').classList.add('active');
-                document.querySelectorAll('.nav-link')[2].classList.add('active');
+            const sectionId = viewToSectionId[view];
+            if (!sectionId) return;
+
+            document.getElementById(sectionId).classList.add('active');
+            const link = document.querySelector(`.nav-link[data-view="${view}"]`);
+            if (link) link.classList.add('active');
+
+            if (view === 'scanner') {
                 loadScanner();
-            } else if (view === 'batch') {
-                document.getElementById('batchView').classList.add('active');
-                document.querySelectorAll('.nav-link')[3].classList.add('active');
+            } else if (view === 'portfolio') {
+                loadPortfolio();
+                if (ptForecastTotal === 0 && Object.keys(ptForecastCardState || {}).length === 0) {
+                    ptRestoreForecastState();
+                }
+                // Start auto-refresh once; persists across view switches until page unload
+                if (!portfolioRefreshTimer) {
+                    portfolioRefreshTimer = setInterval(loadPortfolio, 60000);
+                }
+            } else if (view === 'previousPredictions') {
+                loadDashboardHistory();
             }
         }
 
@@ -2468,7 +2892,7 @@
 
                     if (data.stage === 'complete') {
                         renderResults(data.results);
-                        loadDashboardHistory(); // Refresh sidebar + dashboard history
+                        loadDashboardHistory(); // Refresh previous predictions page
                         ws.close();
                         finishLiveProgressPanel(true, 'Pipeline complete. Rendering results...');
                         showLoader(false);
@@ -3246,29 +3670,6 @@
             });
         }
 
-        async function loadHistoryList() {
-            const list = document.getElementById('historyList');
-            try {
-                const res = await fetch(`${API_BASE}/api/history`);
-                const data = await res.json();
-                console.log('History API response:', data);
-
-                if (data.success && data.history && data.history.length > 0) {
-                    list.innerHTML = data.history.slice(0, 5).map(h => `
-                        <div class="sidebar-history-item" data-fileuri="${encodeURIComponent(h.filename || '')}" style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid #eee; cursor:pointer;" role="button" tabindex="0">
-                            <div style="font-weight:600; font-size:0.9rem;">${h.symbol}</div>
-                            <div style="font-size:0.8rem; color:${h.predicted_return >= 0 ? '#10b981' : '#ef4444'};">${h.predicted_return >= 0 ? '+' : ''}${h.predicted_return.toFixed(1)}%</div>
-                        </div>
-                    `).join('');
-                } else {
-                    list.innerHTML = '<div style="color:#9ca3af; font-size:0.85rem;">No saved analyses yet</div>';
-                }
-            } catch (e) {
-                console.error('History load error:', e);
-                list.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading history</div>';
-            }
-        }
-
         async function loadFromFile(filename) {
             console.log('loadFromFile called with:', filename);
             switchView('dashboard');
@@ -3914,7 +4315,7 @@
                     return;
                 }
 
-                // Render rich history grid on dashboard
+                // Render rich history grid on dedicated page
                 const grid = document.getElementById('dashboardHistoryGrid');
                 if (grid && data.history && data.history.length > 0) {
                     grid.innerHTML = data.history.map(h => {
@@ -3966,17 +4367,12 @@
 
                 // Render tuning report summary
                 loadPredictionTuningReport(false);
-
-                // Update sidebar history (enhanced)
-                loadSidebarHistory(data.history);
             } catch (e) {
                 console.error('Dashboard history load error:', e);
                 const grid = document.getElementById('dashboardHistoryGrid');
                 const log = document.getElementById('predictionLogTable');
                 if (grid) grid.innerHTML = '<div style="color:#ef4444; font-size:0.9rem;">Error loading previous predictions.</div>';
                 if (log) log.innerHTML = '<div style="color:#ef4444; font-size:0.85rem;">Error loading prediction log.</div>';
-                // Fallback: still try to load sidebar
-                loadHistoryList();
             }
         }
 
@@ -4101,59 +4497,1471 @@
             </table>`;
         }
 
-        function loadSidebarHistory(historyItems) {
-            const list = document.getElementById('historyList');
-            if (!historyItems || historyItems.length === 0) {
-                list.innerHTML = '<div style="color:#9ca3af; font-size:0.85rem;">No saved analyses yet</div>';
-                return;
-            }
-            list.innerHTML = historyItems.slice(0, 8).map(h => `
-                <div class="sidebar-history-item" data-fileuri="${encodeURIComponent(h.filename || '')}" style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #eee; cursor:pointer;" role="button" tabindex="0">
-                    <div>
-                        <div style="font-weight:600; font-size:0.85rem;">${h.symbol}</div>
-                        <div style="font-size:0.65rem; color:var(--text-muted);">${h.direction_emoji || ''} ${h.sentiment_signal || ''}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:0.8rem; font-weight:600; color:${h.predicted_return >= 0 ? '#10b981' : '#ef4444'};">${h.predicted_return >= 0 ? '+' : ''}${h.predicted_return.toFixed(1)}%</div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        (function attachSidebarHistoryClick() {
-            const list = document.getElementById('historyList');
-            if (!list) {
-                console.warn('historyList element not found!');
-                return;
-            }
-            console.log('Attaching history click listeners to:', list);
-            
-            list.addEventListener('click', function(e) {
-                console.log('Click detected on historyList, target:', e.target);
-                const item = e.target.closest('.sidebar-history-item[data-fileuri]');
-                console.log('Found item:', item);
-                if (!item) return;
-                const fileUri = item.getAttribute('data-fileuri');
-                console.log('File URI:', fileUri);
-                if (fileUri) {
-                    loadFromFile(decodeURIComponent(fileUri));
-                }
-            });
-            
-            list.addEventListener('keydown', function(e) {
-                if (e.key !== 'Enter' && e.key !== ' ') return;
-                const item = e.target.closest('.sidebar-history-item[data-fileuri]');
-                if (!item) return;
-                e.preventDefault();
-                const fileUri = item.getAttribute('data-fileuri');
-                if (fileUri) loadFromFile(decodeURIComponent(fileUri));
-            });
-            
-            console.log('History click listeners attached successfully');
-        })();
-
         initGeoFeatureToggle();
         loadDashboardHistory();
+
+        // ===================================================================
+        // PORTFOLIO TRACKER
+        // ===================================================================
+
+        const PT_STORAGE_KEY = 'psx_portfolio_holdings';
+        const PT_PRICE_CACHE_KEY = 'psx_portfolio_price_cache';
+
+        function ptLoadHoldings() {
+            try {
+                const data = JSON.parse(localStorage.getItem(PT_STORAGE_KEY) || '[]');
+                return ptNormalizeHoldings(Array.isArray(data) ? data : []);
+            } catch (_) { return []; }
+        }
+
+        function ptNormalizeHoldings(holdings) {
+            return (holdings || []).map(h => ({
+                symbol: String(h?.symbol || '').trim().toUpperCase(),
+                qty: Number(h?.qty),
+                avgBuy: Number(h?.avgBuy),
+                lastPrice: Number.isFinite(Number(h?.lastPrice)) && Number(h?.lastPrice) > 0 ? Number(h?.lastPrice) : null,
+                lastPriceAt: typeof h?.lastPriceAt === 'string' ? h.lastPriceAt : '',
+            })).filter(h => h.symbol && Number.isFinite(h.qty) && Number.isFinite(h.avgBuy) && h.qty > 0 && h.avgBuy > 0);
+        }
+
+        function ptSaveHoldings(holdings) {
+            try {
+                localStorage.setItem(PT_STORAGE_KEY, JSON.stringify(holdings));
+                return true;
+            } catch (e) {
+                console.error('Failed to save portfolio holdings:', e);
+                return false;
+            }
+        }
+
+        function ptLoadPriceCache() {
+            try {
+                const raw = JSON.parse(localStorage.getItem(PT_PRICE_CACHE_KEY) || '{}');
+                if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+                const normalized = {};
+                for (const [symbolRaw, item] of Object.entries(raw)) {
+                    const symbol = String(symbolRaw || '').trim().toUpperCase();
+                    const price = Number(item && item.price);
+                    if (!symbol || !Number.isFinite(price) || price <= 0) continue;
+                    const change = Number(item && item.change);
+                    const changePct = Number(
+                        item && item.change_pct != null
+                            ? item.change_pct
+                            : (item && item.changePct)
+                    );
+                    const ldcp = Number(item && item.ldcp);
+                    const openPrice = Number(item && item.open);
+                    normalized[symbol] = {
+                        price,
+                        date: item && typeof item.date === 'string' ? item.date : '',
+                        source: item && typeof item.source === 'string' ? item.source : '',
+                        fetchedAt: item && typeof item.fetchedAt === 'string' ? item.fetchedAt : '',
+                        change: Number.isFinite(change) ? change : null,
+                        change_pct: Number.isFinite(changePct) ? changePct : null,
+                        ldcp: Number.isFinite(ldcp) ? ldcp : null,
+                        open: Number.isFinite(openPrice) ? openPrice : null,
+                        change_basis: item && typeof item.change_basis === 'string' ? item.change_basis : '',
+                    };
+                }
+                return normalized;
+            } catch (_) {
+                return {};
+            }
+        }
+
+        function ptSavePriceCache(cache) {
+            try {
+                localStorage.setItem(PT_PRICE_CACHE_KEY, JSON.stringify(cache || {}));
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function ptPrunePriceCache(cache, holdings) {
+            const keep = new Set((holdings || []).map(h => h.symbol));
+            for (const symbol of Object.keys(cache || {})) {
+                if (!keep.has(symbol)) delete cache[symbol];
+            }
+        }
+
+        async function ptFetchPrice(symbol) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 2500);
+            try {
+                const res = await fetch(`${API_BASE}/api/current-price/${encodeURIComponent(symbol)}`, { signal: controller.signal });
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (data && data.price != null) return data;
+                return null;
+            } catch (_) {
+                return null;
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        async function ptFetchPricesBatch(symbols) {
+            if (!Array.isArray(symbols) || symbols.length === 0) return null;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3500);
+            try {
+                const q = symbols.map(s => encodeURIComponent(s)).join(',');
+                const res = await fetch(`${API_BASE}/api/current-prices?symbols=${q}`, { signal: controller.signal });
+                if (!res.ok) return null;
+                const data = await res.json();
+                if (!data || typeof data !== 'object') return null;
+                if (!data.prices || typeof data.prices !== 'object') return null;
+                return data.prices;
+            } catch (_) {
+                return null;
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        function ptFmt(n) {
+            return n.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function ptExtractDailyMove(payload) {
+            if (!payload || typeof payload !== 'object') return null;
+            const price = Number(payload.price);
+            let change = Number(payload.change);
+            const ldcp = Number(payload.ldcp);
+
+            if (!Number.isFinite(change) && Number.isFinite(price) && price > 0 && Number.isFinite(ldcp) && ldcp > 0) {
+                change = price - ldcp;
+            }
+            if (!Number.isFinite(change)) return null;
+
+            let changePct = Number(payload.change_pct);
+            if (!Number.isFinite(changePct) && Number.isFinite(ldcp) && ldcp > 0) {
+                changePct = (change / ldcp) * 100;
+            }
+
+            return {
+                change,
+                changePct: Number.isFinite(changePct) ? changePct : null,
+            };
+        }
+
+        function ptRenderSummary(holdings, prices, stalePrices = {}) {
+            let invested = 0, value = 0;
+            for (const h of holdings) {
+                invested += h.qty * h.avgBuy;
+                const p = prices[h.symbol];
+                if (p != null) value += h.qty * p;
+            }
+            const pnl = value - invested;
+            const ret = invested > 0 ? (pnl / invested) * 100 : 0;
+            const isPos = pnl >= 0;
+
+            document.getElementById('ptInvested').textContent = `PKR ${ptFmt(invested)}`;
+            document.getElementById('ptValue').textContent = `PKR ${ptFmt(value)}`;
+
+            const pnlEl = document.getElementById('ptPnl');
+            pnlEl.textContent = `PKR ${ptFmt(pnl)}`;
+            pnlEl.className = 'ps-value ' + (isPos ? 'text-green' : 'text-red');
+
+            const retEl = document.getElementById('ptReturn');
+            retEl.textContent = `${isPos ? '+' : ''}${ret.toFixed(2)}%`;
+            retEl.className = 'ps-value ' + (isPos ? 'text-green' : 'text-red');
+
+            document.getElementById('ptPnlSub').textContent = isPos ? 'Unrealized gain' : 'Unrealized loss';
+            document.getElementById('ptReturnSub').textContent = `vs. cost basis`;
+        }
+
+        function ptRenderTable(holdings, prices, stalePrices = {}, dailyMoves = {}) {
+            const container = document.getElementById('ptTableContainer');
+            if (holdings.length === 0) {
+                container.innerHTML = `
+                    <div class="portfolio-empty">
+                        <div style="font-size:2rem; margin-bottom:12px;">📊</div>
+                        <div style="font-weight:600; margin-bottom:6px;">No holdings yet</div>
+                        <div style="font-size:0.85rem;">Add your first holding above to start tracking your portfolio.</div>
+                    </div>`;
+                return;
+            }
+
+            let rows = '';
+            for (const h of holdings) {
+                const cur = prices[h.symbol];
+                const staleType = stalePrices[h.symbol] || '';
+                const invested = h.qty * h.avgBuy;
+                let curCell, mvCell, pnlCell, pctCell, dayCell;
+
+                if (cur != null) {
+                    if (staleType === 'avg-buy') {
+                        curCell = `PKR ${ptFmt(cur)} <span style="font-size:0.72rem; color:var(--text-muted);">(avg buy)</span>`;
+                        mvCell = `<span class="pnl-na">N/A</span>`;
+                        pnlCell = `<span class="pnl-na">N/A</span>`;
+                        pctCell = `<span class="pnl-na">N/A</span>`;
+                        dayCell = `<span class="pnl-na">—</span>`;
+                        rows += `<tr>
+                    <td><span class="sym-badge">${h.symbol}</span></td>
+                    <td>${h.qty.toLocaleString()}</td>
+                    <td>PKR ${ptFmt(h.avgBuy)}</td>
+                    <td>${curCell}</td>
+                    <td>PKR ${ptFmt(invested)}</td>
+                    <td>${mvCell}</td>
+                    <td>${pnlCell}</td>
+                    <td>${pctCell}</td>
+                    <td>${dayCell}</td>
+                    <td><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
+                        </tr>`;
+                        continue;
+                    }
+
+                    const staleLabel = staleType === 'holding-last' ? '(last)' : (staleType === 'cache' ? '(cached)' : '');
+                    curCell = `PKR ${ptFmt(cur)}${staleLabel ? ` <span style="font-size:0.72rem; color:var(--text-muted);">${staleLabel}</span>` : ''}`;
+                    const mv = h.qty * cur;
+                    const pnl = mv - invested;
+                    const pct = invested > 0 ? (pnl / invested) * 100 : 0;
+                    const cls = pnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+                    const sign = pnl >= 0 ? '+' : '';
+                    mvCell = `PKR ${ptFmt(mv)}`;
+                    pnlCell = `<span class="${cls}">${sign}PKR ${ptFmt(pnl)}</span>`;
+                    pctCell = `<span class="${cls}">${sign}${pct.toFixed(2)}%</span>`;
+                    const daily = dailyMoves[h.symbol];
+                    if (daily && Number.isFinite(daily.change)) {
+                        const dayValue = daily.change * h.qty;
+                        const dayCls = dayValue >= 0 ? 'pnl-pos' : 'pnl-neg';
+                        const daySign = dayValue >= 0 ? '+' : '';
+                        const pctVal = Number(daily.changePct);
+                        const pctSign = Number.isFinite(pctVal) && pctVal >= 0 ? '+' : '';
+                        const pctPart = Number.isFinite(pctVal)
+                            ? ` <span style="font-size:0.72rem;">(${pctSign}${pctVal.toFixed(2)}%)</span>`
+                            : '';
+                        const staleDailyTag = staleType
+                            ? ` <span style="font-size:0.72rem; color:var(--text-muted);">${staleType === 'holding-last' ? '(last)' : '(cached)'}</span>`
+                            : '';
+                        dayCell = `<span class="${dayCls}">${daySign}PKR ${ptFmt(dayValue)}${pctPart}${staleDailyTag}</span>`;
+                    } else {
+                        dayCell = `<span class="pnl-na">—</span>`;
+                    }
+                } else {
+                    curCell = `<span class="portfolio-price-loading">—</span>`;
+                    mvCell = `<span class="pnl-na">—</span>`;
+                    pnlCell = `<span class="pnl-na">—</span>`;
+                    pctCell = `<span class="pnl-na">—</span>`;
+                    dayCell = `<span class="pnl-na">—</span>`;
+                }
+
+                rows += `<tr>
+                    <td><span class="sym-badge">${h.symbol}</span></td>
+                    <td>${h.qty.toLocaleString()}</td>
+                    <td>PKR ${ptFmt(h.avgBuy)}</td>
+                    <td>${curCell}</td>
+                    <td>PKR ${ptFmt(invested)}</td>
+                    <td>${mvCell}</td>
+                    <td>${pnlCell}</td>
+                    <td>${pctCell}</td>
+                    <td>${dayCell}</td>
+                    <td><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
+                </tr>`;
+            }
+
+            container.innerHTML = `
+                <table class="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Qty</th>
+                            <th>Avg Buy</th>
+                            <th>Current Price</th>
+                            <th>Invested</th>
+                            <th>Market Value</th>
+                            <th>P&amp;L</th>
+                            <th>P&amp;L %</th>
+                            <th>Today P&amp;L</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+
+        async function loadPortfolio() {
+            const holdings = ptLoadHoldings();
+            ptSyncForecastStateWithHoldings(holdings);
+            const prices = {};
+            const stalePrices = {};
+            const dailyMoves = {};
+            const priceCache = ptLoadPriceCache();
+            ptPrunePriceCache(priceCache, holdings);
+            const sources = [];
+            let holdingsMutated = false;
+            const errEl = document.getElementById('ptAddError');
+            if (errEl) errEl.style.display = 'none';
+
+            for (const h of holdings) {
+                const cached = priceCache[h.symbol];
+                if (cached && Number.isFinite(cached.price) && cached.price > 0) {
+                    prices[h.symbol] = cached.price;
+                    stalePrices[h.symbol] = 'cache';
+                    const cachedMove = ptExtractDailyMove(cached);
+                    if (cachedMove) dailyMoves[h.symbol] = cachedMove;
+                } else if (Number.isFinite(h.lastPrice) && h.lastPrice > 0) {
+                    prices[h.symbol] = h.lastPrice;
+                    stalePrices[h.symbol] = 'holding-last';
+                } else {
+                    // Ensure we always show a usable baseline instead of blank cells.
+                    prices[h.symbol] = h.avgBuy;
+                    stalePrices[h.symbol] = 'avg-buy';
+                }
+            }
+
+            ptRenderTable(holdings, prices, stalePrices, dailyMoves);
+            ptRenderSummary(holdings, prices, stalePrices);
+
+            const now = new Date();
+            document.getElementById('ptLastUpdated').textContent =
+                `Last updated: ${now.toLocaleTimeString()}`;
+            const sourceEl = document.getElementById('ptPriceSource');
+
+            const fcBtn = document.getElementById('ptForecastBtn');
+            if (fcBtn && fcBtn.textContent.includes('Forecast')) {
+                fcBtn.disabled = holdings.length === 0;
+            }
+
+            if (holdings.length > 0) {
+                const symbols = holdings.map(h => h.symbol);
+                const batchPrices = await ptFetchPricesBatch(symbols);
+                let unresolved = holdings.slice();
+
+                if (batchPrices && typeof batchPrices === 'object') {
+                    unresolved = [];
+                    for (const h of holdings) {
+                        const payload = batchPrices[h.symbol];
+                        const livePrice = payload && payload.price != null ? Number(payload.price) : NaN;
+                        if (Number.isFinite(livePrice) && livePrice > 0) {
+                            prices[h.symbol] = livePrice;
+                            stalePrices[h.symbol] = '';
+                            const dailyMove = ptExtractDailyMove(payload);
+                            if (dailyMove) dailyMoves[h.symbol] = dailyMove;
+                            priceCache[h.symbol] = {
+                                price: livePrice,
+                                date: payload && payload.date ? payload.date : '',
+                                source: payload && payload.source ? payload.source : 'live',
+                                fetchedAt: new Date().toISOString(),
+                                change: payload && payload.change != null ? Number(payload.change) : null,
+                                change_pct: payload && payload.change_pct != null ? Number(payload.change_pct) : null,
+                                ldcp: payload && payload.ldcp != null ? Number(payload.ldcp) : null,
+                                open: payload && payload.open != null ? Number(payload.open) : null,
+                                change_basis: payload && typeof payload.change_basis === 'string' ? payload.change_basis : '',
+                            };
+                            const hold = holdings.find(x => x.symbol === h.symbol);
+                            if (hold && hold.lastPrice !== livePrice) {
+                                hold.lastPrice = livePrice;
+                                hold.lastPriceAt = new Date().toISOString();
+                                holdingsMutated = true;
+                            }
+                            sources.push(payload && payload.source ? payload.source : 'live');
+                        } else {
+                            unresolved.push(h);
+                        }
+                    }
+                }
+
+                if (unresolved.length > 0) {
+                    const fetches = unresolved.map(async (h) => {
+                        const payload = await ptFetchPrice(h.symbol);
+                        const livePrice = payload && payload.price != null ? Number(payload.price) : NaN;
+                        if (Number.isFinite(livePrice) && livePrice > 0) {
+                            prices[h.symbol] = livePrice;
+                            stalePrices[h.symbol] = '';
+                            const dailyMove = ptExtractDailyMove(payload);
+                            if (dailyMove) dailyMoves[h.symbol] = dailyMove;
+                            priceCache[h.symbol] = {
+                                price: livePrice,
+                                date: payload && payload.date ? payload.date : '',
+                                source: payload && payload.source ? payload.source : 'live',
+                                fetchedAt: new Date().toISOString(),
+                                change: payload && payload.change != null ? Number(payload.change) : null,
+                                change_pct: payload && payload.change_pct != null ? Number(payload.change_pct) : null,
+                                ldcp: payload && payload.ldcp != null ? Number(payload.ldcp) : null,
+                                open: payload && payload.open != null ? Number(payload.open) : null,
+                                change_basis: payload && typeof payload.change_basis === 'string' ? payload.change_basis : '',
+                            };
+                            const hold = holdings.find(x => x.symbol === h.symbol);
+                            if (hold && hold.lastPrice !== livePrice) {
+                                hold.lastPrice = livePrice;
+                                hold.lastPriceAt = new Date().toISOString();
+                                holdingsMutated = true;
+                            }
+                            sources.push(payload && payload.source ? payload.source : 'live');
+                        } else {
+                            if (stalePrices[h.symbol] === 'cache') sources.push('cache-fallback');
+                            else if (stalePrices[h.symbol] === 'holding-last') sources.push('last-price-fallback');
+                            else if (stalePrices[h.symbol] === 'avg-buy') sources.push('avg-buy-fallback');
+                        }
+                    });
+                    await Promise.allSettled(fetches);
+                }
+
+                ptSavePriceCache(priceCache);
+                if (holdingsMutated) ptSaveHoldings(holdings);
+                ptRenderTable(holdings, prices, stalePrices, dailyMoves);
+                ptRenderSummary(holdings, prices, stalePrices);
+                if (sourceEl) {
+                    if (sources.length > 0) {
+                        const uniq = [...new Set(sources)];
+                        sourceEl.textContent = `Price source: ${uniq.join(', ')}`;
+                    } else {
+                        sourceEl.textContent = '';
+                    }
+                }
+            } else if (sourceEl) {
+                sourceEl.textContent = '';
+                ptSavePriceCache(priceCache);
+                if (holdingsMutated) ptSaveHoldings(holdings);
+            }
+        }
+
+        function addHolding() {
+            const errEl = document.getElementById('ptAddError');
+            errEl.style.display = 'none';
+
+            const symbol = document.getElementById('ptSymbol').value.trim().toUpperCase();
+            const qty = parseFloat(document.getElementById('ptQty').value);
+            const avgBuy = parseFloat(document.getElementById('ptAvgBuy').value);
+
+            if (!symbol) { errEl.textContent = 'Please enter a symbol.'; errEl.style.display = 'block'; return; }
+            if (!qty || qty <= 0) { errEl.textContent = 'Quantity must be greater than 0.'; errEl.style.display = 'block'; return; }
+            if (!avgBuy || avgBuy <= 0) { errEl.textContent = 'Avg buy price must be greater than 0.'; errEl.style.display = 'block'; return; }
+
+            const holdings = ptLoadHoldings();
+            const existing = holdings.findIndex(h => h.symbol === symbol);
+            if (existing >= 0) {
+                // Update existing: weighted average price
+                const old = holdings[existing];
+                const totalQty = old.qty + qty;
+                const newAvg = (old.qty * old.avgBuy + qty * avgBuy) / totalQty;
+                holdings[existing] = {
+                    symbol,
+                    qty: totalQty,
+                    avgBuy: newAvg,
+                    lastPrice: Number.isFinite(old.lastPrice) && old.lastPrice > 0 ? old.lastPrice : avgBuy,
+                    lastPriceAt: old.lastPriceAt || new Date().toISOString(),
+                };
+            } else {
+                holdings.push({
+                    symbol,
+                    qty,
+                    avgBuy,
+                    // Baseline fallback for first render before first successful live fetch.
+                    lastPrice: avgBuy,
+                    lastPriceAt: new Date().toISOString(),
+                });
+            }
+
+            if (!ptSaveHoldings(holdings)) {
+                errEl.textContent = 'Unable to save holding. Check browser storage permissions.';
+                errEl.style.display = 'block';
+                return;
+            }
+            document.getElementById('ptSymbol').value = '';
+            document.getElementById('ptQty').value = '';
+            document.getElementById('ptAvgBuy').value = '';
+            ptSyncForecastStateWithHoldings(holdings);
+            loadPortfolio();
+        }
+
+        function removeHolding(symbol) {
+            const holdings = ptLoadHoldings().filter(h => h.symbol !== symbol);
+            const errEl = document.getElementById('ptAddError');
+            if (errEl) errEl.style.display = 'none';
+            if (!ptSaveHoldings(holdings)) {
+                errEl.textContent = 'Unable to remove holding. Check browser storage permissions.';
+                errEl.style.display = 'block';
+                return;
+            }
+            ptSyncForecastStateWithHoldings(holdings);
+            loadPortfolio();
+        }
+
+        // ===================================================================
+        // PORTFOLIO 21-DAY FORECAST
+        // ===================================================================
+
+        const PT_FORECAST_STATE_KEY = 'psx_portfolio_forecast_state_v1';
+        let ptForecastJobs = {};
+        let ptForecastQueue = [];
+        let ptForecastActive = 0;
+        let ptForecastCompleted = 0;
+        let ptForecastTotal = 0;
+        let ptForecastCharts = {};
+        let ptForecastAggregateChart = null;
+        let ptForecastCardState = {};
+        let ptForecastRunId = '';
+
+        function ptSafeClone(value) {
+            try { return JSON.parse(JSON.stringify(value)); } catch (_) { return null; }
+        }
+
+        function ptNormalizeForecastResults(results) {
+            const baseline = Array.isArray(results?.daily_predictions_without_geo)
+                ? results.daily_predictions_without_geo
+                : (Array.isArray(results?.daily_predictions) ? results.daily_predictions : []);
+            return {
+                current_price: Number(results?.current_price) || 0,
+                daily_predictions: Array.isArray(results?.daily_predictions) ? results.daily_predictions : baseline,
+                daily_predictions_without_geo: baseline,
+                daily_predictions_with_geo: Array.isArray(results?.daily_predictions_with_geo) ? results.daily_predictions_with_geo : [],
+                geo_comparison: (results && typeof results.geo_comparison === 'object' && results.geo_comparison) ? results.geo_comparison : {},
+            };
+        }
+
+        function ptNormalizeAggregateState(rawAggregate) {
+            if (!rawAggregate || typeof rawAggregate !== 'object') return null;
+            const coverage = rawAggregate.coverage;
+            if (!coverage || typeof coverage !== 'object') return null;
+
+            const required = Number(coverage.required);
+            const available = Number(coverage.available);
+            if (!Number.isFinite(required) || required < 0 || !Number.isFinite(available) || available < 0) return null;
+
+            const missing = Array.isArray(coverage.missing)
+                ? coverage.missing.map(s => String(s || '').trim().toUpperCase()).filter(Boolean)
+                : [];
+
+            const series = Array.isArray(rawAggregate.series)
+                ? rawAggregate.series.map((point, idx) => {
+                    const value = Number(point && point.value);
+                    if (!Number.isFinite(value)) return null;
+                    const dayRaw = Number(point && point.day);
+                    const day = Number.isFinite(dayRaw) && dayRaw > 0 ? Math.round(dayRaw) : (idx + 1);
+                    return {
+                        day,
+                        date: point && typeof point.date === 'string' ? point.date : '',
+                        value,
+                    };
+                }).filter(Boolean)
+                : [];
+
+            let summary = null;
+            if (rawAggregate.summary && typeof rawAggregate.summary === 'object') {
+                const startValue = Number(rawAggregate.summary.startValue);
+                const endValue = Number(rawAggregate.summary.endValue);
+                const changeValue = Number(rawAggregate.summary.changeValue);
+                const changePct = Number(rawAggregate.summary.changePct);
+                if (
+                    Number.isFinite(startValue) &&
+                    Number.isFinite(endValue) &&
+                    Number.isFinite(changeValue) &&
+                    Number.isFinite(changePct)
+                ) {
+                    summary = { startValue, endValue, changeValue, changePct };
+                }
+            }
+
+            const fallbackSymbols = Array.isArray(rawAggregate.fallbackSymbols)
+                ? rawAggregate.fallbackSymbols.map(s => String(s || '').trim().toUpperCase()).filter(Boolean)
+                : [];
+
+            return {
+                mode: 'geo',
+                coverage: {
+                    required: Math.round(required),
+                    available: Math.max(0, Math.min(Math.round(available), Math.round(required))),
+                    missing,
+                },
+                series,
+                summary,
+                fallbackSymbols: [...new Set(fallbackSymbols)],
+            };
+        }
+
+        function ptAggregateToStorageShape(aggregate) {
+            if (!aggregate || typeof aggregate !== 'object') return null;
+            const normalized = ptNormalizeAggregateState({
+                mode: 'geo',
+                coverage: aggregate.coverage,
+                series: aggregate.series,
+                summary: aggregate.summary,
+                fallbackSymbols: aggregate.fallbackSymbols,
+            });
+            return normalized || null;
+        }
+
+        function ptSelectAggregateSeriesForCard(card) {
+            if (!card || card.error || !card.resultsSnapshot) {
+                return { preds: [], usedFallback: false };
+            }
+            const normalized = ptNormalizeForecastResults(card.resultsSnapshot);
+            const baselineSource = normalized.daily_predictions_without_geo || normalized.daily_predictions || [];
+            const geoSource = normalized.daily_predictions_with_geo || [];
+
+            const baselinePreds = pickDisplayPredictions(baselineSource, normalized.current_price)
+                .filter(p => Number.isFinite(Number(p && p.predicted_price)));
+            const geoPreds = pickDisplayPredictions(geoSource, normalized.current_price)
+                .filter(p => Number.isFinite(Number(p && p.predicted_price)));
+
+            if (geoPreds.length > 0) return { preds: geoPreds.slice(0, 21), usedFallback: false };
+            if (baselinePreds.length > 0) return { preds: baselinePreds.slice(0, 21), usedFallback: true };
+            return { preds: [], usedFallback: false };
+        }
+
+        function ptComputeAggregateForecast(holdings, cardState) {
+            const normalizedHoldings = ptNormalizeHoldings(Array.isArray(holdings) ? holdings : []);
+            const requiredSymbols = [...new Set(normalizedHoldings.map(h => h.symbol))];
+            const cards = (cardState && typeof cardState === 'object') ? cardState : {};
+            const missingSymbols = [];
+            const selectedBySymbol = {};
+            const fallbackSymbols = [];
+
+            for (const symbol of requiredSymbols) {
+                const card = cards[symbol];
+                if (!card || card.error || !card.resultsSnapshot) {
+                    missingSymbols.push(symbol);
+                    continue;
+                }
+                const snapQty = Number(card?.holdingSnapshot?.qty);
+                if (!Number.isFinite(snapQty) || snapQty <= 0) {
+                    missingSymbols.push(symbol);
+                    continue;
+                }
+                const selected = ptSelectAggregateSeriesForCard(card);
+                if (!selected.preds.length || selected.preds.length < 21) {
+                    missingSymbols.push(symbol);
+                    continue;
+                }
+                selectedBySymbol[symbol] = {
+                    qty: snapQty,
+                    preds: selected.preds.slice(0, 21),
+                };
+                if (selected.usedFallback) fallbackSymbols.push(symbol);
+            }
+
+            const coverage = {
+                required: requiredSymbols.length,
+                available: Math.max(0, requiredSymbols.length - missingSymbols.length),
+                missing: missingSymbols,
+            };
+
+            if (requiredSymbols.length === 0 || missingSymbols.length > 0) {
+                return {
+                    mode: 'geo',
+                    complete: false,
+                    coverage,
+                    missingSymbols,
+                    series: [],
+                    summary: null,
+                    fallbackSymbols: [...new Set(fallbackSymbols)],
+                };
+            }
+
+            const series = [];
+            for (let idx = 0; idx < 21; idx++) {
+                let value = 0;
+                let date = '';
+                for (const symbol of requiredSymbols) {
+                    const rec = selectedBySymbol[symbol];
+                    const point = rec.preds[idx];
+                    const price = Number(point && point.predicted_price);
+                    if (!Number.isFinite(price)) {
+                        missingSymbols.push(symbol);
+                        continue;
+                    }
+                    value += rec.qty * price;
+                    if (!date && point && typeof point.date === 'string') date = point.date;
+                }
+                series.push({ day: idx + 1, date, value });
+            }
+
+            if (missingSymbols.length > 0) {
+                return {
+                    mode: 'geo',
+                    complete: false,
+                    coverage: {
+                        required: requiredSymbols.length,
+                        available: Math.max(0, requiredSymbols.length - [...new Set(missingSymbols)].length),
+                        missing: [...new Set(missingSymbols)],
+                    },
+                    missingSymbols: [...new Set(missingSymbols)],
+                    series: [],
+                    summary: null,
+                    fallbackSymbols: [...new Set(fallbackSymbols)],
+                };
+            }
+
+            const startValue = Number(series[0] && series[0].value) || 0;
+            const endValue = Number(series[series.length - 1] && series[series.length - 1].value) || startValue;
+            const changeValue = endValue - startValue;
+            const changePct = startValue > 0 ? (changeValue / startValue) * 100 : 0;
+
+            return {
+                mode: 'geo',
+                complete: true,
+                coverage: {
+                    required: requiredSymbols.length,
+                    available: requiredSymbols.length,
+                    missing: [],
+                },
+                missingSymbols: [],
+                series,
+                summary: { startValue, endValue, changeValue, changePct },
+                fallbackSymbols: [...new Set(fallbackSymbols)],
+            };
+        }
+
+        function ptRenderForecastNotice(missingSymbols) {
+            const noticeEl = document.getElementById('ptForecastNotice');
+            if (!noticeEl) return;
+            const missing = Array.isArray(missingSymbols)
+                ? [...new Set(missingSymbols.map(s => String(s || '').trim().toUpperCase()).filter(Boolean))]
+                : [];
+            if (missing.length === 0) {
+                noticeEl.innerHTML = '';
+                return;
+            }
+
+            const isRunning = ptForecastTotal > 0 && ptForecastCompleted < ptForecastTotal;
+            const symbolsText = missing.join(', ');
+            const title = isRunning ? 'Forecast coverage pending' : 'Forecast coverage missing';
+            const detail = isRunning
+                ? `Waiting for 21-day forecast coverage: ${symbolsText}`
+                : `Run 21-Day Forecast for: ${symbolsText}`;
+            const action = isRunning
+                ? ''
+                : `<button class="action" onclick="runPortfolioForecast()">Run 21-Day Forecast</button>`;
+
+            noticeEl.innerHTML = `
+                <div class="pt-forecast-notice ${isRunning ? 'info' : 'warning'}">
+                    <div>
+                        <span class="title">${title}</span>
+                        <span class="meta">${detail}</span>
+                    </div>
+                    ${action}
+                </div>`;
+        }
+
+        function ptRenderAggregateForecast(aggregateData) {
+            const aggregateEl = document.getElementById('ptForecastAggregate');
+            if (!aggregateEl) return;
+
+            if (!aggregateData || !aggregateData.complete || !Array.isArray(aggregateData.series) || aggregateData.series.length === 0) {
+                aggregateEl.innerHTML = '';
+                if (ptForecastAggregateChart) {
+                    try { ptForecastAggregateChart.destroy(); } catch (_) { }
+                    ptForecastAggregateChart = null;
+                }
+                return;
+            }
+
+            const summary = aggregateData.summary || { startValue: 0, endValue: 0, changeValue: 0, changePct: 0 };
+            const changeSign = summary.changeValue >= 0 ? '+' : '';
+            const changeColor = summary.changeValue >= 0 ? 'var(--green)' : 'var(--red)';
+            const fallbackSymbols = Array.isArray(aggregateData.fallbackSymbols) ? aggregateData.fallbackSymbols : [];
+            const fallbackNote = fallbackSymbols.length
+                ? `<div class="pt-aggregate-note">Geo unavailable for: ${fallbackSymbols.join(', ')}. Baseline fallback applied for these symbols.</div>`
+                : '';
+
+            aggregateEl.innerHTML = `
+                <div class="pt-aggregate-card">
+                    <div class="pt-aggregate-head">
+                        <div class="pt-aggregate-title">Portfolio 21-Day Forecast (Geo-first)</div>
+                        <div class="pt-aggregate-sub">${aggregateData.coverage.available}/${aggregateData.coverage.required} holdings covered</div>
+                    </div>
+                    <div class="pt-aggregate-stats">
+                        <div class="pt-aggregate-stat">
+                            <div class="label">Day-1 Value</div>
+                            <div class="value">PKR ${ptFmt(summary.startValue)}</div>
+                        </div>
+                        <div class="pt-aggregate-stat">
+                            <div class="label">Day-21 Value</div>
+                            <div class="value">PKR ${ptFmt(summary.endValue)}</div>
+                        </div>
+                        <div class="pt-aggregate-stat">
+                            <div class="label">Projected Change</div>
+                            <div class="value" style="color:${changeColor};">${changeSign}PKR ${ptFmt(summary.changeValue)}</div>
+                        </div>
+                        <div class="pt-aggregate-stat">
+                            <div class="label">Projected Return</div>
+                            <div class="value" style="color:${changeColor};">${changeSign}${summary.changePct.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                    <div class="pt-aggregate-chart-wrap"><canvas id="ptForecastAggregateChart"></canvas></div>
+                    ${fallbackNote}
+                </div>`;
+
+            if (ptForecastAggregateChart) {
+                try { ptForecastAggregateChart.destroy(); } catch (_) { }
+                ptForecastAggregateChart = null;
+            }
+
+            const canvas = document.getElementById('ptForecastAggregateChart');
+            if (!canvas) return;
+
+            const labels = aggregateData.series.map(point => `D${point.day}`);
+            const values = aggregateData.series.map(point => Number(point.value));
+            const startValue = Number(summary.startValue) || 0;
+            const isUp = values.length > 0 ? values[values.length - 1] >= startValue : true;
+            const lineColor = isUp ? '#10b981' : '#ef4444';
+
+            ptForecastAggregateChart = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Portfolio Value',
+                        data: values,
+                        borderColor: lineColor,
+                        backgroundColor: lineColor + '18',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 5,
+                        borderWidth: 2.5,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const idx = items && items.length ? items[0].dataIndex : -1;
+                                    const row = idx >= 0 ? aggregateData.series[idx] : null;
+                                    if (!row) return '';
+                                    if (row.date) return `Day ${row.day} • ${formatShortDate(row.date)}`;
+                                    return `Day ${row.day}`;
+                                },
+                                label: (ctx) => `Portfolio: PKR ${ptFmt(Number(ctx.raw) || 0)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { maxTicksLimit: 7, font: { size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { callback: v => ptFmt(Number(v) || 0), font: { size: 10 } },
+                            grid: { color: '#f3f4f6' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function ptGetEffectiveForecastCards() {
+            const inMemorySymbols = Object.keys(ptForecastCardState || {});
+            if (inMemorySymbols.length > 0) return ptForecastCardState;
+            const restored = ptLoadForecastState();
+            return (restored && restored.cards) ? restored.cards : {};
+        }
+
+        function ptRefreshForecastDerivedUI(holdingsInput, cardsOverride = null) {
+            const holdings = ptNormalizeHoldings(Array.isArray(holdingsInput) ? holdingsInput : ptLoadHoldings());
+            const cards = (cardsOverride && typeof cardsOverride === 'object') ? cardsOverride : ptGetEffectiveForecastCards();
+            const hasCards = Object.keys(cards || {}).length > 0;
+            if (!hasCards) {
+                ptRenderForecastNotice([]);
+                ptRenderAggregateForecast(null);
+                return null;
+            }
+
+            const aggregate = ptComputeAggregateForecast(holdings, cards);
+            ptRenderForecastNotice(aggregate.missingSymbols || []);
+            if (aggregate.complete) {
+                ptRenderAggregateForecast(aggregate);
+            } else {
+                ptRenderAggregateForecast(null);
+            }
+            return aggregate;
+        }
+
+        function ptSyncForecastStateWithHoldings(holdingsInput) {
+            const holdings = ptNormalizeHoldings(Array.isArray(holdingsInput) ? holdingsInput : ptLoadHoldings());
+            const holdingSymbols = new Set(holdings.map(h => h.symbol));
+            let memoryPruned = false;
+            const isRunActive = ptForecastTotal > 0 && ptForecastCompleted < ptForecastTotal;
+
+            Object.keys(ptForecastCardState).forEach(symbol => {
+                if (holdingSymbols.has(symbol)) return;
+                memoryPruned = true;
+                if (ptForecastCharts[symbol]) {
+                    try { ptForecastCharts[symbol].destroy(); } catch (_) { }
+                    delete ptForecastCharts[symbol];
+                }
+                delete ptForecastCardState[symbol];
+                const cardEl = document.getElementById(`ptfc-${symbol}`);
+                if (cardEl) cardEl.remove();
+            });
+
+            let restored = ptLoadForecastState();
+            let persistedPruned = false;
+            if (restored) {
+                const nextOrder = restored.cardsOrder.filter(symbol => holdingSymbols.has(symbol) && restored.cards[symbol]);
+                if (nextOrder.length !== restored.cardsOrder.length) {
+                    persistedPruned = true;
+                    const nextCards = {};
+                    nextOrder.forEach(symbol => { nextCards[symbol] = restored.cards[symbol]; });
+                    if (nextOrder.length === 0) {
+                        ptClearForecastState();
+                        restored = null;
+                    } else {
+                        restored = {
+                            ...restored,
+                            cardsOrder: nextOrder,
+                            cards: nextCards,
+                        };
+                    }
+                }
+            }
+
+            const memoryCount = Object.keys(ptForecastCardState).length;
+            if (memoryCount === 0 && (!restored || restored.cardsOrder.length === 0) && !isRunActive) {
+                const container = document.getElementById('ptForecastContainer');
+                if (container) container.innerHTML = '';
+            }
+
+            const cardsForDerived = memoryCount > 0
+                ? ptForecastCardState
+                : ((restored && restored.cards) ? restored.cards : {});
+            const aggregate = ptRefreshForecastDerivedUI(holdings, cardsForDerived);
+
+            if (memoryCount > 0) {
+                ptPersistForecastState();
+            } else if (restored && restored.cardsOrder.length > 0) {
+                restored.aggregate = ptAggregateToStorageShape(aggregate);
+                restored.savedAt = new Date().toISOString();
+                ptSaveForecastState(restored);
+            } else if (memoryPruned || persistedPruned) {
+                ptClearForecastState();
+            }
+        }
+
+        function ptLoadForecastState() {
+            try {
+                const rawText = localStorage.getItem(PT_FORECAST_STATE_KEY);
+                if (!rawText) return null;
+                const raw = JSON.parse(rawText);
+                if (!raw || typeof raw !== 'object') { ptClearForecastState(); return null; }
+                if (raw.version !== 1) { ptClearForecastState(); return null; }
+                if (!raw.cards || typeof raw.cards !== 'object' || Array.isArray(raw.cards)) { ptClearForecastState(); return null; }
+                const cardsOrder = Array.isArray(raw.cardsOrder) ? raw.cardsOrder : Object.keys(raw.cards);
+                const cards = {};
+                for (const symRaw of cardsOrder) {
+                    const symbol = String(symRaw || '').trim().toUpperCase();
+                    if (!symbol) continue;
+                    const card = raw.cards[symbol];
+                    if (!card || typeof card !== 'object') continue;
+                    const hold = card.holdingSnapshot;
+                    if (!hold || typeof hold !== 'object') continue;
+                    const qty = Number(hold.qty);
+                    const avgBuy = Number(hold.avgBuy);
+                    if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(avgBuy) || avgBuy <= 0) continue;
+                    const normalized = {
+                        symbol,
+                        holdingSnapshot: { symbol, qty, avgBuy },
+                        viewMode: card.viewMode === 'geo' ? 'geo' : 'baseline',
+                        error: typeof card.error === 'string' ? card.error : '',
+                        resultsSnapshot: null,
+                    };
+                    if (card.resultsSnapshot && typeof card.resultsSnapshot === 'object') {
+                        normalized.resultsSnapshot = ptNormalizeForecastResults(card.resultsSnapshot);
+                    }
+                    if (!normalized.resultsSnapshot && !normalized.error) continue;
+                    cards[symbol] = normalized;
+                }
+                const sanitizedOrder = cardsOrder
+                    .map(s => String(s || '').trim().toUpperCase())
+                    .filter(s => !!cards[s]);
+                if (sanitizedOrder.length === 0) { ptClearForecastState(); return null; }
+                const aggregate = raw.aggregate ? ptNormalizeAggregateState(raw.aggregate) : null;
+                return {
+                    version: 1,
+                    savedAt: typeof raw.savedAt === 'string' ? raw.savedAt : '',
+                    run: {
+                        runId: String(raw?.run?.runId || ''),
+                        horizon: Number(raw?.run?.horizon) || 21,
+                        geoRequested: raw?.run?.geoRequested !== false,
+                        statusText: String(raw?.run?.statusText || ''),
+                    },
+                    cardsOrder: sanitizedOrder,
+                    cards,
+                    aggregate,
+                };
+            } catch (_) {
+                ptClearForecastState();
+                return null;
+            }
+        }
+
+        function ptSaveForecastState(state) {
+            try {
+                localStorage.setItem(PT_FORECAST_STATE_KEY, JSON.stringify(state));
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function ptClearForecastState() {
+            try { localStorage.removeItem(PT_FORECAST_STATE_KEY); } catch (_) { }
+        }
+
+        function ptBuildForecastStateFromMemory() {
+            const domOrder = Array.from(document.querySelectorAll('#ptForecastContainer [id^="ptfc-"]'))
+                .map(el => String(el.id || '').replace(/^ptfc-/, '').trim().toUpperCase())
+                .filter(Boolean);
+            const stateKeys = Object.keys(ptForecastCardState);
+            const cardsOrder = domOrder.filter(sym => !!ptForecastCardState[sym]);
+            stateKeys.forEach(sym => { if (!cardsOrder.includes(sym)) cardsOrder.push(sym); });
+            const cards = {};
+            cardsOrder.forEach(symbol => {
+                const card = ptForecastCardState[symbol];
+                if (!card) return;
+                cards[symbol] = {
+                    symbol,
+                    holdingSnapshot: ptSafeClone(card.holdingSnapshot),
+                    resultsSnapshot: card.resultsSnapshot ? ptSafeClone(card.resultsSnapshot) : null,
+                    viewMode: card.viewMode === 'geo' ? 'geo' : 'baseline',
+                    error: card.error || '',
+                };
+            });
+            if (cardsOrder.length === 0) return null;
+            const statusEl = document.getElementById('ptForecastStatus');
+            const aggregate = ptAggregateToStorageShape(ptComputeAggregateForecast(ptLoadHoldings(), ptForecastCardState));
+            return {
+                version: 1,
+                savedAt: new Date().toISOString(),
+                run: {
+                    runId: ptForecastRunId || `pt_${Date.now()}`,
+                    horizon: 21,
+                    geoRequested: true,
+                    statusText: statusEl ? String(statusEl.textContent || '') : '',
+                },
+                cardsOrder,
+                cards,
+                aggregate,
+            };
+        }
+
+        function ptPersistForecastState() {
+            const state = ptBuildForecastStateFromMemory();
+            if (!state) {
+                ptClearForecastState();
+                return;
+            }
+            ptSaveForecastState(state);
+        }
+
+        function ptCleanupForecast() {
+            Object.values(ptForecastCharts).forEach(c => { try { c.destroy(); } catch (_) {} });
+            ptForecastCharts = {};
+            if (ptForecastAggregateChart) {
+                try { ptForecastAggregateChart.destroy(); } catch (_) { }
+                ptForecastAggregateChart = null;
+            }
+            Object.values(ptForecastJobs).forEach(j => {
+                if (j.ws && j.ws.readyState === WebSocket.OPEN) j.ws.close();
+            });
+            ptForecastJobs = {};
+            ptForecastQueue = [];
+            ptForecastActive = 0;
+            ptForecastCompleted = 0;
+            ptForecastTotal = 0;
+            ptForecastCardState = {};
+            ptForecastRunId = '';
+            const noticeEl = document.getElementById('ptForecastNotice');
+            const aggregateEl = document.getElementById('ptForecastAggregate');
+            if (noticeEl) noticeEl.innerHTML = '';
+            if (aggregateEl) aggregateEl.innerHTML = '';
+        }
+
+        function ptRenderForecastErrorCard(symbol, message) {
+            const card = document.getElementById(`ptfc-${symbol}`);
+            if (!card) return;
+            card.innerHTML = `
+                <div style="padding:20px; color:var(--red);">
+                    <span style="font-weight:700;">${symbol}</span> — ${message || 'Analysis failed'}
+                </div>`;
+        }
+
+        function ptSetForecastCardMode(symbol, mode) {
+            const rec = ptForecastCardState[symbol];
+            if (!rec || rec.error || !rec.resultsSnapshot) return;
+            const normalizedResults = ptNormalizeForecastResults(rec.resultsSnapshot);
+            const geoPreds = pickDisplayPredictions(
+                normalizedResults.daily_predictions_with_geo || [],
+                normalizedResults.current_price
+            );
+            const hasGeo = geoPreds.length > 0;
+            const nextMode = (mode === 'geo' && hasGeo) ? 'geo' : 'baseline';
+            if (rec.viewMode === nextMode) return;
+            rec.viewMode = nextMode;
+            renderPtForecastCard(symbol, rec.holdingSnapshot, normalizedResults, rec.viewMode);
+            ptPersistForecastState();
+        }
+
+        function ptRestoreForecastState() {
+            const restored = ptLoadForecastState();
+            if (!restored) {
+                ptClearForecastState();
+                ptRefreshForecastDerivedUI(ptLoadHoldings(), {});
+                return;
+            }
+            const container = document.getElementById('ptForecastContainer');
+            const statusEl = document.getElementById('ptForecastStatus');
+            const btn = document.getElementById('ptForecastBtn');
+            if (!container || !statusEl || !btn) return;
+
+            ptForecastRunId = restored.run.runId || `pt_${Date.now()}`;
+            ptForecastCardState = {};
+
+            container.innerHTML = restored.cardsOrder.map(symbol => `
+                <div id="ptfc-${symbol}" class="pt-forecast-card"></div>
+            `).join('');
+
+            restored.cardsOrder.forEach(symbol => {
+                const rec = restored.cards[symbol];
+                if (!rec) return;
+                ptForecastCardState[symbol] = {
+                    symbol,
+                    holdingSnapshot: rec.holdingSnapshot,
+                    resultsSnapshot: rec.resultsSnapshot,
+                    viewMode: rec.viewMode === 'geo' ? 'geo' : 'baseline',
+                    error: rec.error || '',
+                };
+                if (rec.error) {
+                    ptRenderForecastErrorCard(symbol, rec.error);
+                } else if (rec.resultsSnapshot) {
+                    renderPtForecastCard(symbol, rec.holdingSnapshot, rec.resultsSnapshot, rec.viewMode);
+                }
+            });
+
+            statusEl.textContent = restored.run.statusText || `${restored.cardsOrder.length}/${restored.cardsOrder.length} complete`;
+            btn.disabled = false;
+            btn.textContent = 'Run 21-Day Forecast';
+            ptSyncForecastStateWithHoldings(ptLoadHoldings());
+        }
+
+        async function runPortfolioForecast() {
+            const holdings = ptLoadHoldings().map(h => ({
+                symbol: h.symbol,
+                qty: Number(h.qty),
+                avgBuy: Number(h.avgBuy),
+            }));
+            if (holdings.length === 0) return;
+
+            ptCleanupForecast();
+            ptClearForecastState();
+            ptForecastTotal = holdings.length;
+            ptForecastRunId = `pt_${Date.now()}`;
+            ptRenderForecastNotice([]);
+            ptRenderAggregateForecast(null);
+
+            const btn = document.getElementById('ptForecastBtn');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+            document.getElementById('ptForecastStatus').textContent = `0/${ptForecastTotal} complete`;
+
+            const container = document.getElementById('ptForecastContainer');
+            container.innerHTML = holdings.map(h => `
+                <div id="ptfc-${h.symbol}" class="pt-forecast-card">
+                    <div class="pt-forecast-loading">
+                        <div class="spinner"></div>
+                        <div>
+                            <span style="font-weight:700;">${h.symbol}</span>
+                            <span id="ptfc-${h.symbol}-progress"> — Starting analysis...</span>
+                        </div>
+                    </div>
+                </div>`).join('');
+
+            holdings.forEach(h => {
+                ptForecastJobs[h.symbol] = { ws: null, finished: false, holding: ptSafeClone(h) };
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/api/batch-analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: holdings.map(h => h.symbol).join(','),
+                        horizon: 21,
+                        enable_geo_features: true,
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok || !Array.isArray(data.jobs)) {
+                    document.getElementById('ptForecastStatus').textContent = `Error: ${data.detail || 'Request failed'}`;
+                    btn.disabled = false;
+                    btn.textContent = 'Run 21-Day Forecast';
+                    ptPersistForecastState();
+                    return;
+                }
+                const queuedSymbols = new Set();
+                ptForecastQueue = [];
+                data.jobs.forEach(j => {
+                    const symbol = String(j && j.symbol || '').trim().toUpperCase();
+                    if (!symbol || !j || !j.job_id || !ptForecastJobs[symbol] || queuedSymbols.has(symbol)) return;
+                    queuedSymbols.add(symbol);
+                    ptForecastQueue.push({ symbol, job_id: j.job_id });
+                });
+
+                holdings.forEach(h => {
+                    if (queuedSymbols.has(h.symbol)) return;
+                    const holdingSnapshot = ptSafeClone(h) || { symbol: h.symbol, qty: 0, avgBuy: 0 };
+                    const errMsg = 'No forecast job returned for this symbol';
+                    ptForecastCardState[h.symbol] = {
+                        symbol: h.symbol,
+                        holdingSnapshot,
+                        resultsSnapshot: null,
+                        viewMode: 'baseline',
+                        error: errMsg,
+                    };
+                    ptRenderForecastErrorCard(h.symbol, errMsg);
+                    finalizePtForecast(h.symbol, false);
+                });
+
+                pumpPtForecastQueue();
+            } catch (e) {
+                document.getElementById('ptForecastStatus').textContent = `Error: ${e.message}`;
+                btn.disabled = false;
+                btn.textContent = 'Run 21-Day Forecast';
+                ptPersistForecastState();
+            }
+        }
+
+        function pumpPtForecastQueue() {
+            while (ptForecastActive < 1 && ptForecastQueue.length > 0) {
+                const job = ptForecastQueue.shift();
+                ptForecastActive++;
+                connectPtForecastWS(job.symbol, job.job_id);
+            }
+        }
+
+        function finalizePtForecast(symbol, wasActive = true) {
+            const rec = ptForecastJobs[symbol];
+            if (!rec || rec.finished) return;
+            rec.finished = true;
+            ptForecastCompleted++;
+            if (wasActive) {
+                ptForecastActive = Math.max(0, ptForecastActive - 1);
+            }
+            document.getElementById('ptForecastStatus').textContent = `${ptForecastCompleted}/${ptForecastTotal} complete`;
+            if (ptForecastCompleted >= ptForecastTotal) {
+                const btn = document.getElementById('ptForecastBtn');
+                btn.disabled = false;
+                btn.textContent = 'Run 21-Day Forecast';
+            }
+            ptRefreshForecastDerivedUI(ptLoadHoldings(), ptForecastCardState);
+            ptPersistForecastState();
+            pumpPtForecastQueue();
+        }
+
+        function connectPtForecastWS(symbol, jobId) {
+            const ws = new WebSocket(buildWsUrl(`/ws/progress/${jobId}`));
+            ptForecastJobs[symbol].ws = ws;
+            let finalized = false;
+
+            ws.onmessage = (e) => {
+                let data;
+                try { data = JSON.parse(e.data); } catch (_) { return; }
+
+                const progEl = document.getElementById(`ptfc-${symbol}-progress`);
+                if (progEl) progEl.textContent = ` — ${data.progress || 0}%: ${data.message || ''}`;
+
+                if (data.stage === 'complete' && data.results) {
+                    const holdingSnapshot = ptSafeClone(ptForecastJobs[symbol].holding) || { symbol, qty: 0, avgBuy: 0 };
+                    const normalizedResults = ptNormalizeForecastResults(data.results);
+                    const geoPreds = pickDisplayPredictions(
+                        normalizedResults.daily_predictions_with_geo || [],
+                        normalizedResults.current_price
+                    );
+                    const defaultMode = geoPreds.length > 0 ? 'geo' : 'baseline';
+
+                    ptForecastCardState[symbol] = {
+                        symbol,
+                        holdingSnapshot,
+                        resultsSnapshot: ptSafeClone(normalizedResults),
+                        viewMode: defaultMode,
+                        error: '',
+                    };
+                    renderPtForecastCard(symbol, holdingSnapshot, normalizedResults, defaultMode);
+                    ws.close();
+                    if (!finalized) { finalized = true; finalizePtForecast(symbol); }
+                } else if (data.stage === 'error') {
+                    const holdingSnapshot = ptSafeClone(ptForecastJobs[symbol]?.holding) || { symbol, qty: 0, avgBuy: 0 };
+                    const errMsg = data.message || 'Analysis failed';
+                    ptForecastCardState[symbol] = {
+                        symbol,
+                        holdingSnapshot,
+                        resultsSnapshot: null,
+                        viewMode: 'baseline',
+                        error: errMsg,
+                    };
+                    ptRenderForecastErrorCard(symbol, errMsg);
+                    ws.close();
+                    if (!finalized) { finalized = true; finalizePtForecast(symbol); }
+                }
+            };
+
+            ws.onerror = () => {
+                const holdingSnapshot = ptSafeClone(ptForecastJobs[symbol]?.holding) || { symbol, qty: 0, avgBuy: 0 };
+                const errMsg = 'Connection failed';
+                ptForecastCardState[symbol] = {
+                    symbol,
+                    holdingSnapshot,
+                    resultsSnapshot: null,
+                    viewMode: 'baseline',
+                    error: errMsg,
+                };
+                ptRenderForecastErrorCard(symbol, errMsg);
+                ws.close();
+                if (!finalized) { finalized = true; finalizePtForecast(symbol); }
+            };
+
+            ws.onclose = () => {
+                if (!finalized) { finalized = true; finalizePtForecast(symbol); }
+            };
+        }
+
+        function renderPtForecastCard(symbol, holding, results, preferredMode = 'baseline') {
+            const normalized = ptNormalizeForecastResults(results);
+            const baselinePreds = pickDisplayPredictions(
+                normalized.daily_predictions_without_geo || normalized.daily_predictions || [],
+                normalized.current_price
+            );
+            const geoPreds = pickDisplayPredictions(
+                normalized.daily_predictions_with_geo || [],
+                normalized.current_price
+            );
+            const hasGeo = geoPreds.length > 0;
+            const activeMode = (preferredMode === 'geo' && hasGeo) ? 'geo' : 'baseline';
+            const preds = activeMode === 'geo' ? geoPreds : baselinePreds;
+
+            if (!preds.length) {
+                document.getElementById(`ptfc-${symbol}`).innerHTML = `
+                    <div style="padding:20px; color:var(--text-muted);">
+                        <span style="font-weight:700;">${symbol}</span> — No prediction data returned
+                    </div>`;
+                return;
+            }
+
+            const curPrice = Number(normalized.current_price) || 0;
+            const lastPred = preds[preds.length - 1];
+            const finalPrice = Number(lastPred.predicted_price) || curPrice;
+            const direction = lastPred.stable_direction || (finalPrice >= curPrice ? 'BULLISH' : 'BEARISH');
+            const isUp = finalPrice >= curPrice;
+            const modeLabel = activeMode === 'geo' ? 'Geo' : 'Baseline';
+
+            // Portfolio value projections
+            const curValue = holding.qty * curPrice;
+            const projValue = holding.qty * finalPrice;
+            const projChange = projValue - curValue;
+            const projPnlVsBuy = projValue - (holding.qty * holding.avgBuy);
+            const projPnlPct = (holding.qty * holding.avgBuy) > 0
+                ? (projPnlVsBuy / (holding.qty * holding.avgBuy)) * 100 : 0;
+
+            const dirColor = direction === 'BULLISH' ? 'var(--green)' : direction === 'BEARISH' ? 'var(--red)' : 'var(--text-muted)';
+            const dirBg = direction === 'BULLISH' ? 'rgba(16,185,129,0.1)' : direction === 'BEARISH' ? 'rgba(239,68,68,0.1)' : '#f3f4f6';
+            const changeSign = projChange >= 0 ? '+' : '';
+            const pnlSign = projPnlVsBuy >= 0 ? '+' : '';
+            const pnlCls = projPnlVsBuy >= 0 ? 'text-green' : 'text-red';
+
+            const card = document.getElementById(`ptfc-${symbol}`);
+            card.innerHTML = `
+                <div class="pt-forecast-header">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="sym-badge">${symbol}</span>
+                        <span style="font-weight:600;">${holding.qty.toLocaleString()} shares</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="pt-forecast-direction" style="color:${dirColor}; background:${dirBg};">${direction}</span>
+                        <div class="pt-forecast-mode-toggle">
+                            <button class="pt-forecast-mode-btn ${activeMode === 'baseline' ? 'active' : ''}" onclick="ptSetForecastCardMode('${symbol}', 'baseline')">Baseline</button>
+                            <button class="pt-forecast-mode-btn ${activeMode === 'geo' ? 'active' : ''}" onclick="ptSetForecastCardMode('${symbol}', 'geo')" ${hasGeo ? '' : 'disabled'}>Geo</button>
+                        </div>
+                    </div>
+                </div>
+                ${hasGeo ? '' : '<div class="pt-forecast-mode-note">Geo data unavailable for this run.</div>'}
+                <div class="pt-forecast-stats">
+                    <div class="ptfs-item">
+                        <div class="ptfs-label">Current Price</div>
+                        <div class="ptfs-value">PKR ${ptFmt(curPrice)}</div>
+                    </div>
+                    <div class="ptfs-item">
+                        <div class="ptfs-label">Day-21 Predicted (${modeLabel})</div>
+                        <div class="ptfs-value" style="color:${isUp ? 'var(--green)' : 'var(--red)'}">PKR ${ptFmt(finalPrice)}</div>
+                    </div>
+                    <div class="ptfs-item">
+                        <div class="ptfs-label">Projected Value Change (${modeLabel})</div>
+                        <div class="ptfs-value" style="color:${projChange >= 0 ? 'var(--green)' : 'var(--red)'}">${changeSign}PKR ${ptFmt(projChange)}</div>
+                    </div>
+                    <div class="ptfs-item">
+                        <div class="ptfs-label">Projected P&L vs Avg Buy (${modeLabel})</div>
+                        <div class="ptfs-value ${pnlCls}">${pnlSign}PKR ${ptFmt(projPnlVsBuy)} (${pnlSign}${projPnlPct.toFixed(2)}%)</div>
+                    </div>
+                </div>
+                <div class="pt-forecast-chart-wrap"><canvas id="ptfc-chart-${symbol}"></canvas></div>`;
+
+            // Build chart
+            const labels = preds.map(p => p.date || '');
+            const prices = preds.map(p => Number(p.predicted_price));
+            const lineColor = isUp ? '#10b981' : '#ef4444';
+
+            if (ptForecastCharts[symbol]) {
+                try { ptForecastCharts[symbol].destroy(); } catch (_) { }
+            }
+            const ctx = document.getElementById(`ptfc-chart-${symbol}`).getContext('2d');
+            ptForecastCharts[symbol] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: `Predicted Price (${modeLabel})`,
+                            data: prices,
+                            borderColor: lineColor,
+                            backgroundColor: lineColor + '18',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            pointHoverRadius: 5,
+                            borderWidth: 2.5,
+                        },
+                        {
+                            label: 'Avg Buy Price',
+                            data: Array(labels.length).fill(holding.avgBuy),
+                            borderColor: '#9ca3af',
+                            borderDash: [6, 4],
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            fill: false,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 11, family: 'Outfit' } } },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.dataset.label}: PKR ${Number(ctx.raw).toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { maxTicksLimit: 7, font: { size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { callback: v => `${v.toFixed(0)}`, font: { size: 10 } },
+                            grid: { color: '#f3f4f6' }
+                        }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 

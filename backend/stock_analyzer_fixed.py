@@ -1072,7 +1072,7 @@ async def websocket_progress(websocket: WebSocket, job_id: str):
             await websocket.send_json({
                 'stage': 'loading',
                 'progress': 52,
-                'message': f'⚠️ Data last updated: {last_data_date} ({trading_days_stale} trading day(s) behind). Predictions will start from next trading day after today.'
+                'message': f'⚠️ Data last updated: {last_data_date} ({trading_days_stale} trading day(s) behind). Predictions will start from the next uncovered trading session.'
             })
 
         # Try to use RESEARCH MODEL (NEW: Based on peer-reviewed PSX studies)

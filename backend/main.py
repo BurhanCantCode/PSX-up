@@ -6,9 +6,14 @@ AI-powered stock predictions for Pakistan Stock Exchange
 
 import sys
 import json
+import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Union
+import urllib.request
+import subprocess
+import ssl
 
 from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -58,6 +63,442 @@ WEB_DIR = BASE_DIR / "web"
 if WEB_DIR.exists():
     app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
     print("Web directory mounted")
+
+# ============================================================================
+# HELPERS
+# ============================================================================
+
+def _coerce_float_row_value(value):
+    if isinstance(value, (int, float)):
+        return float(value) if value == value else None
+    if isinstance(value, str):
+        cleaned = value.replace(',', '').replace('PKR', '').replace(' ', '').strip()
+        if not cleaned:
+            return None
+        # Handle percent and currency suffixes from unexpected feeds
+        if cleaned.endswith('%'):
+            return None
+        try:
+            return float(cleaned)
+        except ValueError:
+            return None
+    return None
+
+
+def _safe_parse_timestamp(ts):
+    if isinstance(ts, str):
+        ts = ts.strip()
+        if ts.isdigit():
+            ts = int(ts)
+
+    if isinstance(ts, (int, float)) and ts > 0:
+        # Endpoint sometimes returns milliseconds
+        if ts > 10**12:
+            ts = ts / 1000.0
+        return datetime.fromtimestamp(ts)
+    return None
+
+
+def _safe_json(text):
+    try:
+        return json.loads(text)
+    except Exception:
+        return None
+
+
+def _rows_from_timeseries_payload(payload):
+    if isinstance(payload, dict):
+        # Common wrapper format used by DPS
+        data = payload.get('data')
+        if isinstance(data, list):
+            return data
+
+        # Some responses may nest in a keyed object keyed by symbol
+        if isinstance(data, dict):
+            for key in ('rows', 'values', 'result'):
+                nested = data.get(key)
+                if isinstance(nested, list):
+                    return nested
+
+        # Sometimes payload itself is a dict-of-dicts keyed by symbol
+        for key in ('rows', 'values', 'result'):
+            nested = payload.get(key)
+            if isinstance(nested, list):
+                return nested
+    if isinstance(payload, list):
+        return payload
+    return None
+
+
+def _extract_last_close(rows):
+    if not isinstance(rows, list):
+        return None
+
+    def _parse_row_datetime(ts_value):
+        if isinstance(ts_value, (int, float)):
+            return _safe_parse_timestamp(ts_value)
+        if isinstance(ts_value, str):
+            ts_value = ts_value.strip()
+            if not ts_value:
+                return None
+            if ts_value.isdigit():
+                return _safe_parse_timestamp(int(ts_value))
+            for fmt in (
+                '%Y-%m-%d',
+                '%Y-%m-%d %H:%M:%S',
+                '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%dT%H:%M:%S.%f',
+                '%b %d, %Y',
+                '%d-%m-%Y',
+                '%d/%m/%Y',
+            ):
+                try:
+                    return datetime.strptime(ts_value, fmt)
+                except Exception:
+                    continue
+            try:
+                return datetime.fromisoformat(ts_value.replace('Z', '+00:00'))
+            except Exception:
+                return None
+        return None
+
+    best = None
+    best_ts = None
+    fallback = None
+
+    for row in rows:
+        close = None
+        dt = None
+
+        if isinstance(row, dict):
+            candidates = (
+                row.get('current') or
+                row.get('Current') or
+                row.get('currentPrice') or
+                row.get('current_price') or
+                row.get('latestPrice') or
+                row.get('lastPrice') or
+                row.get('last') or
+                row.get('Last') or
+                row.get('price') or
+                row.get('Price') or
+                row.get('Close') or
+                row.get('close') or
+                row.get('LDCP') or
+                row.get('ldcp')
+            )
+            close = _coerce_float_row_value(candidates)
+            ts = row.get('Date') or row.get('date') or row.get('timestamp') or row.get('time')
+            dt = _parse_row_datetime(ts)
+        elif isinstance(row, (list, tuple)) and len(row) >= 2:
+            # Support both [ts, close, volume, open] and [ts, open, high, low, close, volume]
+            if len(row) >= 5:
+                candidate = row[4]
+            else:
+                candidate = row[1]
+            close = _coerce_float_row_value(candidate)
+            dt = _parse_row_datetime(row[0])
+
+        if close is None or close <= 0:
+            continue
+
+        candidate = {
+            'price': close,
+            'date': dt.strftime('%Y-%m-%d') if dt else ''
+        }
+        fallback = candidate
+
+        if dt is None:
+            continue
+
+        ts_num = dt.timestamp()
+        if best_ts is None or ts_num > best_ts:
+            best_ts = ts_num
+            best = candidate
+
+    return best or fallback
+
+
+def _extract_price_from_candidate_obj(obj: dict):
+    candidates = [
+        obj.get('current'),
+        obj.get('Current'),
+        obj.get('currentPrice'),
+        obj.get('current_price'),
+        obj.get('latestPrice'),
+        obj.get('lastPrice'),
+        obj.get('last'),
+        obj.get('Last'),
+        obj.get('price'),
+        obj.get('Price'),
+        obj.get('Close'),
+        obj.get('close'),
+        obj.get('LDCP'),
+        obj.get('ldcp'),
+    ]
+    for candidate in candidates:
+        parsed = _coerce_float_row_value(candidate)
+        if parsed is not None and parsed > 0:
+            return parsed
+    return None
+
+
+_MARKET_WATCH_CACHE = {
+    "fetched_at": 0.0,
+    "rows": {},  # SYMBOL -> {"current": float, "open": float|None, "ldcp": float|None}
+}
+
+
+def _parse_market_watch_html_rows(html_text: str):
+    if not isinstance(html_text, str) or not html_text:
+        return {}
+
+    rows = {}
+    tr_matches = re.findall(r'<tr[^>]*>.*?</tr>', html_text, re.IGNORECASE | re.DOTALL)
+    for tr in tr_matches:
+        sym_match = re.search(r'data-search="([A-Z0-9]+)"', tr, re.IGNORECASE)
+        if not sym_match:
+            continue
+        sym = sym_match.group(1).strip().upper()
+        if not sym:
+            continue
+
+        # Market-watch row order: LDCP, OPEN, HIGH, LOW, CURRENT, CHANGE, CHANGE%, VOLUME
+        right_cells = re.findall(
+            r'<td[^>]*class="right[^"]*"[^>]*data-order="([^"]+)"[^>]*>',
+            tr,
+            re.IGNORECASE
+        )
+        if len(right_cells) < 5:
+            continue
+
+        ldcp = _coerce_float_row_value(right_cells[0])
+        open_price = _coerce_float_row_value(right_cells[1])
+        current = _coerce_float_row_value(right_cells[4])
+        if current is None or current <= 0:
+            continue
+
+        rows[sym] = {
+            "current": float(current),
+            "open": float(open_price) if open_price is not None else None,
+            "ldcp": float(ldcp) if ldcp is not None else None,
+        }
+    return rows
+
+
+def _fetch_market_watch_snapshot(max_age_seconds: int = 8):
+    now_ts = time.time()
+    cache_age = now_ts - float(_MARKET_WATCH_CACHE.get("fetched_at", 0.0))
+    cached_rows = _MARKET_WATCH_CACHE.get("rows", {})
+    if cache_age <= max_age_seconds and isinstance(cached_rows, dict) and cached_rows:
+        return cached_rows
+
+    html_text = _fetch_url_with_fallback("https://dps.psx.com.pk/market-watch")
+    if not html_text:
+        html_text = _fetch_url_with_fallback("http://dps.psx.com.pk/market-watch")
+    parsed = _parse_market_watch_html_rows(html_text or "")
+    if parsed:
+        _MARKET_WATCH_CACHE["fetched_at"] = now_ts
+        _MARKET_WATCH_CACHE["rows"] = parsed
+        return parsed
+    return cached_rows if isinstance(cached_rows, dict) else {}
+
+
+def _parse_market_watch_payload(payload, symbol: str):
+    if payload is None:
+        return None
+
+    # The market-watch endpoint is sometimes JSON and sometimes wrapped html-ish text.
+    # Traverse structures and return first object containing the matching symbol + a
+    # numeric current/close-like field.
+    wanted = symbol.upper()
+
+    def walk(node):
+        if isinstance(node, list):
+            for item in node:
+                match = walk(item)
+                if match is not None:
+                    return match
+            return None
+
+        if not isinstance(node, dict):
+            return None
+
+        sym_match = False
+        for key in ('SYMBOL', 'symbol', 'Symbol'):
+            raw = node.get(key)
+            if isinstance(raw, str) and raw.strip().upper() == wanted:
+                sym_match = True
+                break
+        if not sym_match:
+            # Fallback: some payloads keep symbol as second item or nested
+            vals = {str(v).strip().upper() for v in node.values() if isinstance(v, str)}
+            sym_match = wanted in vals
+
+        if sym_match:
+            price = _extract_price_from_candidate_obj(node)
+            if price is not None:
+                return {
+                    "price": price,
+                    "date": ""
+                }
+
+        for value in node.values():
+            match = walk(value)
+            if match is not None:
+                return match
+        return None
+
+    return walk(payload)
+
+
+def _fetch_market_watch_price(symbol: str):
+    sym = symbol.upper().strip()
+    if not sym:
+        return None
+
+    snapshot = _fetch_market_watch_snapshot()
+    row = snapshot.get(sym) if isinstance(snapshot, dict) else None
+    if isinstance(row, dict):
+        cur = _coerce_float_row_value(row.get("current"))
+        if cur is not None and cur > 0:
+            ldcp = _coerce_float_row_value(row.get("ldcp"))
+            open_price = _coerce_float_row_value(row.get("open"))
+            change = None
+            change_pct = None
+            if ldcp is not None and ldcp > 0:
+                change = float(cur - ldcp)
+                change_pct = float(((cur - ldcp) / ldcp) * 100)
+            return {
+                "price": float(cur),
+                "date": datetime.now().strftime('%Y-%m-%d'),
+                "source": "psx-market-watch",
+                "ldcp": float(ldcp) if ldcp is not None else None,
+                "open": float(open_price) if open_price is not None else None,
+                "change": change,
+                "change_pct": change_pct,
+                "change_basis": "ldcp" if ldcp is not None else "",
+            }
+
+    payload_text = _fetch_url_with_fallback("https://dps.psx.com.pk/market-watch")
+    if not payload_text:
+        return None
+
+    # Try JSON parsing first
+    payload = _safe_json(payload_text)
+    if payload is not None:
+        parsed = _parse_market_watch_payload(payload, sym)
+        if parsed:
+            parsed["source"] = "psx-market-watch"
+            return parsed
+
+    # Try HTML-ish payloads containing embedded JSON lists/objects
+    for marker in (f'"{sym}"', f"'{sym}'"):
+        idx = payload_text.find(marker)
+        if idx == -1:
+            continue
+        start = max(payload_text.rfind('[', 0, idx), payload_text.rfind('{', 0, idx))
+        end = min(
+            payload_text.find(']', idx + len(marker)) if payload_text.find(']', idx + len(marker)) != -1 else len(payload_text),
+            payload_text.find('}', idx + len(marker)) if payload_text.find('}', idx + len(marker)) != -1 else len(payload_text)
+        ) + 1
+        snippet = payload_text[start:end]
+        snippet_json = _safe_json(snippet)
+        if isinstance(snippet_json, (list, dict)):
+            parsed = _parse_market_watch_payload(snippet_json, sym)
+            if parsed:
+                parsed["source"] = "psx-market-watch"
+                return parsed
+
+    return None
+
+
+def _fetch_url_with_fallback(url):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (compatible; psx-fortune-teller/1.0)',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Encoding': 'identity',
+        'Cache-Control': 'no-cache',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://dps.psx.com.pk/',
+        'Origin': 'https://dps.psx.com.pk',
+    }
+
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=8.0, context=ssl.create_default_context()) as resp:
+            if getattr(resp, 'status', 200) != 200:
+                return None
+            return resp.read().decode('utf-8', errors='ignore')
+    except Exception:
+        pass
+
+    # Retry with permissive SSL context in case corporate/network interception modifies certificates
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(
+            req,
+            timeout=8.0,
+            context=ssl._create_unverified_context()
+        ) as resp:
+            if getattr(resp, 'status', 200) != 200:
+                return None
+            return resp.read().decode('utf-8', errors='ignore')
+    except Exception:
+        pass
+
+    # Fallback using curl (the app already uses curl in other PSX endpoints)
+    try:
+        args = ['curl', '-sS', '-L', '--max-time', '8']
+        for key, value in headers.items():
+            args.extend(['-H', f'{key}: {value}'])
+        args.append(url)
+        result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+        if result.returncode == 0 and result.stdout:
+            return result.stdout
+    except Exception:
+        pass
+    return None
+
+
+def _fetch_live_psx_price(symbol: str):
+    sym = symbol.upper().strip()
+    if not sym:
+        return None
+
+    # Prefer market-watch for live tape when available.
+    market_watch = _fetch_market_watch_price(sym)
+    if market_watch and isinstance(market_watch.get("price"), (int, float)):
+        return market_watch
+
+    for endpoint in (
+        f"https://dps.psx.com.pk/timeseries/int/{sym}",
+        f"https://dps.psx.com.pk/timeseries/eod/{sym}",
+    ):
+        payload_text = _fetch_url_with_fallback(endpoint)
+        if not payload_text:
+            # Some environments block HTTPS for this endpoint; try legacy http
+            payload_text = _fetch_url_with_fallback(endpoint.replace('https://', 'http://'))
+        if not payload_text:
+            continue
+
+        payload = _safe_json(payload_text)
+        if not payload:
+            continue
+
+        rows = _rows_from_timeseries_payload(payload)
+        if not rows:
+            continue
+
+        result = _extract_last_close(rows)
+        if result:
+            # Mark source for easier UI diagnostics
+            src = "psx-timeseries-int" if "timeseries/int" in endpoint else "psx-timeseries-eod"
+            result["source"] = src
+            return result
+
+    return None
+
 
 # ============================================================================
 # ROUTES
@@ -224,9 +665,121 @@ async def api_analyze(request: AnalyzeRequest):
     
     # No cache found - suggest using WebSocket endpoint
     raise HTTPException(
-        status_code=404, 
+        status_code=404,
         detail=f"No cached analysis for {symbol}. Please use /api/analyze-stock endpoint with WebSocket for real-time analysis."
     )
+
+# ============================================================================
+# PORTFOLIO PRICE ENDPOINT
+# ============================================================================
+
+def _load_cached_historical_price(sym: str):
+    hist_file = BASE_DIR / "data" / f"{sym}_historical_with_indicators.json"
+    if not hist_file.exists():
+        return None
+    try:
+        with open(hist_file, 'r') as f:
+            data = json.load(f)
+        for entry in reversed(data):
+            close = entry.get('Close')
+            if close is not None and close == close:  # NaN check
+                parsed = _coerce_float_row_value(close)
+                if parsed is None or parsed <= 0:
+                    continue
+                return {"symbol": sym, "price": float(parsed), "date": entry.get('Date', ''), "source": "historical-cache"}
+    except Exception:
+        return None
+    return None
+
+
+@app.get("/api/current-prices")
+async def get_current_prices(symbols: str):
+    """
+    Batch current prices for portfolio view.
+    Uses one market-watch fetch for all symbols, then local cache fallback.
+    """
+    parsed_symbols = list(dict.fromkeys(
+        s.strip().upper() for s in symbols.split(",") if s.strip()
+    ))
+    if not parsed_symbols:
+        raise HTTPException(status_code=400, detail="No symbols provided")
+    if len(parsed_symbols) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 symbols")
+
+    snapshot = _fetch_market_watch_snapshot()
+    now_date = datetime.now().strftime('%Y-%m-%d')
+    out = {}
+
+    for sym in parsed_symbols:
+        row = snapshot.get(sym) if isinstance(snapshot, dict) else None
+        if isinstance(row, dict):
+            cur = _coerce_float_row_value(row.get("current"))
+            if cur is not None and cur > 0:
+                ldcp = _coerce_float_row_value(row.get("ldcp"))
+                open_price = _coerce_float_row_value(row.get("open"))
+                change = None
+                change_pct = None
+                if ldcp is not None and ldcp > 0:
+                    change = float(cur - ldcp)
+                    change_pct = float(((cur - ldcp) / ldcp) * 100)
+                out[sym] = {
+                    "symbol": sym,
+                    "price": float(cur),
+                    "date": now_date,
+                    "source": "psx-market-watch",
+                    "ldcp": float(ldcp) if ldcp is not None else None,
+                    "open": float(open_price) if open_price is not None else None,
+                    "change": change,
+                    "change_pct": change_pct,
+                    "change_basis": "ldcp" if ldcp is not None else "",
+                }
+                continue
+
+        cached = _load_cached_historical_price(sym)
+        if cached:
+            out[sym] = cached
+        else:
+            out[sym] = {
+                "symbol": sym,
+                "price": None,
+                "date": "",
+                "source": "unavailable",
+            }
+
+    resolved = sum(1 for item in out.values() if isinstance(item.get("price"), (int, float)))
+    return {
+        "symbols": parsed_symbols,
+        "prices": out,
+        "resolved": resolved,
+        "total": len(parsed_symbols),
+    }
+
+
+@app.get("/api/current-price/{symbol}")
+async def get_current_price(symbol: str):
+    """
+    Return the latest price for a symbol.
+    Tries PSX live endpoints first, then falls back to cached historical close.
+    """
+    sym = symbol.upper().strip()
+    live = _fetch_live_psx_price(sym)
+    if live and isinstance(live.get("price"), (int, float)):
+        return {
+            "symbol": sym,
+            "price": float(live["price"]),
+            "date": live.get("date", ""),
+            "source": live.get("source", "psx-timeseries"),
+            "ldcp": live.get("ldcp"),
+            "open": live.get("open"),
+            "change": live.get("change"),
+            "change_pct": live.get("change_pct"),
+            "change_basis": live.get("change_basis", ""),
+        }
+
+    cached = _load_cached_historical_price(sym)
+    if cached:
+        return cached
+    raise HTTPException(status_code=404, detail=f"No cached data for {sym}")
 
 # ============================================================================
 # SCREENER & SENTIMENT

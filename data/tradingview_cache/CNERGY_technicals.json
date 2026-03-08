@@ -1,0 +1,33 @@
+{
+  "symbol": "CNERGY",
+  "cached_at": "2026-03-06T03:02:01.682812",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 46.81,
+    "stochastic_k": 33.15,
+    "cci": -55.97,
+    "adx": 21.96,
+    "awesome_oscillator": -0.91,
+    "momentum_10": -0.17,
+    "macd_level": -0.29,
+    "stochastic_rsi": 53.39,
+    "williams_r": -45.85,
+    "bull_bear_power": -0.27,
+    "ultimate_oscillator": 46.63,
+    "ema_10": 6.82,
+    "sma_10": 6.76,
+    "ema_20": 7.07,
+    "sma_20": 7.24,
+    "ema_30": 7.22,
+    "sma_30": 7.41,
+    "ema_50": 7.38,
+    "sma_50": 7.47,
+    "ema_100": 7.51,
+    "sma_100": 7.62,
+    "vwma": 7.54,
+    "hma": 6.34
+  }
+}

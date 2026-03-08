@@ -1,0 +1,33 @@
+{
+  "symbol": "PIOC",
+  "cached_at": "2026-03-06T17:28:24.938852",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 28.2,
+    "stochastic_k": 10.57,
+    "cci": -71.29,
+    "adx": 32.26,
+    "awesome_oscillator": -79.76,
+    "momentum_10": -34.62,
+    "macd_level": -31.87,
+    "stochastic_rsi": 40.69,
+    "williams_r": -88.74,
+    "bull_bear_power": -41.98,
+    "ultimate_oscillator": 47.8,
+    "ema_10": 252.53,
+    "sma_10": 245.1,
+    "ema_20": 277.74,
+    "sma_20": 288.1,
+    "ema_30": 296.15,
+    "sma_30": 305.23,
+    "ema_50": 314.08,
+    "sma_50": 341.49,
+    "ema_100": 314.0,
+    "sma_100": 323.65,
+    "vwma": 264.27,
+    "hma": 236.33
+  }
+}

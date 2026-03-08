@@ -335,8 +335,8 @@ def get_prediction_start_date(data_last_date: datetime) -> datetime:
 
     Rules:
     1. Predictions should NEVER be for dates in the past
-    2. Predictions should start from the next TRADING day after today
-    3. If data is stale, we still predict from tomorrow (not from data date)
+    2. If today's trading session has not been covered by the data yet, start today
+    3. Otherwise, start from the next trading day after the last covered session
 
     Args:
         data_last_date: The last date in the historical data
@@ -345,15 +345,17 @@ def get_prediction_start_date(data_last_date: datetime) -> datetime:
         The date from which predictions should start
     """
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    data_last_date = pd.to_datetime(data_last_date).to_pydatetime().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
 
-    # The base date for predictions should be TODAY, not the last data date
-    # This ensures predictions are always for the future
+    # If the latest dataset does not yet include today's trading session and today
+    # itself is a trading day, use today as Day 1 instead of skipping straight to tomorrow.
+    if data_last_date < today and today.weekday() < 5:
+        return today
+
     base_date = max(data_last_date, today)
-
-    # Get the next trading day after the base date
-    next_trading_day = get_next_trading_day(base_date, skip_days=1)
-
-    return next_trading_day
+    return get_next_trading_day(base_date, skip_days=1)
 
 
 def count_trading_days(start_date: datetime, end_date: datetime) -> int:

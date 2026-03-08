@@ -1,0 +1,33 @@
+{
+  "symbol": "KOHC",
+  "cached_at": "2026-03-06T17:25:37.076866",
+  "data": {
+    "recommendation_buy": 0,
+    "recommendation_sell": 0,
+    "recommendation_neutral": 0,
+    "overall_recommendation": "NEUTRAL",
+    "rsi_14": 28.96,
+    "stochastic_k": 18.34,
+    "cci": -152.06,
+    "adx": 34.12,
+    "awesome_oscillator": -16.09,
+    "momentum_10": -18.31,
+    "macd_level": -5.64,
+    "stochastic_rsi": -0.0,
+    "williams_r": -86.7,
+    "bull_bear_power": -18.01,
+    "ultimate_oscillator": 46.59,
+    "ema_10": 90.85,
+    "sma_10": 91.36,
+    "ema_20": 95.73,
+    "sma_20": 97.28,
+    "ema_30": 98.69,
+    "sma_30": 101.17,
+    "ema_50": 101.53,
+    "sma_50": 105.93,
+    "ema_100": 102.03,
+    "sma_100": 103.63,
+    "vwma": 96.91,
+    "hma": 83.21
+  }
+}
