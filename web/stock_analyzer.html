@@ -2133,6 +2133,16 @@
                     <div class="ps-value" id="ptReturn">0.00%</div>
                     <div class="ps-sub" id="ptReturnSub">—</div>
                 </div>
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Realized P&amp;L</div>
+                    <div class="ps-value" id="ptRealizedPnl">PKR 0</div>
+                    <div class="ps-sub" id="ptRealizedPnlSub">From sales</div>
+                </div>
+                <div class="portfolio-summary-card">
+                    <div class="ps-label">Cash Balance</div>
+                    <div class="ps-value" id="ptCashBalanceVal">PKR 0</div>
+                    <div class="ps-sub">Uninvested</div>
+                </div>
             </div>
 
             <!-- Add Holding Form -->
@@ -2157,6 +2167,46 @@
                     <button type="button" class="portfolio-add-btn" onclick="addHolding()">Add</button>
                 </div>
                 <div id="ptAddError" class="portfolio-error-msg" style="display:none;"></div>
+            </div>
+
+            <!-- Record Sale Form -->
+            <div class="portfolio-add-card" id="ptSellCard">
+                <div class="input-label" style="margin-bottom:16px;">RECORD SALE</div>
+                <div class="portfolio-add-row">
+                    <div class="portfolio-add-field">
+                        <label>Symbol</label>
+                        <input type="text" id="ptSellSymbol" placeholder="e.g. OGDC" style="text-transform:uppercase; width:110px;"
+                            onkeypress="if(event.key==='Enter') sellHolding()">
+                    </div>
+                    <div class="portfolio-add-field">
+                        <label>Qty to Sell</label>
+                        <input type="number" id="ptSellQty" placeholder="50" min="1" style="width:120px;"
+                            onkeypress="if(event.key==='Enter') sellHolding()">
+                    </div>
+                    <div class="portfolio-add-field">
+                        <label>Sell Price (PKR)</label>
+                        <input type="number" id="ptSellPrice" placeholder="280.00" min="0" step="0.01" style="width:160px;"
+                            onkeypress="if(event.key==='Enter') sellHolding()">
+                    </div>
+                    <button type="button" class="portfolio-add-btn" onclick="sellHolding()" style="background:var(--accent-red, #e74c3c);">Sell</button>
+                </div>
+                <div id="ptSellError" class="portfolio-error-msg" style="display:none;"></div>
+                <div id="ptSellSuccess" class="portfolio-error-msg" style="display:none; color:var(--accent-green, #2ecc71);"></div>
+            </div>
+
+            <!-- Cash Balance Form -->
+            <div class="portfolio-add-card">
+                <div class="input-label" style="margin-bottom:16px;">CASH BALANCE</div>
+                <div class="portfolio-add-row">
+                    <div class="portfolio-add-field">
+                        <label>Amount (PKR)</label>
+                        <input type="number" id="ptCashAmount" placeholder="50000" step="0.01" style="width:180px;"
+                            onkeypress="if(event.key==='Enter') addCashBalance()">
+                    </div>
+                    <button type="button" class="portfolio-add-btn" onclick="addCashBalance()">Deposit</button>
+                    <button type="button" class="portfolio-add-btn" onclick="withdrawCash()" style="background:var(--accent-red, #e74c3c);">Withdraw</button>
+                </div>
+                <div id="ptCashError" class="portfolio-error-msg" style="display:none;"></div>
             </div>
 
             <!-- Holdings Table -->
@@ -3239,7 +3289,7 @@
                 }
                 // Start auto-refresh once; persists across view switches until page unload
                 if (!portfolioRefreshTimer) {
-                    portfolioRefreshTimer = setInterval(loadPortfolio, 60000);
+                    portfolioRefreshTimer = setInterval(loadPortfolio, 30000);
                 }
             } else if (view === 'previousPredictions') {
                 loadDashboardHistory();
@@ -4985,6 +5035,42 @@
             }
         }
 
+        const PT_CASH_KEY = 'psx_portfolio_cash_balance';
+        const PT_SALES_KEY = 'psx_portfolio_sales';
+
+        function ptLoadCashBalance() {
+            try {
+                const val = parseFloat(localStorage.getItem(PT_CASH_KEY));
+                return Number.isFinite(val) ? val : 0;
+            } catch (_) { return 0; }
+        }
+
+        function ptSaveCashBalance(amount) {
+            try {
+                localStorage.setItem(PT_CASH_KEY, JSON.stringify(Number.isFinite(amount) ? amount : 0));
+                return true;
+            } catch (e) { console.error('Failed to save cash balance:', e); return false; }
+        }
+
+        function ptLoadSales() {
+            try {
+                const data = JSON.parse(localStorage.getItem(PT_SALES_KEY) || '[]');
+                return Array.isArray(data) ? data : [];
+            } catch (_) { return []; }
+        }
+
+        function ptSaveSales(sales) {
+            try {
+                localStorage.setItem(PT_SALES_KEY, JSON.stringify(sales));
+                return true;
+            } catch (e) { console.error('Failed to save sales:', e); return false; }
+        }
+
+        function ptGetRealizedPnl() {
+            const sales = ptLoadSales();
+            return sales.reduce((sum, s) => sum + (Number(s.realizedPnl) || 0), 0);
+        }
+
         function ptLoadPriceCache() {
             try {
                 const raw = JSON.parse(localStorage.getItem(PT_PRICE_CACHE_KEY) || '{}');
@@ -5038,7 +5124,7 @@
 
         async function ptFetchPrice(symbol) {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 2500);
+            const timeout = setTimeout(() => controller.abort(), 4000);
             try {
                 const res = await fetch(`${API_BASE}/api/current-price/${encodeURIComponent(symbol)}`, { signal: controller.signal });
                 if (!res.ok) return null;
@@ -5055,7 +5141,7 @@
         async function ptFetchPricesBatch(symbols) {
             if (!Array.isArray(symbols) || symbols.length === 0) return null;
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 3500);
+            const timeout = setTimeout(() => controller.abort(), 5000);
             try {
                 const q = symbols.map(s => encodeURIComponent(s)).join(',');
                 const res = await fetch(`${API_BASE}/api/current-prices?symbols=${q}`, { signal: controller.signal });
@@ -5121,6 +5207,20 @@
 
             document.getElementById('ptPnlSub').textContent = isPos ? 'Unrealized gain' : 'Unrealized loss';
             document.getElementById('ptReturnSub').textContent = `vs. cost basis`;
+
+            // Realized P&L
+            const realizedPnl = ptGetRealizedPnl();
+            const rpEl = document.getElementById('ptRealizedPnl');
+            const rpSign = realizedPnl >= 0 ? '+' : '';
+            rpEl.textContent = `${rpSign}PKR ${ptFmt(realizedPnl)}`;
+            rpEl.className = 'ps-value ' + (realizedPnl >= 0 ? 'text-green' : 'text-red');
+            document.getElementById('ptRealizedPnlSub').textContent = realizedPnl >= 0 ? 'Realized gain' : 'Realized loss';
+
+            // Cash Balance
+            const cash = ptLoadCashBalance();
+            const cashEl = document.getElementById('ptCashBalanceVal');
+            cashEl.textContent = `PKR ${ptFmt(cash)}`;
+            cashEl.className = 'ps-value ' + (cash >= 0 ? 'text-green' : 'text-red');
         }
 
         function ptRenderTable(holdings, prices, stalePrices = {}, dailyMoves = {}) {
@@ -5159,7 +5259,7 @@
                     <td>${pnlCell}</td>
                     <td>${pctCell}</td>
                     <td>${dayCell}</td>
-                    <td><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
+                    <td><button class="portfolio-remove-btn" onclick="prefillSell('${h.symbol}')" style="margin-right:4px; background:var(--accent-red, #e74c3c);">Sell</button><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
                         </tr>`;
                         continue;
                     }
@@ -5209,7 +5309,7 @@
                     <td>${pnlCell}</td>
                     <td>${pctCell}</td>
                     <td>${dayCell}</td>
-                    <td><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
+                    <td><button class="portfolio-remove-btn" onclick="prefillSell('${h.symbol}')" style="margin-right:4px; background:var(--accent-red, #e74c3c);">Sell</button><button class="portfolio-remove-btn" onclick="removeHolding('${h.symbol}')">Remove</button></td>
                 </tr>`;
             }
 
@@ -5424,6 +5524,10 @@
                 errEl.style.display = 'block';
                 return;
             }
+            // Auto-deduct cost from cash balance
+            const cost = qty * avgBuy;
+            ptSaveCashBalance(ptLoadCashBalance() - cost);
+
             document.getElementById('ptSymbol').value = '';
             document.getElementById('ptQty').value = '';
             document.getElementById('ptAvgBuy').value = '';
@@ -5441,6 +5545,119 @@
                 return;
             }
             ptSyncForecastStateWithHoldings(holdings);
+            loadPortfolio();
+        }
+
+        function sellHolding() {
+            const errEl = document.getElementById('ptSellError');
+            const successEl = document.getElementById('ptSellSuccess');
+            errEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            const symbol = document.getElementById('ptSellSymbol').value.trim().toUpperCase();
+            const qtySold = parseFloat(document.getElementById('ptSellQty').value);
+            const sellPrice = parseFloat(document.getElementById('ptSellPrice').value);
+
+            if (!symbol) { errEl.textContent = 'Please enter a symbol.'; errEl.style.display = 'block'; return; }
+            if (!qtySold || qtySold <= 0) { errEl.textContent = 'Quantity must be greater than 0.'; errEl.style.display = 'block'; return; }
+            if (!sellPrice || sellPrice <= 0) { errEl.textContent = 'Sell price must be greater than 0.'; errEl.style.display = 'block'; return; }
+
+            const holdings = ptLoadHoldings();
+            const idx = holdings.findIndex(h => h.symbol === symbol);
+            if (idx < 0) { errEl.textContent = `${symbol} not found in your holdings.`; errEl.style.display = 'block'; return; }
+
+            const holding = holdings[idx];
+            if (qtySold > holding.qty) {
+                errEl.textContent = `You only hold ${holding.qty} shares of ${symbol}.`;
+                errEl.style.display = 'block';
+                return;
+            }
+
+            const realizedPnl = (sellPrice - holding.avgBuy) * qtySold;
+            const proceeds = sellPrice * qtySold;
+
+            // Update or remove holding
+            if (qtySold === holding.qty) {
+                holdings.splice(idx, 1);
+            } else {
+                holdings[idx].qty -= qtySold;
+            }
+
+            // Update cash balance
+            const cash = ptLoadCashBalance() + proceeds;
+            ptSaveCashBalance(cash);
+
+            // Record sale
+            const sales = ptLoadSales();
+            sales.push({
+                symbol,
+                qty: qtySold,
+                sellPrice,
+                avgBuyAtSale: holding.avgBuy,
+                realizedPnl,
+                date: new Date().toISOString(),
+            });
+            ptSaveSales(sales);
+
+            if (!ptSaveHoldings(holdings)) {
+                errEl.textContent = 'Unable to save. Check browser storage permissions.';
+                errEl.style.display = 'block';
+                return;
+            }
+
+            // Show success message
+            const pnlSign = realizedPnl >= 0 ? '+' : '';
+            successEl.textContent = `Sold ${qtySold} ${symbol} @ PKR ${ptFmt(sellPrice)} | P&L: ${pnlSign}PKR ${ptFmt(realizedPnl)} | Proceeds: PKR ${ptFmt(proceeds)} added to cash`;
+            successEl.style.display = 'block';
+            setTimeout(() => { successEl.style.display = 'none'; }, 6000);
+
+            document.getElementById('ptSellSymbol').value = '';
+            document.getElementById('ptSellQty').value = '';
+            document.getElementById('ptSellPrice').value = '';
+            ptSyncForecastStateWithHoldings(holdings);
+            loadPortfolio();
+        }
+
+        function prefillSell(symbol) {
+            document.getElementById('ptSellSymbol').value = symbol;
+            document.getElementById('ptSellQty').value = '';
+            document.getElementById('ptSellPrice').value = '';
+            const sellCard = document.getElementById('ptSellCard');
+            if (sellCard) sellCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            document.getElementById('ptSellQty').focus();
+        }
+
+        function addCashBalance() {
+            const errEl = document.getElementById('ptCashError');
+            errEl.style.display = 'none';
+            const amount = parseFloat(document.getElementById('ptCashAmount').value);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                errEl.textContent = 'Please enter a valid positive amount.';
+                errEl.style.display = 'block';
+                return;
+            }
+            ptSaveCashBalance(ptLoadCashBalance() + amount);
+            document.getElementById('ptCashAmount').value = '';
+            loadPortfolio();
+        }
+
+        function withdrawCash() {
+            const errEl = document.getElementById('ptCashError');
+            errEl.style.display = 'none';
+            const amount = parseFloat(document.getElementById('ptCashAmount').value);
+            if (!Number.isFinite(amount) || amount <= 0) {
+                errEl.textContent = 'Please enter a valid positive amount.';
+                errEl.style.display = 'block';
+                return;
+            }
+            const current = ptLoadCashBalance();
+            if (amount > current) {
+                errEl.textContent = `Insufficient balance. Current: PKR ${ptFmt(current)}`;
+                errEl.style.display = 'block';
+                return;
+            }
+            ptSaveCashBalance(current - amount);
+            document.getElementById('ptCashAmount').value = '';
             loadPortfolio();
         }
 

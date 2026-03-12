@@ -3,1563 +3,1455 @@
   "name": "Silver",
   "emoji": "\ud83e\udd48",
   "unit": "oz",
-  "current_price_usd": 78.53099822998047,
-  "current_price_pkr": 21853.011740759248,
+  "current_price_usd": 85.80000305175781,
+  "current_price_pkr": 23945.06369958492,
   "currency": "USD",
-  "predicted_price": 99.8,
-  "upside_potential": 27.08,
+  "predicted_price": 62.05,
+  "upside_potential": -27.68,
   "prediction_horizon": "6 months",
   "daily_predictions": [
     {
       "day": 1,
-      "date": "2026-01-31",
-      "predicted_price": 77.63,
-      "upside_potential": -1.15,
+      "date": "2026-03-12",
+      "predicted_price": 84.65,
+      "upside_potential": -1.34,
       "confidence": 1.0,
       "reliability": "high"
     },
     {
       "day": 2,
-      "date": "2026-02-01",
-      "predicted_price": 75.3,
-      "upside_potential": -4.11,
+      "date": "2026-03-13",
+      "predicted_price": 83.88,
+      "upside_potential": -2.24,
       "confidence": 0.99,
       "reliability": "high"
     },
     {
       "day": 3,
-      "date": "2026-02-02",
-      "predicted_price": 74.21,
-      "upside_potential": -5.5,
+      "date": "2026-03-14",
+      "predicted_price": 86.39,
+      "upside_potential": 0.69,
       "confidence": 0.99,
       "reliability": "high"
     },
     {
       "day": 4,
-      "date": "2026-02-03",
-      "predicted_price": 75.88,
-      "upside_potential": -3.37,
+      "date": "2026-03-15",
+      "predicted_price": 88.99,
+      "upside_potential": 3.71,
       "confidence": 0.99,
       "reliability": "high"
     },
     {
       "day": 5,
-      "date": "2026-02-04",
-      "predicted_price": 73.61,
-      "upside_potential": -6.27,
+      "date": "2026-03-16",
+      "predicted_price": 90.79,
+      "upside_potential": 5.81,
       "confidence": 0.98,
       "reliability": "high"
     },
     {
       "day": 6,
-      "date": "2026-02-05",
-      "predicted_price": 72.54,
-      "upside_potential": -7.63,
+      "date": "2026-03-17",
+      "predicted_price": 93.51,
+      "upside_potential": 8.99,
       "confidence": 0.98,
       "reliability": "high"
     },
     {
       "day": 7,
-      "date": "2026-02-06",
-      "predicted_price": 70.36,
-      "upside_potential": -10.4,
+      "date": "2026-03-18",
+      "predicted_price": 95.4,
+      "upside_potential": 11.19,
       "confidence": 0.98,
       "reliability": "high"
     },
     {
       "day": 8,
-      "date": "2026-02-07",
-      "predicted_price": 70.96,
-      "upside_potential": -9.64,
+      "date": "2026-03-19",
+      "predicted_price": 93.99,
+      "upside_potential": 9.55,
       "confidence": 0.97,
       "reliability": "high"
     },
     {
       "day": 9,
-      "date": "2026-02-08",
-      "predicted_price": 72.33,
-      "upside_potential": -7.9,
+      "date": "2026-03-20",
+      "predicted_price": 96.04,
+      "upside_potential": 11.93,
       "confidence": 0.97,
       "reliability": "high"
     },
     {
       "day": 10,
-      "date": "2026-02-09",
-      "predicted_price": 72.03,
-      "upside_potential": -8.28,
+      "date": "2026-03-21",
+      "predicted_price": 93.16,
+      "upside_potential": 8.57,
       "confidence": 0.97,
       "reliability": "high"
     },
     {
       "day": 11,
-      "date": "2026-02-10",
-      "predicted_price": 74.19,
-      "upside_potential": -5.53,
+      "date": "2026-03-22",
+      "predicted_price": 93.74,
+      "upside_potential": 9.25,
       "confidence": 0.96,
       "reliability": "high"
     },
     {
       "day": 12,
-      "date": "2026-02-11",
-      "predicted_price": 73.99,
-      "upside_potential": -5.78,
+      "date": "2026-03-23",
+      "predicted_price": 93.87,
+      "upside_potential": 9.41,
       "confidence": 0.96,
       "reliability": "high"
     },
     {
       "day": 13,
-      "date": "2026-02-12",
-      "predicted_price": 75.02,
-      "upside_potential": -4.48,
+      "date": "2026-03-24",
+      "predicted_price": 96.69,
+      "upside_potential": 12.69,
       "confidence": 0.96,
       "reliability": "high"
     },
     {
       "day": 14,
-      "date": "2026-02-13",
-      "predicted_price": 77.27,
-      "upside_potential": -1.61,
+      "date": "2026-03-25",
+      "predicted_price": 98.4,
+      "upside_potential": 14.68,
       "confidence": 0.95,
       "reliability": "high"
     },
     {
       "day": 15,
-      "date": "2026-02-14",
-      "predicted_price": 79.58,
-      "upside_potential": 1.34,
+      "date": "2026-03-26",
+      "predicted_price": 95.45,
+      "upside_potential": 11.24,
       "confidence": 0.95,
       "reliability": "high"
     },
     {
       "day": 16,
-      "date": "2026-02-15",
-      "predicted_price": 78.33,
-      "upside_potential": -0.26,
+      "date": "2026-03-27",
+      "predicted_price": 96.62,
+      "upside_potential": 12.61,
       "confidence": 0.95,
       "reliability": "high"
     },
     {
       "day": 17,
-      "date": "2026-02-16",
-      "predicted_price": 78.1,
-      "upside_potential": -0.55,
+      "date": "2026-03-28",
+      "predicted_price": 94.76,
+      "upside_potential": 10.44,
       "confidence": 0.94,
       "reliability": "high"
     },
     {
       "day": 18,
-      "date": "2026-02-17",
-      "predicted_price": 79.33,
-      "upside_potential": 1.01,
+      "date": "2026-03-29",
+      "predicted_price": 93.38,
+      "upside_potential": 8.83,
       "confidence": 0.94,
       "reliability": "high"
     },
     {
       "day": 19,
-      "date": "2026-02-18",
-      "predicted_price": 80.55,
-      "upside_potential": 2.56,
+      "date": "2026-03-30",
+      "predicted_price": 90.58,
+      "upside_potential": 5.57,
       "confidence": 0.94,
       "reliability": "high"
     },
     {
       "day": 20,
-      "date": "2026-02-19",
-      "predicted_price": 82.96,
-      "upside_potential": 5.64,
+      "date": "2026-03-31",
+      "predicted_price": 87.86,
+      "upside_potential": 2.4,
       "confidence": 0.93,
       "reliability": "high"
     },
     {
       "day": 21,
-      "date": "2026-02-20",
-      "predicted_price": 82.44,
-      "upside_potential": 4.98,
+      "date": "2026-04-01",
+      "predicted_price": 85.22,
+      "upside_potential": -0.67,
       "confidence": 0.93,
       "reliability": "high"
     },
     {
       "day": 22,
-      "date": "2026-02-21",
-      "predicted_price": 83.68,
-      "upside_potential": 6.55,
+      "date": "2026-04-02",
+      "predicted_price": 82.67,
+      "upside_potential": -3.65,
       "confidence": 0.93,
       "reliability": "high"
     },
     {
       "day": 23,
-      "date": "2026-02-22",
-      "predicted_price": 81.52,
-      "upside_potential": 3.8,
+      "date": "2026-04-03",
+      "predicted_price": 82.23,
+      "upside_potential": -4.17,
       "confidence": 0.92,
       "reliability": "high"
     },
     {
       "day": 24,
-      "date": "2026-02-23",
-      "predicted_price": 79.2,
-      "upside_potential": 0.85,
+      "date": "2026-04-04",
+      "predicted_price": 79.79,
+      "upside_potential": -7.0,
       "confidence": 0.92,
       "reliability": "high"
     },
     {
       "day": 25,
-      "date": "2026-02-24",
-      "predicted_price": 76.82,
-      "upside_potential": -2.18,
+      "date": "2026-04-05",
+      "predicted_price": 78.98,
+      "upside_potential": -7.95,
       "confidence": 0.92,
       "reliability": "high"
     },
     {
       "day": 26,
-      "date": "2026-02-25",
-      "predicted_price": 77.51,
-      "upside_potential": -1.3,
+      "date": "2026-04-06",
+      "predicted_price": 78.6,
+      "upside_potential": -8.39,
       "confidence": 0.91,
       "reliability": "high"
     },
     {
       "day": 27,
-      "date": "2026-02-26",
-      "predicted_price": 79.84,
-      "upside_potential": 1.67,
+      "date": "2026-04-07",
+      "predicted_price": 79.79,
+      "upside_potential": -7.0,
       "confidence": 0.91,
       "reliability": "high"
     },
     {
       "day": 28,
-      "date": "2026-02-27",
-      "predicted_price": 81.58,
-      "upside_potential": 3.88,
+      "date": "2026-04-08",
+      "predicted_price": 81.56,
+      "upside_potential": -4.95,
       "confidence": 0.91,
       "reliability": "high"
     },
     {
       "day": 29,
-      "date": "2026-02-28",
-      "predicted_price": 82.56,
-      "upside_potential": 5.12,
+      "date": "2026-04-09",
+      "predicted_price": 79.11,
+      "upside_potential": -7.8,
       "confidence": 0.9,
       "reliability": "high"
     },
     {
       "day": 30,
-      "date": "2026-03-01",
-      "predicted_price": 83.96,
-      "upside_potential": 6.91,
+      "date": "2026-04-10",
+      "predicted_price": 76.74,
+      "upside_potential": -10.56,
       "confidence": 0.9,
       "reliability": "high"
     },
     {
       "day": 31,
-      "date": "2026-03-02",
-      "predicted_price": 84.17,
-      "upside_potential": 7.18,
+      "date": "2026-04-11",
+      "predicted_price": 75.15,
+      "upside_potential": -12.41,
       "confidence": 0.9,
       "reliability": "medium"
     },
     {
       "day": 32,
-      "date": "2026-03-03",
-      "predicted_price": 86.59,
-      "upside_potential": 10.26,
+      "date": "2026-04-12",
+      "predicted_price": 76.94,
+      "upside_potential": -10.32,
       "confidence": 0.89,
       "reliability": "medium"
     },
     {
       "day": 33,
-      "date": "2026-03-04",
-      "predicted_price": 87.01,
-      "upside_potential": 10.79,
+      "date": "2026-04-13",
+      "predicted_price": 75.81,
+      "upside_potential": -11.64,
       "confidence": 0.89,
       "reliability": "medium"
     },
     {
       "day": 34,
-      "date": "2026-03-05",
-      "predicted_price": 84.4,
-      "upside_potential": 7.47,
+      "date": "2026-04-14",
+      "predicted_price": 74.3,
+      "upside_potential": -13.4,
       "confidence": 0.89,
       "reliability": "medium"
     },
     {
       "day": 35,
-      "date": "2026-03-06",
-      "predicted_price": 85.05,
-      "upside_potential": 8.3,
+      "date": "2026-04-15",
+      "predicted_price": 74.32,
+      "upside_potential": -13.38,
       "confidence": 0.88,
       "reliability": "medium"
     },
     {
       "day": 36,
-      "date": "2026-03-07",
-      "predicted_price": 84.54,
-      "upside_potential": 7.65,
+      "date": "2026-04-16",
+      "predicted_price": 75.88,
+      "upside_potential": -11.57,
       "confidence": 0.88,
       "reliability": "medium"
     },
     {
       "day": 37,
-      "date": "2026-03-08",
-      "predicted_price": 85.77,
-      "upside_potential": 9.22,
+      "date": "2026-04-17",
+      "predicted_price": 74.64,
+      "upside_potential": -13.0,
       "confidence": 0.88,
       "reliability": "medium"
     },
     {
       "day": 38,
-      "date": "2026-03-09",
-      "predicted_price": 88.12,
-      "upside_potential": 12.22,
+      "date": "2026-04-18",
+      "predicted_price": 73.98,
+      "upside_potential": -13.78,
       "confidence": 0.87,
       "reliability": "medium"
     },
     {
       "day": 39,
-      "date": "2026-03-10",
-      "predicted_price": 90.01,
-      "upside_potential": 14.62,
+      "date": "2026-04-19",
+      "predicted_price": 72.56,
+      "upside_potential": -15.43,
       "confidence": 0.87,
       "reliability": "medium"
     },
     {
       "day": 40,
-      "date": "2026-03-11",
-      "predicted_price": 92.71,
-      "upside_potential": 18.05,
+      "date": "2026-04-20",
+      "predicted_price": 70.9,
+      "upside_potential": -17.37,
       "confidence": 0.87,
       "reliability": "medium"
     },
     {
       "day": 41,
-      "date": "2026-03-12",
-      "predicted_price": 93.97,
-      "upside_potential": 19.66,
+      "date": "2026-04-21",
+      "predicted_price": 69.74,
+      "upside_potential": -18.72,
       "confidence": 0.86,
       "reliability": "medium"
     },
     {
       "day": 42,
-      "date": "2026-03-13",
-      "predicted_price": 93.37,
-      "upside_potential": 18.9,
+      "date": "2026-04-22",
+      "predicted_price": 67.64,
+      "upside_potential": -21.16,
       "confidence": 0.86,
       "reliability": "medium"
     },
     {
       "day": 43,
-      "date": "2026-03-14",
-      "predicted_price": 96.17,
-      "upside_potential": 22.46,
+      "date": "2026-04-23",
+      "predicted_price": 67.51,
+      "upside_potential": -21.32,
       "confidence": 0.86,
       "reliability": "medium"
     },
     {
       "day": 44,
-      "date": "2026-03-15",
-      "predicted_price": 96.75,
-      "upside_potential": 23.2,
+      "date": "2026-04-24",
+      "predicted_price": 68.09,
+      "upside_potential": -20.64,
       "confidence": 0.85,
       "reliability": "medium"
     },
     {
       "day": 45,
-      "date": "2026-03-16",
-      "predicted_price": 95.01,
-      "upside_potential": 20.99,
+      "date": "2026-04-25",
+      "predicted_price": 69.21,
+      "upside_potential": -19.33,
       "confidence": 0.85,
       "reliability": "medium"
     },
     {
       "day": 46,
-      "date": "2026-03-17",
-      "predicted_price": 97.86,
-      "upside_potential": 24.62,
+      "date": "2026-04-26",
+      "predicted_price": 69.24,
+      "upside_potential": -19.3,
       "confidence": 0.85,
       "reliability": "medium"
     },
     {
       "day": 47,
-      "date": "2026-03-18",
-      "predicted_price": 100.69,
-      "upside_potential": 28.22,
+      "date": "2026-04-27",
+      "predicted_price": 69.01,
+      "upside_potential": -19.56,
       "confidence": 0.84,
       "reliability": "medium"
     },
     {
       "day": 48,
-      "date": "2026-03-19",
-      "predicted_price": 98.37,
-      "upside_potential": 25.26,
+      "date": "2026-04-28",
+      "predicted_price": 70.29,
+      "upside_potential": -18.08,
       "confidence": 0.84,
       "reliability": "medium"
     },
     {
       "day": 49,
-      "date": "2026-03-20",
-      "predicted_price": 96.52,
-      "upside_potential": 22.9,
+      "date": "2026-04-29",
+      "predicted_price": 68.56,
+      "upside_potential": -20.09,
       "confidence": 0.84,
       "reliability": "medium"
     },
     {
       "day": 50,
-      "date": "2026-03-21",
-      "predicted_price": 94.41,
-      "upside_potential": 20.22,
+      "date": "2026-04-30",
+      "predicted_price": 68.37,
+      "upside_potential": -20.32,
       "confidence": 0.83,
       "reliability": "medium"
     },
     {
       "day": 51,
-      "date": "2026-03-22",
-      "predicted_price": 92.33,
-      "upside_potential": 17.57,
+      "date": "2026-05-01",
+      "predicted_price": 67.96,
+      "upside_potential": -20.79,
       "confidence": 0.83,
       "reliability": "medium"
     },
     {
       "day": 52,
-      "date": "2026-03-23",
-      "predicted_price": 93.6,
-      "upside_potential": 19.18,
+      "date": "2026-05-02",
+      "predicted_price": 68.47,
+      "upside_potential": -20.2,
       "confidence": 0.83,
       "reliability": "medium"
     },
     {
       "day": 53,
-      "date": "2026-03-24",
-      "predicted_price": 94.99,
-      "upside_potential": 20.96,
+      "date": "2026-05-03",
+      "predicted_price": 67.06,
+      "upside_potential": -21.84,
       "confidence": 0.82,
       "reliability": "medium"
     },
     {
       "day": 54,
-      "date": "2026-03-25",
-      "predicted_price": 95.52,
-      "upside_potential": 21.63,
+      "date": "2026-05-04",
+      "predicted_price": 68.55,
+      "upside_potential": -20.1,
       "confidence": 0.82,
       "reliability": "medium"
     },
     {
       "day": 55,
-      "date": "2026-03-26",
-      "predicted_price": 96.59,
-      "upside_potential": 23.0,
+      "date": "2026-05-05",
+      "predicted_price": 67.2,
+      "upside_potential": -21.68,
       "confidence": 0.82,
       "reliability": "medium"
     },
     {
       "day": 56,
-      "date": "2026-03-27",
-      "predicted_price": 95.25,
-      "upside_potential": 21.29,
+      "date": "2026-05-06",
+      "predicted_price": 66.92,
+      "upside_potential": -22.01,
       "confidence": 0.81,
       "reliability": "medium"
     },
     {
       "day": 57,
-      "date": "2026-03-28",
-      "predicted_price": 96.19,
-      "upside_potential": 22.48,
+      "date": "2026-05-07",
+      "predicted_price": 67.09,
+      "upside_potential": -21.81,
       "confidence": 0.81,
       "reliability": "medium"
     },
     {
       "day": 58,
-      "date": "2026-03-29",
-      "predicted_price": 93.3,
-      "upside_potential": 18.81,
+      "date": "2026-05-08",
+      "predicted_price": 65.07,
+      "upside_potential": -24.16,
       "confidence": 0.81,
       "reliability": "medium"
     },
     {
       "day": 59,
-      "date": "2026-03-30",
-      "predicted_price": 93.08,
-      "upside_potential": 18.52,
+      "date": "2026-05-09",
+      "predicted_price": 67.03,
+      "upside_potential": -21.88,
       "confidence": 0.8,
       "reliability": "medium"
     },
     {
       "day": 60,
-      "date": "2026-03-31",
-      "predicted_price": 90.36,
-      "upside_potential": 15.07,
+      "date": "2026-05-10",
+      "predicted_price": 65.26,
+      "upside_potential": -23.94,
       "confidence": 0.8,
       "reliability": "medium"
     },
     {
       "day": 61,
-      "date": "2026-04-01",
-      "predicted_price": 90.01,
-      "upside_potential": 14.62,
+      "date": "2026-05-11",
+      "predicted_price": 65.03,
+      "upside_potential": -24.2,
       "confidence": 0.8,
       "reliability": "medium"
     },
     {
       "day": 62,
-      "date": "2026-04-02",
-      "predicted_price": 87.7,
-      "upside_potential": 11.68,
+      "date": "2026-05-12",
+      "predicted_price": 65.97,
+      "upside_potential": -23.11,
       "confidence": 0.79,
       "reliability": "medium"
     },
     {
       "day": 63,
-      "date": "2026-04-03",
-      "predicted_price": 86.11,
-      "upside_potential": 9.66,
+      "date": "2026-05-13",
+      "predicted_price": 67.73,
+      "upside_potential": -21.07,
       "confidence": 0.79,
       "reliability": "medium"
     },
     {
       "day": 64,
-      "date": "2026-04-04",
-      "predicted_price": 88.7,
-      "upside_potential": 12.95,
+      "date": "2026-05-14",
+      "predicted_price": 67.88,
+      "upside_potential": -20.89,
       "confidence": 0.79,
       "reliability": "medium"
     },
     {
       "day": 65,
-      "date": "2026-04-05",
-      "predicted_price": 91.36,
-      "upside_potential": 16.33,
+      "date": "2026-05-15",
+      "predicted_price": 67.56,
+      "upside_potential": -21.26,
       "confidence": 0.78,
       "reliability": "medium"
     },
     {
       "day": 66,
-      "date": "2026-04-06",
-      "predicted_price": 91.98,
-      "upside_potential": 17.13,
+      "date": "2026-05-16",
+      "predicted_price": 67.23,
+      "upside_potential": -21.65,
       "confidence": 0.78,
       "reliability": "medium"
     },
     {
       "day": 67,
-      "date": "2026-04-07",
-      "predicted_price": 91.37,
-      "upside_potential": 16.35,
+      "date": "2026-05-17",
+      "predicted_price": 68.97,
+      "upside_potential": -19.61,
       "confidence": 0.78,
       "reliability": "medium"
     },
     {
       "day": 68,
-      "date": "2026-04-08",
-      "predicted_price": 91.64,
-      "upside_potential": 16.69,
+      "date": "2026-05-18",
+      "predicted_price": 67.54,
+      "upside_potential": -21.28,
       "confidence": 0.77,
       "reliability": "medium"
     },
     {
       "day": 69,
-      "date": "2026-04-09",
-      "predicted_price": 94.38,
-      "upside_potential": 20.19,
+      "date": "2026-05-19",
+      "predicted_price": 65.98,
+      "upside_potential": -23.1,
       "confidence": 0.77,
       "reliability": "medium"
     },
     {
       "day": 70,
-      "date": "2026-04-10",
-      "predicted_price": 96.07,
-      "upside_potential": 22.34,
+      "date": "2026-05-20",
+      "predicted_price": 65.48,
+      "upside_potential": -23.69,
       "confidence": 0.77,
       "reliability": "medium"
     },
     {
       "day": 71,
-      "date": "2026-04-11",
-      "predicted_price": 95.53,
-      "upside_potential": 21.65,
+      "date": "2026-05-21",
+      "predicted_price": 63.52,
+      "upside_potential": -25.97,
       "confidence": 0.76,
       "reliability": "medium"
     },
     {
       "day": 72,
-      "date": "2026-04-12",
-      "predicted_price": 95.21,
-      "upside_potential": 21.24,
+      "date": "2026-05-22",
+      "predicted_price": 63.7,
+      "upside_potential": -25.75,
       "confidence": 0.76,
       "reliability": "medium"
     },
     {
       "day": 73,
-      "date": "2026-04-13",
-      "predicted_price": 93.61,
-      "upside_potential": 19.21,
+      "date": "2026-05-23",
+      "predicted_price": 63.67,
+      "upside_potential": -25.79,
       "confidence": 0.76,
       "reliability": "medium"
     },
     {
       "day": 74,
-      "date": "2026-04-14",
-      "predicted_price": 93.69,
-      "upside_potential": 19.31,
+      "date": "2026-05-24",
+      "predicted_price": 63.61,
+      "upside_potential": -25.86,
       "confidence": 0.75,
       "reliability": "medium"
     },
     {
       "day": 75,
-      "date": "2026-04-15",
-      "predicted_price": 91.34,
-      "upside_potential": 16.31,
+      "date": "2026-05-25",
+      "predicted_price": 63.22,
+      "upside_potential": -26.32,
       "confidence": 0.75,
       "reliability": "medium"
     },
     {
       "day": 76,
-      "date": "2026-04-16",
-      "predicted_price": 88.6,
-      "upside_potential": 12.82,
+      "date": "2026-05-26",
+      "predicted_price": 62.22,
+      "upside_potential": -27.49,
       "confidence": 0.75,
       "reliability": "medium"
     },
     {
       "day": 77,
-      "date": "2026-04-17",
-      "predicted_price": 86.52,
-      "upside_potential": 10.18,
+      "date": "2026-05-27",
+      "predicted_price": 63.86,
+      "upside_potential": -25.57,
       "confidence": 0.74,
       "reliability": "medium"
     },
     {
       "day": 78,
-      "date": "2026-04-18",
-      "predicted_price": 85.55,
-      "upside_potential": 8.93,
+      "date": "2026-05-28",
+      "predicted_price": 64.37,
+      "upside_potential": -24.97,
       "confidence": 0.74,
       "reliability": "medium"
     },
     {
       "day": 79,
-      "date": "2026-04-19",
-      "predicted_price": 83.41,
-      "upside_potential": 6.22,
+      "date": "2026-05-29",
+      "predicted_price": 64.22,
+      "upside_potential": -25.15,
       "confidence": 0.74,
       "reliability": "medium"
     },
     {
       "day": 80,
-      "date": "2026-04-20",
-      "predicted_price": 83.21,
-      "upside_potential": 5.96,
+      "date": "2026-05-30",
+      "predicted_price": 63.92,
+      "upside_potential": -25.5,
       "confidence": 0.73,
       "reliability": "medium"
     },
     {
       "day": 81,
-      "date": "2026-04-21",
-      "predicted_price": 82.26,
-      "upside_potential": 4.75,
+      "date": "2026-05-31",
+      "predicted_price": 65.14,
+      "upside_potential": -24.08,
       "confidence": 0.73,
       "reliability": "medium"
     },
     {
       "day": 82,
-      "date": "2026-04-22",
-      "predicted_price": 82.92,
-      "upside_potential": 5.59,
+      "date": "2026-06-01",
+      "predicted_price": 65.12,
+      "upside_potential": -24.11,
       "confidence": 0.73,
       "reliability": "medium"
     },
     {
       "day": 83,
-      "date": "2026-04-23",
-      "predicted_price": 85.41,
-      "upside_potential": 8.75,
+      "date": "2026-06-02",
+      "predicted_price": 64.72,
+      "upside_potential": -24.57,
       "confidence": 0.72,
       "reliability": "medium"
     },
     {
       "day": 84,
-      "date": "2026-04-24",
-      "predicted_price": 85.8,
-      "upside_potential": 9.26,
+      "date": "2026-06-03",
+      "predicted_price": 63.19,
+      "upside_potential": -26.35,
       "confidence": 0.72,
       "reliability": "medium"
     },
     {
       "day": 85,
-      "date": "2026-04-25",
-      "predicted_price": 83.23,
-      "upside_potential": 5.98,
+      "date": "2026-06-04",
+      "predicted_price": 64.36,
+      "upside_potential": -24.98,
       "confidence": 0.72,
       "reliability": "medium"
     },
     {
       "day": 86,
-      "date": "2026-04-26",
-      "predicted_price": 83.95,
-      "upside_potential": 6.9,
+      "date": "2026-06-05",
+      "predicted_price": 63.85,
+      "upside_potential": -25.58,
       "confidence": 0.71,
       "reliability": "medium"
     },
     {
       "day": 87,
-      "date": "2026-04-27",
-      "predicted_price": 84.24,
-      "upside_potential": 7.27,
+      "date": "2026-06-06",
+      "predicted_price": 62.05,
+      "upside_potential": -27.68,
       "confidence": 0.71,
       "reliability": "medium"
     },
     {
       "day": 88,
-      "date": "2026-04-28",
-      "predicted_price": 82.7,
-      "upside_potential": 5.3,
+      "date": "2026-06-07",
+      "predicted_price": 63.24,
+      "upside_potential": -26.29,
       "confidence": 0.71,
       "reliability": "medium"
     },
     {
       "day": 89,
-      "date": "2026-04-29",
-      "predicted_price": 82.07,
-      "upside_potential": 4.51,
+      "date": "2026-06-08",
+      "predicted_price": 65.1,
+      "upside_potential": -24.13,
       "confidence": 0.7,
       "reliability": "medium"
     },
     {
       "day": 90,
-      "date": "2026-04-30",
-      "predicted_price": 79.61,
-      "upside_potential": 1.38,
+      "date": "2026-06-09",
+      "predicted_price": 64.81,
+      "upside_potential": -24.46,
       "confidence": 0.7,
       "reliability": "medium"
     },
     {
       "day": 91,
-      "date": "2026-05-01",
-      "predicted_price": 79.22,
-      "upside_potential": 0.88,
+      "date": "2026-06-10",
+      "predicted_price": 65.55,
+      "upside_potential": -23.6,
       "confidence": 0.7,
       "reliability": "low"
     },
     {
       "day": 92,
-      "date": "2026-05-02",
-      "predicted_price": 78.65,
-      "upside_potential": 0.16,
+      "date": "2026-06-11",
+      "predicted_price": 66.36,
+      "upside_potential": -22.66,
       "confidence": 0.69,
       "reliability": "low"
     },
     {
       "day": 93,
-      "date": "2026-05-03",
-      "predicted_price": 78.25,
-      "upside_potential": -0.36,
+      "date": "2026-06-12",
+      "predicted_price": 68.35,
+      "upside_potential": -20.34,
       "confidence": 0.69,
       "reliability": "low"
     },
     {
       "day": 94,
-      "date": "2026-05-04",
-      "predicted_price": 78.13,
-      "upside_potential": -0.51,
+      "date": "2026-06-13",
+      "predicted_price": 67.14,
+      "upside_potential": -21.74,
       "confidence": 0.69,
       "reliability": "low"
     },
     {
       "day": 95,
-      "date": "2026-05-05",
-      "predicted_price": 75.79,
-      "upside_potential": -3.49,
+      "date": "2026-06-14",
+      "predicted_price": 65.13,
+      "upside_potential": -24.09,
       "confidence": 0.68,
       "reliability": "low"
     },
     {
       "day": 96,
-      "date": "2026-05-06",
-      "predicted_price": 77.81,
-      "upside_potential": -0.92,
+      "date": "2026-06-15",
+      "predicted_price": 67.01,
+      "upside_potential": -21.9,
       "confidence": 0.68,
       "reliability": "low"
     },
     {
       "day": 97,
-      "date": "2026-05-07",
-      "predicted_price": 77.46,
-      "upside_potential": -1.37,
+      "date": "2026-06-16",
+      "predicted_price": 65.46,
+      "upside_potential": -23.71,
       "confidence": 0.68,
       "reliability": "low"
     },
     {
       "day": 98,
-      "date": "2026-05-08",
-      "predicted_price": 79.04,
-      "upside_potential": 0.65,
+      "date": "2026-06-17",
+      "predicted_price": 67.42,
+      "upside_potential": -21.42,
       "confidence": 0.67,
       "reliability": "low"
     },
     {
       "day": 99,
-      "date": "2026-05-09",
-      "predicted_price": 79.43,
-      "upside_potential": 1.14,
+      "date": "2026-06-18",
+      "predicted_price": 69.45,
+      "upside_potential": -19.06,
       "confidence": 0.67,
       "reliability": "low"
     },
     {
       "day": 100,
-      "date": "2026-05-10",
-      "predicted_price": 77.05,
-      "upside_potential": -1.89,
+      "date": "2026-06-19",
+      "predicted_price": 70.01,
+      "upside_potential": -18.4,
       "confidence": 0.67,
       "reliability": "low"
     },
     {
       "day": 101,
-      "date": "2026-05-11",
-      "predicted_price": 76.22,
-      "upside_potential": -2.94,
+      "date": "2026-06-20",
+      "predicted_price": 71.68,
+      "upside_potential": -16.46,
       "confidence": 0.66,
       "reliability": "low"
     },
     {
       "day": 102,
-      "date": "2026-05-12",
-      "predicted_price": 78.03,
-      "upside_potential": -0.64,
+      "date": "2026-06-21",
+      "predicted_price": 73.35,
+      "upside_potential": -14.51,
       "confidence": 0.66,
       "reliability": "low"
     },
     {
       "day": 103,
-      "date": "2026-05-13",
-      "predicted_price": 79.95,
-      "upside_potential": 1.81,
+      "date": "2026-06-22",
+      "predicted_price": 71.15,
+      "upside_potential": -17.07,
       "confidence": 0.66,
       "reliability": "low"
     },
     {
       "day": 104,
-      "date": "2026-05-14",
-      "predicted_price": 79.3,
-      "upside_potential": 0.98,
+      "date": "2026-06-23",
+      "predicted_price": 71.4,
+      "upside_potential": -16.78,
       "confidence": 0.65,
       "reliability": "low"
     },
     {
       "day": 105,
-      "date": "2026-05-15",
-      "predicted_price": 81.62,
-      "upside_potential": 3.93,
+      "date": "2026-06-24",
+      "predicted_price": 71.19,
+      "upside_potential": -17.02,
       "confidence": 0.65,
       "reliability": "low"
     },
     {
       "day": 106,
-      "date": "2026-05-16",
-      "predicted_price": 80.8,
-      "upside_potential": 2.89,
+      "date": "2026-06-25",
+      "predicted_price": 71.8,
+      "upside_potential": -16.31,
       "confidence": 0.65,
       "reliability": "low"
     },
     {
       "day": 107,
-      "date": "2026-05-17",
-      "predicted_price": 83.23,
-      "upside_potential": 5.98,
+      "date": "2026-06-26",
+      "predicted_price": 70.59,
+      "upside_potential": -17.73,
       "confidence": 0.64,
       "reliability": "low"
     },
     {
       "day": 108,
-      "date": "2026-05-18",
-      "predicted_price": 81.68,
-      "upside_potential": 4.01,
+      "date": "2026-06-27",
+      "predicted_price": 71.31,
+      "upside_potential": -16.89,
       "confidence": 0.64,
       "reliability": "low"
     },
     {
       "day": 109,
-      "date": "2026-05-19",
-      "predicted_price": 84.13,
-      "upside_potential": 7.13,
+      "date": "2026-06-28",
+      "predicted_price": 71.19,
+      "upside_potential": -17.03,
       "confidence": 0.64,
       "reliability": "low"
     },
     {
       "day": 110,
-      "date": "2026-05-20",
-      "predicted_price": 86.66,
-      "upside_potential": 10.35,
+      "date": "2026-06-29",
+      "predicted_price": 72.17,
+      "upside_potential": -15.89,
       "confidence": 0.63,
       "reliability": "low"
     },
     {
       "day": 111,
-      "date": "2026-05-21",
-      "predicted_price": 86.08,
-      "upside_potential": 9.61,
+      "date": "2026-06-30",
+      "predicted_price": 72.9,
+      "upside_potential": -15.03,
       "confidence": 0.63,
       "reliability": "low"
     },
     {
       "day": 112,
-      "date": "2026-05-22",
-      "predicted_price": 84.38,
-      "upside_potential": 7.45,
+      "date": "2026-07-01",
+      "predicted_price": 72.79,
+      "upside_potential": -15.16,
       "confidence": 0.63,
       "reliability": "low"
     },
     {
       "day": 113,
-      "date": "2026-05-23",
-      "predicted_price": 85.85,
-      "upside_potential": 9.32,
+      "date": "2026-07-02",
+      "predicted_price": 72.05,
+      "upside_potential": -16.02,
       "confidence": 0.62,
       "reliability": "low"
     },
     {
       "day": 114,
-      "date": "2026-05-24",
-      "predicted_price": 85.12,
-      "upside_potential": 8.4,
+      "date": "2026-07-03",
+      "predicted_price": 71.65,
+      "upside_potential": -16.49,
       "confidence": 0.62,
       "reliability": "low"
     },
     {
       "day": 115,
-      "date": "2026-05-25",
-      "predicted_price": 85.1,
-      "upside_potential": 8.37,
+      "date": "2026-07-04",
+      "predicted_price": 70.64,
+      "upside_potential": -17.67,
       "confidence": 0.62,
       "reliability": "low"
     },
     {
       "day": 116,
-      "date": "2026-05-26",
-      "predicted_price": 84.82,
-      "upside_potential": 8.0,
+      "date": "2026-07-05",
+      "predicted_price": 70.11,
+      "upside_potential": -18.29,
       "confidence": 0.61,
       "reliability": "low"
     },
     {
       "day": 117,
-      "date": "2026-05-27",
-      "predicted_price": 83.57,
-      "upside_potential": 6.42,
+      "date": "2026-07-06",
+      "predicted_price": 68.62,
+      "upside_potential": -20.02,
       "confidence": 0.61,
       "reliability": "low"
     },
     {
       "day": 118,
-      "date": "2026-05-28",
-      "predicted_price": 81.06,
-      "upside_potential": 3.22,
+      "date": "2026-07-07",
+      "predicted_price": 69.69,
+      "upside_potential": -18.77,
       "confidence": 0.61,
       "reliability": "low"
     },
     {
       "day": 119,
-      "date": "2026-05-29",
-      "predicted_price": 81.62,
-      "upside_potential": 3.93,
+      "date": "2026-07-08",
+      "predicted_price": 71.0,
+      "upside_potential": -17.25,
       "confidence": 0.6,
       "reliability": "low"
     },
     {
       "day": 120,
-      "date": "2026-05-30",
-      "predicted_price": 84.07,
-      "upside_potential": 7.05,
+      "date": "2026-07-09",
+      "predicted_price": 72.76,
+      "upside_potential": -15.2,
       "confidence": 0.6,
       "reliability": "low"
     },
     {
       "day": 121,
-      "date": "2026-05-31",
-      "predicted_price": 84.33,
-      "upside_potential": 7.38,
+      "date": "2026-07-10",
+      "predicted_price": 74.94,
+      "upside_potential": -12.65,
       "confidence": 0.6,
       "reliability": "low"
     },
     {
       "day": 122,
-      "date": "2026-06-01",
-      "predicted_price": 81.8,
-      "upside_potential": 4.16,
+      "date": "2026-07-11",
+      "predicted_price": 75.01,
+      "upside_potential": -12.57,
       "confidence": 0.59,
       "reliability": "low"
     },
     {
       "day": 123,
-      "date": "2026-06-02",
-      "predicted_price": 79.34,
-      "upside_potential": 1.04,
+      "date": "2026-07-12",
+      "predicted_price": 75.66,
+      "upside_potential": -11.81,
       "confidence": 0.59,
       "reliability": "low"
     },
     {
       "day": 124,
-      "date": "2026-06-03",
-      "predicted_price": 77.46,
-      "upside_potential": -1.37,
+      "date": "2026-07-13",
+      "predicted_price": 77.25,
+      "upside_potential": -9.97,
       "confidence": 0.59,
       "reliability": "low"
     },
     {
       "day": 125,
-      "date": "2026-06-04",
-      "predicted_price": 76.81,
-      "upside_potential": -2.19,
+      "date": "2026-07-14",
+      "predicted_price": 75.73,
+      "upside_potential": -11.74,
       "confidence": 0.58,
       "reliability": "low"
     },
     {
       "day": 126,
-      "date": "2026-06-05",
-      "predicted_price": 77.58,
-      "upside_potential": -1.22,
+      "date": "2026-07-15",
+      "predicted_price": 77.41,
+      "upside_potential": -9.78,
       "confidence": 0.58,
       "reliability": "low"
     },
     {
       "day": 127,
-      "date": "2026-06-06",
-      "predicted_price": 79.9,
-      "upside_potential": 1.75,
+      "date": "2026-07-16",
+      "predicted_price": 79.5,
+      "upside_potential": -7.34,
       "confidence": 0.58,
       "reliability": "low"
     },
     {
       "day": 128,
-      "date": "2026-06-07",
-      "predicted_price": 82.22,
-      "upside_potential": 4.7,
+      "date": "2026-07-17",
+      "predicted_price": 81.89,
+      "upside_potential": -4.56,
       "confidence": 0.57,
       "reliability": "low"
     },
     {
       "day": 129,
-      "date": "2026-06-08",
-      "predicted_price": 79.76,
-      "upside_potential": 1.56,
+      "date": "2026-07-18",
+      "predicted_price": 80.97,
+      "upside_potential": -5.63,
       "confidence": 0.57,
       "reliability": "low"
     },
     {
       "day": 130,
-      "date": "2026-06-09",
-      "predicted_price": 80.16,
-      "upside_potential": 2.08,
+      "date": "2026-07-19",
+      "predicted_price": 83.4,
+      "upside_potential": -2.8,
       "confidence": 0.57,
       "reliability": "low"
     },
     {
       "day": 131,
-      "date": "2026-06-10",
-      "predicted_price": 82.35,
-      "upside_potential": 4.86,
+      "date": "2026-07-20",
+      "predicted_price": 84.01,
+      "upside_potential": -2.09,
       "confidence": 0.56,
       "reliability": "low"
     },
     {
       "day": 132,
-      "date": "2026-06-11",
-      "predicted_price": 83.68,
-      "upside_potential": 6.56,
+      "date": "2026-07-21",
+      "predicted_price": 84.48,
+      "upside_potential": -1.53,
       "confidence": 0.56,
       "reliability": "low"
     },
     {
       "day": 133,
-      "date": "2026-06-12",
-      "predicted_price": 81.17,
-      "upside_potential": 3.36,
+      "date": "2026-07-22",
+      "predicted_price": 81.95,
+      "upside_potential": -4.49,
       "confidence": 0.56,
       "reliability": "low"
     },
     {
       "day": 134,
-      "date": "2026-06-13",
-      "predicted_price": 78.8,
-      "upside_potential": 0.35,
+      "date": "2026-07-23",
+      "predicted_price": 81.01,
+      "upside_potential": -5.58,
       "confidence": 0.55,
       "reliability": "low"
     },
     {
       "day": 135,
-      "date": "2026-06-14",
-      "predicted_price": 80.26,
-      "upside_potential": 2.2,
+      "date": "2026-07-24",
+      "predicted_price": 82.12,
+      "upside_potential": -4.29,
       "confidence": 0.55,
       "reliability": "low"
     },
     {
       "day": 136,
-      "date": "2026-06-15",
-      "predicted_price": 79.43,
-      "upside_potential": 1.14,
+      "date": "2026-07-25",
+      "predicted_price": 79.66,
+      "upside_potential": -7.16,
       "confidence": 0.55,
       "reliability": "low"
     },
     {
       "day": 137,
-      "date": "2026-06-16",
-      "predicted_price": 81.26,
-      "upside_potential": 3.47,
+      "date": "2026-07-26",
+      "predicted_price": 81.33,
+      "upside_potential": -5.21,
       "confidence": 0.54,
       "reliability": "low"
     },
     {
       "day": 138,
-      "date": "2026-06-17",
-      "predicted_price": 81.08,
-      "upside_potential": 3.25,
+      "date": "2026-07-27",
+      "predicted_price": 78.89,
+      "upside_potential": -8.06,
       "confidence": 0.54,
       "reliability": "low"
     },
     {
       "day": 139,
-      "date": "2026-06-18",
-      "predicted_price": 83.51,
-      "upside_potential": 6.34,
+      "date": "2026-07-28",
+      "predicted_price": 76.75,
+      "upside_potential": -10.54,
       "confidence": 0.54,
       "reliability": "low"
     },
     {
       "day": 140,
-      "date": "2026-06-19",
-      "predicted_price": 83.52,
-      "upside_potential": 6.35,
+      "date": "2026-07-29",
+      "predicted_price": 74.45,
+      "upside_potential": -13.23,
       "confidence": 0.53,
       "reliability": "low"
     },
     {
       "day": 141,
-      "date": "2026-06-20",
-      "predicted_price": 85.1,
-      "upside_potential": 8.36,
+      "date": "2026-07-30",
+      "predicted_price": 74.15,
+      "upside_potential": -13.57,
       "confidence": 0.53,
       "reliability": "low"
     },
     {
       "day": 142,
-      "date": "2026-06-21",
-      "predicted_price": 82.54,
-      "upside_potential": 5.11,
+      "date": "2026-07-31",
+      "predicted_price": 73.27,
+      "upside_potential": -14.6,
       "confidence": 0.53,
       "reliability": "low"
     },
     {
       "day": 143,
-      "date": "2026-06-22",
-      "predicted_price": 85.02,
-      "upside_potential": 8.26,
+      "date": "2026-08-01",
+      "predicted_price": 72.4,
+      "upside_potential": -15.62,
       "confidence": 0.52,
       "reliability": "low"
     },
     {
       "day": 144,
-      "date": "2026-06-23",
-      "predicted_price": 87.15,
-      "upside_potential": 10.98,
+      "date": "2026-08-02",
+      "predicted_price": 72.59,
+      "upside_potential": -15.39,
       "confidence": 0.52,
       "reliability": "low"
     },
     {
       "day": 145,
-      "date": "2026-06-24",
-      "predicted_price": 89.77,
-      "upside_potential": 14.31,
+      "date": "2026-08-03",
+      "predicted_price": 70.95,
+      "upside_potential": -17.31,
       "confidence": 0.52,
       "reliability": "low"
     },
     {
       "day": 146,
-      "date": "2026-06-25",
-      "predicted_price": 87.08,
-      "upside_potential": 10.88,
+      "date": "2026-08-04",
+      "predicted_price": 70.37,
+      "upside_potential": -17.98,
       "confidence": 0.51,
       "reliability": "low"
     },
     {
       "day": 147,
-      "date": "2026-06-26",
-      "predicted_price": 88.36,
-      "upside_potential": 12.52,
+      "date": "2026-08-05",
+      "predicted_price": 69.68,
+      "upside_potential": -18.79,
       "confidence": 0.51,
       "reliability": "low"
     },
     {
       "day": 148,
-      "date": "2026-06-27",
-      "predicted_price": 89.82,
-      "upside_potential": 14.37,
+      "date": "2026-08-06",
+      "predicted_price": 69.55,
+      "upside_potential": -18.94,
       "confidence": 0.51,
       "reliability": "low"
     },
     {
       "day": 149,
-      "date": "2026-06-28",
-      "predicted_price": 89.72,
-      "upside_potential": 14.25,
+      "date": "2026-08-07",
+      "predicted_price": 69.97,
+      "upside_potential": -18.45,
       "confidence": 0.5,
       "reliability": "low"
     },
     {
       "day": 150,
-      "date": "2026-06-29",
-      "predicted_price": 88.95,
-      "upside_potential": 13.27,
+      "date": "2026-08-08",
+      "predicted_price": 68.24,
+      "upside_potential": -20.46,
       "confidence": 0.5,
       "reliability": "low"
     },
     {
       "day": 151,
-      "date": "2026-06-30",
-      "predicted_price": 86.37,
-      "upside_potential": 9.99,
+      "date": "2026-08-09",
+      "predicted_price": 66.2,
+      "upside_potential": -22.85,
       "confidence": 0.5,
       "reliability": "low"
     },
     {
       "day": 152,
-      "date": "2026-07-01",
-      "predicted_price": 88.13,
-      "upside_potential": 12.22,
+      "date": "2026-08-10",
+      "predicted_price": 65.53,
+      "upside_potential": -23.63,
       "confidence": 0.49,
       "reliability": "low"
     },
     {
       "day": 153,
-      "date": "2026-07-02",
-      "predicted_price": 89.5,
-      "upside_potential": 13.96,
+      "date": "2026-08-11",
+      "predicted_price": 64.03,
+      "upside_potential": -25.38,
       "confidence": 0.49,
       "reliability": "low"
     },
     {
       "day": 154,
-      "date": "2026-07-03",
-      "predicted_price": 92.18,
-      "upside_potential": 17.38,
+      "date": "2026-08-12",
+      "predicted_price": 63.43,
+      "upside_potential": -26.08,
       "confidence": 0.49,
       "reliability": "low"
     },
     {
       "day": 155,
-      "date": "2026-07-04",
-      "predicted_price": 89.42,
-      "upside_potential": 13.86,
+      "date": "2026-08-13",
+      "predicted_price": 64.16,
+      "upside_potential": -25.22,
       "confidence": 0.48,
       "reliability": "low"
     },
     {
       "day": 156,
-      "date": "2026-07-05",
-      "predicted_price": 88.12,
-      "upside_potential": 12.21,
+      "date": "2026-08-14",
+      "predicted_price": 64.41,
+      "upside_potential": -24.93,
       "confidence": 0.48,
       "reliability": "low"
     },
     {
       "day": 157,
-      "date": "2026-07-06",
-      "predicted_price": 88.27,
-      "upside_potential": 12.4,
+      "date": "2026-08-15",
+      "predicted_price": 63.03,
+      "upside_potential": -26.54,
       "confidence": 0.48,
       "reliability": "low"
     },
     {
       "day": 158,
-      "date": "2026-07-07",
-      "predicted_price": 89.36,
-      "upside_potential": 13.8,
+      "date": "2026-08-16",
+      "predicted_price": 64.92,
+      "upside_potential": -24.33,
       "confidence": 0.47,
       "reliability": "low"
     },
     {
       "day": 159,
-      "date": "2026-07-08",
-      "predicted_price": 90.11,
-      "upside_potential": 14.74,
+      "date": "2026-08-17",
+      "predicted_price": 63.59,
+      "upside_potential": -25.89,
       "confidence": 0.47,
       "reliability": "low"
     },
     {
       "day": 160,
-      "date": "2026-07-09",
-      "predicted_price": 92.2,
-      "upside_potential": 17.41,
+      "date": "2026-08-18",
+      "predicted_price": 65.26,
+      "upside_potential": -23.94,
       "confidence": 0.47,
       "reliability": "low"
     },
     {
       "day": 161,
-      "date": "2026-07-10",
-      "predicted_price": 94.97,
-      "upside_potential": 20.93,
+      "date": "2026-08-19",
+      "predicted_price": 65.39,
+      "upside_potential": -23.79,
       "confidence": 0.46,
       "reliability": "low"
     },
     {
       "day": 162,
-      "date": "2026-07-11",
-      "predicted_price": 96.76,
-      "upside_potential": 23.21,
+      "date": "2026-08-20",
+      "predicted_price": 65.75,
+      "upside_potential": -23.37,
       "confidence": 0.46,
       "reliability": "low"
     },
     {
       "day": 163,
-      "date": "2026-07-12",
-      "predicted_price": 95.56,
-      "upside_potential": 21.68,
+      "date": "2026-08-21",
+      "predicted_price": 64.99,
+      "upside_potential": -24.26,
       "confidence": 0.46,
       "reliability": "low"
     },
     {
       "day": 164,
-      "date": "2026-07-13",
-      "predicted_price": 92.77,
-      "upside_potential": 18.13,
+      "date": "2026-08-22",
+      "predicted_price": 64.36,
+      "upside_potential": -24.99,
       "confidence": 0.45,
       "reliability": "low"
     },
     {
       "day": 165,
-      "date": "2026-07-14",
-      "predicted_price": 94.68,
-      "upside_potential": 20.56,
+      "date": "2026-08-23",
+      "predicted_price": 62.84,
+      "upside_potential": -26.76,
       "confidence": 0.45,
       "reliability": "low"
     },
     {
       "day": 166,
-      "date": "2026-07-15",
-      "predicted_price": 93.58,
-      "upside_potential": 19.16,
+      "date": "2026-08-24",
+      "predicted_price": 61.61,
+      "upside_potential": -28.19,
       "confidence": 0.45,
       "reliability": "low"
     },
     {
       "day": 167,
-      "date": "2026-07-16",
-      "predicted_price": 94.12,
-      "upside_potential": 19.86,
+      "date": "2026-08-25",
+      "predicted_price": 63.46,
+      "upside_potential": -26.04,
       "confidence": 0.44,
       "reliability": "low"
     },
     {
       "day": 168,
-      "date": "2026-07-17",
-      "predicted_price": 93.39,
-      "upside_potential": 18.92,
+      "date": "2026-08-26",
+      "predicted_price": 64.17,
+      "upside_potential": -25.21,
       "confidence": 0.44,
       "reliability": "low"
     },
     {
       "day": 169,
-      "date": "2026-07-18",
-      "predicted_price": 96.19,
-      "upside_potential": 22.49,
+      "date": "2026-08-27",
+      "predicted_price": 62.24,
+      "upside_potential": -27.46,
       "confidence": 0.44,
       "reliability": "low"
     },
     {
       "day": 170,
-      "date": "2026-07-19",
-      "predicted_price": 93.3,
-      "upside_potential": 18.81,
+      "date": "2026-08-28",
+      "predicted_price": 62.19,
+      "upside_potential": -27.52,
       "confidence": 0.43,
       "reliability": "low"
     },
     {
       "day": 171,
-      "date": "2026-07-20",
-      "predicted_price": 96.1,
-      "upside_potential": 22.38,
+      "date": "2026-08-29",
+      "predicted_price": 60.32,
+      "upside_potential": -29.69,
       "confidence": 0.43,
       "reliability": "low"
     },
     {
       "day": 172,
-      "date": "2026-07-21",
-      "predicted_price": 98.99,
-      "upside_potential": 26.05,
+      "date": "2026-08-30",
+      "predicted_price": 60.86,
+      "upside_potential": -29.06,
       "confidence": 0.43,
       "reliability": "low"
     },
     {
       "day": 173,
-      "date": "2026-07-22",
-      "predicted_price": 101.77,
-      "upside_potential": 29.59,
+      "date": "2026-08-31",
+      "predicted_price": 60.56,
+      "upside_potential": -29.42,
       "confidence": 0.42,
       "reliability": "low"
     },
     {
       "day": 174,
-      "date": "2026-07-23",
-      "predicted_price": 98.72,
-      "upside_potential": 25.7,
+      "date": "2026-09-01",
+      "predicted_price": 62.13,
+      "upside_potential": -27.59,
       "confidence": 0.42,
       "reliability": "low"
     },
     {
       "day": 175,
-      "date": "2026-07-24",
-      "predicted_price": 99.16,
-      "upside_potential": 26.27,
+      "date": "2026-09-02",
+      "predicted_price": 61.01,
+      "upside_potential": -28.89,
       "confidence": 0.42,
       "reliability": "low"
     },
     {
       "day": 176,
-      "date": "2026-07-25",
-      "predicted_price": 102.14,
-      "upside_potential": 30.06,
+      "date": "2026-09-03",
+      "predicted_price": 62.84,
+      "upside_potential": -26.76,
       "confidence": 0.41,
       "reliability": "low"
     },
     {
       "day": 177,
-      "date": "2026-07-26",
-      "predicted_price": 103.7,
-      "upside_potential": 32.05,
+      "date": "2026-09-04",
+      "predicted_price": 63.36,
+      "upside_potential": -26.16,
       "confidence": 0.41,
       "reliability": "low"
     },
     {
       "day": 178,
-      "date": "2026-07-27",
-      "predicted_price": 102.65,
-      "upside_potential": 30.72,
+      "date": "2026-09-05",
+      "predicted_price": 63.97,
+      "upside_potential": -25.44,
       "confidence": 0.41,
       "reliability": "low"
     },
     {
       "day": 179,
-      "date": "2026-07-28",
-      "predicted_price": 102.89,
-      "upside_potential": 31.01,
+      "date": "2026-09-06",
+      "predicted_price": 63.97,
+      "upside_potential": -25.44,
       "confidence": 0.4,
       "reliability": "low"
     },
     {
       "day": 180,
-      "date": "2026-07-29",
-      "predicted_price": 99.8,
-      "upside_potential": 27.08,
+      "date": "2026-09-07",
+      "predicted_price": 62.05,
+      "upside_potential": -27.68,
       "confidence": 0.4,
       "reliability": "low"
     }
   ],
   "historical_data": [
-    {
-      "Date": "2025-05-15",
-      "Close": 32.48099899291992
-    },
-    {
-      "Date": "2025-05-16",
-      "Close": 32.15800094604492
-    },
-    {
-      "Date": "2025-05-19",
-      "Close": 32.3129997253418
-    },
-    {
-      "Date": "2025-05-20",
-      "Close": 32.97999954223633
-    },
-    {
-      "Date": "2025-05-21",
-      "Close": 33.4630012512207
-    },
-    {
-      "Date": "2025-05-22",
-      "Close": 33.047000885009766
-    },
-    {
-      "Date": "2025-05-23",
-      "Close": 33.44200134277344
-    },
-    {
-      "Date": "2025-05-27",
-      "Close": 33.145999908447266
-    },
-    {
-      "Date": "2025-05-28",
-      "Close": 33.0
-    },
-    {
-      "Date": "2025-05-29",
-      "Close": 33.28300094604492
-    },
-    {
-      "Date": "2025-05-30",
-      "Close": 32.891998291015625
-    },
-    {
-      "Date": "2025-06-02",
-      "Close": 34.5629997253418
-    },
-    {
-      "Date": "2025-06-03",
-      "Close": 34.50299835205078
-    },
-    {
-      "Date": "2025-06-04",
-      "Close": 34.51900100708008
-    },
-    {
-      "Date": "2025-06-05",
-      "Close": 35.68899917602539
-    },
-    {
-      "Date": "2025-06-06",
-      "Close": 36.025001525878906
-    },
-    {
-      "Date": "2025-06-09",
-      "Close": 36.6879997253418
-    },
-    {
-      "Date": "2025-06-10",
-      "Close": 36.54199981689453
-    },
-    {
-      "Date": "2025-06-11",
-      "Close": 36.16600036621094
-    },
-    {
-      "Date": "2025-06-12",
-      "Close": 36.2130012512207
-    },
-    {
-      "Date": "2025-06-13",
-      "Close": 36.28099822998047
-    },
-    {
-      "Date": "2025-06-16",
-      "Close": 36.37900161743164
-    },
-    {
-      "Date": "2025-06-17",
-      "Close": 37.09000015258789
-    },
-    {
-      "Date": "2025-06-18",
-      "Close": 36.86600112915039
-    },
-    {
-      "Date": "2025-06-20",
-      "Close": 35.97600173950195
-    },
-    {
-      "Date": "2025-06-23",
-      "Close": 36.15299987792969
-    },
-    {
-      "Date": "2025-06-24",
-      "Close": 35.70100021362305
-    },
     {
       "Date": "2025-06-25",
       "Close": 36.084999084472656
@@ -2170,92 +2062,200 @@
     },
     {
       "Date": "2026-01-30",
-      "Close": 78.53099822998047
+      "Close": 78.29000091552734
+    },
+    {
+      "Date": "2026-02-02",
+      "Close": 76.77799987792969
+    },
+    {
+      "Date": "2026-02-03",
+      "Close": 83.04199981689453
+    },
+    {
+      "Date": "2026-02-04",
+      "Close": 84.16500091552734
+    },
+    {
+      "Date": "2026-02-05",
+      "Close": 76.52899932861328
+    },
+    {
+      "Date": "2026-02-06",
+      "Close": 76.73500061035156
+    },
+    {
+      "Date": "2026-02-09",
+      "Close": 82.06500244140625
+    },
+    {
+      "Date": "2026-02-10",
+      "Close": 80.21800231933594
+    },
+    {
+      "Date": "2026-02-11",
+      "Close": 83.75399780273438
+    },
+    {
+      "Date": "2026-02-12",
+      "Close": 75.5459976196289
+    },
+    {
+      "Date": "2026-02-13",
+      "Close": 77.85099792480469
+    },
+    {
+      "Date": "2026-02-17",
+      "Close": 73.4469985961914
+    },
+    {
+      "Date": "2026-02-18",
+      "Close": 77.50900268554688
+    },
+    {
+      "Date": "2026-02-19",
+      "Close": 77.56500244140625
+    },
+    {
+      "Date": "2026-02-20",
+      "Close": 82.28299713134766
+    },
+    {
+      "Date": "2026-02-23",
+      "Close": 86.52300262451172
+    },
+    {
+      "Date": "2026-02-24",
+      "Close": 87.45700073242188
+    },
+    {
+      "Date": "2026-02-25",
+      "Close": 90.93900299072266
+    },
+    {
+      "Date": "2026-02-26",
+      "Close": 86.99800109863281
+    },
+    {
+      "Date": "2026-02-27",
+      "Close": 92.68199920654297
+    },
+    {
+      "Date": "2026-03-02",
+      "Close": 88.28399658203125
+    },
+    {
+      "Date": "2026-03-03",
+      "Close": 82.9229965209961
+    },
+    {
+      "Date": "2026-03-04",
+      "Close": 82.63300323486328
+    },
+    {
+      "Date": "2026-03-05",
+      "Close": 81.68699645996094
+    },
+    {
+      "Date": "2026-03-06",
+      "Close": 83.81600189208984
+    },
+    {
+      "Date": "2026-03-09",
+      "Close": 84.03199768066406
+    },
+    {
+      "Date": "2026-03-10",
+      "Close": 89.08300018310547
+    },
+    {
+      "Date": "2026-03-11",
+      "Close": 85.80000305175781
     }
   ],
   "model_metrics": {
     "model_r2": {
-      "gb": -2.471416887246188,
-      "rf": -1.9477297265816993,
-      "ridge": -0.28319641491895914
+      "gb": -1.9605688359590523,
+      "rf": -1.6148346210285685,
+      "ridge": -0.3538409554731451
     },
-    "ensemble_r2": -1.8504822865481712,
-    "samples": 302,
+    "ensemble_r2": -1.5182162846362015,
+    "samples": 303,
     "features": 52
   },
   "key_drivers": [
     {
-      "feature": "sma_100",
-      "importance": 0.13640260894337505
-    },
-    {
-      "feature": "sma_50",
-      "importance": 0.11798957834478288
-    },
-    {
-      "feature": "ema_200",
-      "importance": 0.11076557099112304
-    },
-    {
-      "feature": "bb_upper",
-      "importance": 0.10600388100134718
-    },
-    {
-      "feature": "sma_200",
-      "importance": 0.10002941789417005
-    },
-    {
-      "feature": "sma_20",
-      "importance": 0.06939589197111828
-    },
-    {
-      "feature": "sma_10",
-      "importance": 0.05708400386696376
-    },
-    {
       "feature": "bb_lower",
-      "importance": 0.05286468579400675
-    },
-    {
-      "feature": "price_vs_sma200",
-      "importance": 0.036247054582151196
+      "importance": 0.17739896057711046
     },
     {
       "feature": "ema_10",
-      "importance": 0.034777098737101206
+      "importance": 0.16510390593170218
+    },
+    {
+      "feature": "sma_20",
+      "importance": 0.1347268803099844
+    },
+    {
+      "feature": "sma_200",
+      "importance": 0.11506036319875207
+    },
+    {
+      "feature": "bb_upper",
+      "importance": 0.09432437606423459
+    },
+    {
+      "feature": "sma_100",
+      "importance": 0.07876454415152859
+    },
+    {
+      "feature": "sma_50",
+      "importance": 0.06888452386683062
+    },
+    {
+      "feature": "price_vs_sma200",
+      "importance": 0.028974085717380055
+    },
+    {
+      "feature": "sma_10",
+      "importance": 0.02742217963448656
+    },
+    {
+      "feature": "ema_200",
+      "importance": 0.0221534158637503
     }
   ],
   "factors": {
     "ai_gpu_demand": {
-      "status": "bullish",
-      "emoji": "\ud83d\ude80",
-      "description": "Semiconductor index up 12.9% (AI/GPU demand rising)"
+      "status": "neutral",
+      "emoji": "\u27a1\ufe0f",
+      "description": "Semiconductor demand stable"
     },
     "solar_demand": {
-      "status": "bullish",
-      "emoji": "\u2600\ufe0f",
-      "description": "Solar ETF +9.6% (affects silver industrial demand)"
+      "status": "bearish",
+      "emoji": "\ud83c\udf25\ufe0f",
+      "description": "Solar ETF -4.5% (affects silver industrial demand)"
     },
     "usd_strength": {
-      "status": "bearish",
+      "status": "neutral",
       "emoji": "\ud83d\udcb5",
-      "description": "USD Index strengthening (+0.90%)"
+      "description": "USD Index strengthening (+0.20%)"
     },
     "market_fear": {
       "status": "neutral",
       "emoji": "\ud83d\ude10",
-      "description": "VIX at 17.4 (moderate)"
+      "description": "VIX at 24.7 (moderate)"
     },
     "interest_rates": {
       "status": "neutral",
       "emoji": "\ud83c\udfe6",
-      "description": "10Y Treasury at 4.24% (moderate)"
+      "description": "10Y Treasury at 4.19% (moderate)"
     },
     "momentum": {
       "status": "neutral",
       "emoji": "\ud83d\udcca",
-      "description": "RSI at 50 (neutral)"
+      "description": "RSI at 59 (neutral)"
     }
   },
-  "generated_at": "2026-02-01T19:32:07.057792"
+  "generated_at": "2026-03-11T19:32:06.730250"
 }

@@ -955,6 +955,52 @@ def fetch_psx_notice_fallback(max_items: int = 5) -> List[Dict]:
     return kept
 
 
+def _extract_sbp_policy_date(title: str, href: str = '') -> str:
+    """Extract a conservative publication date from an SBP policy document title."""
+    title = (title or '').strip()
+    href = (href or '').strip()
+
+    full_date_patterns = [
+        (r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}', '%b %d %Y'),
+        (
+            r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}',
+            '%B %d %Y',
+        ),
+    ]
+    for pattern, fmt in full_date_patterns:
+        match = re.search(pattern, title, re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            parsed = datetime.strptime(match.group(0).replace(',', ''), fmt)
+            return parsed.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+
+    month_year_patterns = [
+        (r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}', '%b %Y'),
+        (
+            r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}',
+            '%B %Y',
+        ),
+    ]
+    for pattern, fmt in month_year_patterns:
+        match = re.search(pattern, title, re.IGNORECASE)
+        if not match:
+            continue
+        try:
+            parsed = datetime.strptime(match.group(0), fmt)
+            return parsed.strftime('%Y-%m-01')
+        except ValueError:
+            continue
+
+    year_match = re.search(r'/((?:19|20)\d{2})/', href)
+    if year_match:
+        return f"{year_match.group(1)}-01-01"
+
+    return ''
+
+
 def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
     """Fetch monetary policy statements directly from SBP website.
 
@@ -976,7 +1022,10 @@ def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
         'rate unchanged', 'rate cut', 'rate hike', 'basis points',
         'mpc decision', 'monetary policy committee', 'rate decision',
         'kept unchanged', 'raised', 'lowered', 'tightening', 'easing',
-        'monetary policy information',
+    ]
+    excluded_keywords = [
+        '(urdu)',
+        'information compendium',
     ]
 
     articles: List[Dict] = []
@@ -985,7 +1034,7 @@ def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
     for url in sbp_urls:
         try:
             result = fetch_news_curl_with_status(url, timeout=10)
-            html = result.get('html', '')
+            html = re.sub(r'<!--.*?-->', ' ', result.get('html', ''), flags=re.DOTALL)
             if not html:
                 continue
 
@@ -1006,8 +1055,7 @@ def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
                 if not any(kw in title_lower for kw in policy_keywords):
                     continue
 
-                # Skip Urdu versions to avoid duplicates
-                if '(urdu)' in title_lower:
+                if any(kw in title_lower for kw in excluded_keywords):
                     continue
 
                 # Normalize SBP relative links
@@ -1017,21 +1065,9 @@ def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
                     else:
                         href = f"https://www.sbp.org.pk/m_policy/{href}"
 
-                # Extract date from title like "Mar 09, 2026"
-                date_match = re.search(
-                    r'(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+\d{4}',
-                    title, re.IGNORECASE
-                )
-                if date_match:
-                    try:
-                        parsed_date = datetime.strptime(
-                            date_match.group(0).replace(',', ''), '%b %d %Y'
-                        )
-                        article_date = parsed_date.strftime('%Y-%m-%d')
-                    except ValueError:
-                        article_date = datetime.now().strftime('%Y-%m-%d')
-                else:
-                    article_date = datetime.now().strftime('%Y-%m-%d')
+                article_date = _extract_sbp_policy_date(title, href)
+                if not article_date:
+                    continue
 
                 seen.add(title_lower)
                 articles.append({
@@ -1040,7 +1076,7 @@ def fetch_sbp_monetary_policy(max_items: int = 5) -> List[Dict]:
                     'source': 'SBP',
                     'date': article_date,
                     'is_macro': True,
-                    'is_direct': True,
+                    'is_direct': False,
                     'scope': 'macro',
                     'relevance_score': 1.0,
                 })

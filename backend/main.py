@@ -8,6 +8,8 @@ import sys
 import json
 import re
 import time
+import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Union
@@ -42,12 +44,56 @@ except ImportError as e:
     ANALYZER_AVAILABLE = False
 
 # ============================================================================
+# BACKGROUND CACHE WARMER
+# ============================================================================
+_cache_warmer_task = None
+
+
+def _fetch_market_watch_snapshot_sync():
+    """Synchronous fetch that always hits the network and updates the global cache."""
+    now_ts = time.time()
+    html_text = _fetch_url_with_fallback("https://dps.psx.com.pk/market-watch")
+    if not html_text:
+        html_text = _fetch_url_with_fallback("http://dps.psx.com.pk/market-watch")
+    parsed = _parse_market_watch_html_rows(html_text or "")
+    if parsed:
+        _MARKET_WATCH_CACHE["fetched_at"] = now_ts
+        _MARKET_WATCH_CACHE["rows"] = parsed
+        return parsed
+    return _MARKET_WATCH_CACHE.get("rows", {})
+
+
+async def _warm_market_watch_cache():
+    """Background loop that refreshes the market-watch cache every 30 seconds."""
+    while True:
+        try:
+            await asyncio.to_thread(_fetch_market_watch_snapshot_sync)
+        except Exception:
+            pass
+        await asyncio.sleep(30)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    global _cache_warmer_task
+    # Warm cache on startup (in thread to avoid blocking)
+    try:
+        await asyncio.to_thread(_fetch_market_watch_snapshot_sync)
+    except Exception:
+        pass
+    _cache_warmer_task = asyncio.create_task(_warm_market_watch_cache())
+    yield
+    _cache_warmer_task.cancel()
+
+
+# ============================================================================
 # APP
 # ============================================================================
 app = FastAPI(
     title="PSX Fortune Teller API",
     description="AI-powered stock predictions for Pakistan Stock Exchange",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -286,22 +332,13 @@ def _parse_market_watch_html_rows(html_text: str):
     return rows
 
 
-def _fetch_market_watch_snapshot(max_age_seconds: int = 8):
-    now_ts = time.time()
-    cache_age = now_ts - float(_MARKET_WATCH_CACHE.get("fetched_at", 0.0))
+def _fetch_market_watch_snapshot(max_age_seconds: int = 60):
+    """Return cached market-watch snapshot. Background warmer keeps this fresh."""
     cached_rows = _MARKET_WATCH_CACHE.get("rows", {})
-    if cache_age <= max_age_seconds and isinstance(cached_rows, dict) and cached_rows:
+    if isinstance(cached_rows, dict) and cached_rows:
         return cached_rows
-
-    html_text = _fetch_url_with_fallback("https://dps.psx.com.pk/market-watch")
-    if not html_text:
-        html_text = _fetch_url_with_fallback("http://dps.psx.com.pk/market-watch")
-    parsed = _parse_market_watch_html_rows(html_text or "")
-    if parsed:
-        _MARKET_WATCH_CACHE["fetched_at"] = now_ts
-        _MARKET_WATCH_CACHE["rows"] = parsed
-        return parsed
-    return cached_rows if isinstance(cached_rows, dict) else {}
+    # Cache empty (cold start before warmer finished) -- do sync fetch
+    return _fetch_market_watch_snapshot_sync()
 
 
 def _parse_market_watch_payload(payload, symbol: str):
@@ -426,7 +463,7 @@ def _fetch_url_with_fallback(url):
 
     try:
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=8.0, context=ssl.create_default_context()) as resp:
+        with urllib.request.urlopen(req, timeout=4.0, context=ssl.create_default_context()) as resp:
             if getattr(resp, 'status', 200) != 200:
                 return None
             return resp.read().decode('utf-8', errors='ignore')
@@ -438,7 +475,7 @@ def _fetch_url_with_fallback(url):
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(
             req,
-            timeout=8.0,
+            timeout=3.0,
             context=ssl._create_unverified_context()
         ) as resp:
             if getattr(resp, 'status', 200) != 200:
@@ -449,11 +486,11 @@ def _fetch_url_with_fallback(url):
 
     # Fallback using curl (the app already uses curl in other PSX endpoints)
     try:
-        args = ['curl', '-sS', '-L', '--max-time', '8']
+        args = ['curl', '-sS', '-L', '--max-time', '4']
         for key, value in headers.items():
             args.extend(['-H', f'{key}: {value}'])
         args.append(url)
-        result = subprocess.run(args, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(args, capture_output=True, text=True, timeout=6)
         if result.returncode == 0 and result.stdout:
             return result.stdout
     except Exception:
@@ -706,7 +743,11 @@ async def get_current_prices(symbols: str):
     if len(parsed_symbols) > 100:
         raise HTTPException(status_code=400, detail="Maximum 100 symbols")
 
-    snapshot = _fetch_market_watch_snapshot()
+    # Fast path: read from in-memory cache (kept warm by background task)
+    snapshot = _MARKET_WATCH_CACHE.get("rows", {})
+    if not snapshot:
+        # Cold start: warmer hasn't populated yet, fetch in thread pool
+        snapshot = await asyncio.to_thread(_fetch_market_watch_snapshot_sync)
     now_date = datetime.now().strftime('%Y-%m-%d')
     out = {}
 
@@ -762,7 +803,7 @@ async def get_current_price(symbol: str):
     Tries PSX live endpoints first, then falls back to cached historical close.
     """
     sym = symbol.upper().strip()
-    live = _fetch_live_psx_price(sym)
+    live = await asyncio.to_thread(_fetch_live_psx_price, sym)
     if live and isinstance(live.get("price"), (int, float)):
         return {
             "symbol": sym,
